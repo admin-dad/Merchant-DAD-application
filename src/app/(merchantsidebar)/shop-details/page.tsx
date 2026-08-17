@@ -226,7 +226,7 @@ export default function ShopDetailsPage() {
       .update({
         address: form.address.trim(),
         category: form.category,
-sub_category: (form.sub_category ?? '').trim() || null,
+        sub_category: (form.sub_category ?? '').trim() || null,
       })
       .eq('id', merchant.id)
 
@@ -403,8 +403,8 @@ sub_category: (form.sub_category ?? '').trim() || null,
         {saveMessage && (
           <div
             className={`mt-6 flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium ${saveMessage.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-rose-200 bg-rose-50 text-rose-800'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-rose-200 bg-rose-50 text-rose-800'
               }`}
           >
             {saveMessage.type === 'success' ? (
