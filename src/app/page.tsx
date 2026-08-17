@@ -1,69 +1,921 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useRef, useState } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
+import {
+  QrCode,
+  Store,
+  Users,
+  Gift,
+  Wallet,
+  ShoppingBag,
+  ArrowUpRight,
+  ArrowRight,
+  CheckCircle2,
+  Sparkles,
+  Share2,
+  ShieldCheck,
+  Smartphone,
+  TrendingUp,
+  PieChart,
+  Zap,
+} from "lucide-react";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+/* ------------------------------------------------------------------ */
+/*  DAP Brand Palette & Motion Tokens                                 */
+/*  paper      #FAFCFF  – clean, crisp off-white                      */
+/*  deepBlue   #0B2E7A  – profound structural backgrounds             */
+/*  linkBlue   #1857D6  – electric vibrant blue accents               */
+/*  deepGreen  #3E7A1C  – rich ribbon green for primary actions       */
+/*  leafGreen  #7BC142  – luminous highlight green                    */
+/*  Matches the palette + type + motion system used on the            */
+/*  "How It Works" page, applied here to the merchant landing page.   */
+/* ------------------------------------------------------------------ */
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+function FadeUp({
+  children,
+  delay = 0,
+  className = "",
+  yOffset = 30,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  yOffset?: number;
+}) {
+  const reduce = useReducedMotion();
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <motion.div
+      initial={reduce ? {} : { opacity: 0, y: yOffset, filter: "blur(6px)" }}
+      whileInView={reduce ? {} : { opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.8, delay, ease: EASE }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* --- Orchestrated reveal: parent triggers, children stagger in --- */
+const staggerContainer: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.05 } },
+};
+
+const staggerItem: Variants = {
+  hidden: { opacity: 0, y: 26, filter: "blur(6px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.7, ease: EASE },
+  },
+};
+
+function StaggerGroup({
+  children,
+  className = "",
+  as = "div",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  as?: "div" | "ul";
+}) {
+  const reduce = useReducedMotion();
+  const MotionTag = as === "ul" ? motion.ul : motion.div;
+  return (
+    <MotionTag
+      initial={reduce ? undefined : "hidden"}
+      whileInView={reduce ? undefined : "show"}
+      viewport={{ once: true, margin: "-80px" }}
+      variants={reduce ? undefined : staggerContainer}
+      className={className}
+    >
+      {children}
+    </MotionTag>
+  );
+}
+
+function StaggerItem({
+  children,
+  className = "",
+  as = "div",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  as?: "div" | "li";
+}) {
+  const MotionTag = as === "li" ? motion.li : motion.div;
+  return (
+    <MotionTag variants={staggerItem} className={className}>
+      {children}
+    </MotionTag>
+  );
+}
+
+/* --- Ledger Divider (shared structural device) --- */
+function LedgerRule({ label }: { label: string }) {
+  return (
+    <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-6">
+      <span className="font-mono text-[11px] font-semibold tracking-[0.3em] text-[#0B2E7A]/60 flex items-center gap-2">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-ping" />
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-gradient-to-r from-[#0B2E7A]/20 via-[#0B2E7A]/5 to-transparent" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Content                                                            */
+/* ------------------------------------------------------------------ */
+
+const CATEGORIES = [
+  "Kirana Stores", "Grocery", "Supermarkets", "Fashion & Clothing",
+  "Electronics", "Mobile Shops", "Restaurants", "Cafes", "Salons",
+  "Medical Stores", "Hardware Shops", "Furniture", "Jewellery",
+];
+
+const STEPS = [
+  {
+    step: "01",
+    title: "Register your shop",
+    desc: "Share your business details and complete a quick digital KYC to apply as a Merchant Partner. No physical paperwork required.",
+    detail: "Under 2 minutes",
+    icon: Store,
+  },
+  {
+    step: "02",
+    title: "Get approved & receive your QR",
+    desc: "Our team verifies your details. Once approved, you instantly receive a Merchant ID, a referral code, and your unique shop QR code.",
+    detail: "24–48 hour approval",
+    icon: ShieldCheck,
+  },
+  {
+    step: "03",
+    title: "Display your QR & refer shops",
+    desc: "Place the QR code on your billing counter. Use your referral code to bring other merchants into the network and earn points.",
+    detail: "100 pts per referral",
+    icon: Share2,
+  },
+  {
+    step: "04",
+    title: "Customers scan & engage",
+    desc: "Walk-in customers scan your QR, verify their mobile number via OTP, and immediately receive a digital scratch card.",
+    detail: "Frictionless, no app",
+    icon: Smartphone,
+  },
+  {
+    step: "05",
+    title: "Everyone earns",
+    desc: "Customers win cashback or rewards. You earn engagement credits and points, redeemable across the B2B & B2C ecosystem.",
+    detail: "Automated ledger update",
+    icon: Gift,
+  },
+];
+
+const FEATURES = [
+  {
+    icon: Users,
+    title: "Network Referral Program",
+    body: "Every merchant gets a unique referral code and trackable link. Bring in another shop, and earn 100 points the moment they're approved.",
+    accent: "blue" as const,
+  },
+  {
+    icon: Wallet,
+    title: "Points & Rewards Wallet",
+    body: "Joining bonuses, referral points, and campaign rewards — all consolidated into one transparent ledger with clear redemption rules.",
+    accent: "green" as const,
+  },
+  {
+    icon: QrCode,
+    title: "QR Customer Engagement",
+    body: "A unique QR code turns every counter into a rewards moment. Scan, verify, and issue a digital scratch card in under 30 seconds.",
+    accent: "leaf" as const,
+  },
+  {
+    icon: Sparkles,
+    title: "Scratch Card Campaigns",
+    body: "Run time-bound promotional campaigns with configurable winners, prize tiers, and eligibility criteria — tracked automatically end-to-end.",
+    accent: "blue" as const,
+  },
+  {
+    icon: ShoppingBag,
+    title: "Unified B2B & B2C Commerce",
+    body: "Merchants can restock inventory or redeem points for products on the exact same storefront their customers shop from.",
+    accent: "green" as const,
+  },
+  {
+    icon: TrendingUp,
+    title: "Benefits & Transparent Billing",
+    body: "Category-based benefits, transparent per-customer billing, and full visibility into exactly what's owed and what's paid.",
+    accent: "leaf" as const,
+  },
+];
+
+const ACCENT_CLASSES: Record<
+  "blue" | "green" | "leaf",
+  { text: string; bg: string; border: string }
+> = {
+  blue: { text: "text-[#1857D6]", bg: "bg-[#1857D6]/10", border: "border-[#1857D6]/20" },
+  green: { text: "text-[#3E7A1C]", bg: "bg-[#3E7A1C]/10", border: "border-[#3E7A1C]/20" },
+  leaf: { text: "text-[#4C8A22]", bg: "bg-[#7BC142]/15", border: "border-[#7BC142]/30" },
+};
+
+const ECOSYSTEM = [
+  { icon: Smartphone, title: "No App Required", body: "Customers don't need to download another app. The entire rewards flow works through the browser via QR scanning." },
+  { icon: ShieldCheck, title: "Bank-Grade Security", body: "Customer data is OTP-verified and encrypted. We do not store personal payment details on the merchant side." },
+  { icon: PieChart, title: "Real-Time Analytics", body: "Understand your footfall, scan rates, and customer return frequency through an intuitive merchant dashboard." },
+  { icon: Zap, title: "Offline-First Architecture", body: "Even if your internet drops for a minute, the QR routes locally and syncs the engagement data the moment you reconnect." },
+];
+
+const CAPABILITY_STATS = [
+  { value: "20+", label: "Business categories supported" },
+  { value: "₹1–₹5", label: "Configurable engagement pricing" },
+  { value: "100%", label: "Activity logged for audit" },
+  { value: "<30s", label: "From QR scan to reward" },
+];
+
+const ONBOARDING_TIMELINE = [
+  { phase: "DAY 01", title: "Application & KYC", desc: "Submit your shop details and complete digital KYC entirely online." },
+  { phase: "DAY 02", title: "Verification & Approval", desc: "Our team reviews your application and approves your merchant account." },
+  { phase: "DAY 03", title: "Kit Generation", desc: "Receive your Merchant ID, referral code, dashboard access, and digital QR." },
+  { phase: "DAY 04", title: "Go Live", desc: "Print your QR, place it on the counter, and start earning points immediately." },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Hero visual — ledger-styled wallet card with orbiting motifs      */
+/* ------------------------------------------------------------------ */
+
+const ORBIT_ICONS = [
+  { Icon: QrCode, top: "4%", left: "2%", size: 46, delay: 0 },
+  { Icon: Wallet, top: "10%", left: "80%", size: 40, delay: 0.6 },
+  { Icon: Users, top: "70%", left: "0%", size: 42, delay: 1.2 },
+  { Icon: Sparkles, top: "84%", left: "78%", size: 38, delay: 0.3 },
+  { Icon: ShoppingBag, top: "42%", left: "90%", size: 36, delay: 0.9 },
+];
+
+function HeroVisual() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduce ? {} : { opacity: 0, scale: 0.92, y: 24 }}
+      animate={reduce ? {} : { opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.9, delay: 0.3, ease: EASE }}
+      className="relative mx-auto flex min-h-[420px] w-full max-w-md items-center justify-center"
+    >
+      {!reduce &&
+        ORBIT_ICONS.map(({ Icon, top, left, size, delay }, i) => (
+          <motion.div
+            key={i}
+            className="absolute hidden items-center justify-center rounded-2xl border border-[#0B2E7A]/10 bg-white text-[#1857D6] shadow-lg shadow-[#0B2E7A]/10 sm:flex"
+            style={{ top, left, width: size, height: size }}
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1, y: [0, -14, 0], rotate: [0, -4, 0] }}
+            transition={{
+              opacity: { duration: 0.6, delay: 0.6 + delay * 0.2 },
+              scale: { duration: 0.6, delay: 0.6 + delay * 0.2 },
+              y: { duration: 6, repeat: Infinity, ease: "easeInOut", delay },
+              rotate: { duration: 6, repeat: Infinity, ease: "easeInOut", delay },
+            }}
+          >
+            <Icon size={Math.round(size * 0.42)} strokeWidth={2} />
+          </motion.div>
+        ))}
+
+      <motion.div
+        animate={reduce ? {} : { scale: [1, 1.08, 1], opacity: [0.25, 0.4, 0.25] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="pointer-events-none absolute h-80 w-80 rounded-full blur-[90px]"
+        style={{ background: "#7BC142" }}
+      />
+
+      <motion.div
+        whileHover={reduce ? {} : { y: -6 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="relative z-10 w-full max-w-[300px] rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-xl shadow-[#0B2E7A]/10"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B2E7A] text-white">
+            <Store size={17} strokeWidth={2.25} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-[#0B2E7A]">Merchant wallet</span>
+            <span className="text-xs text-[#0B2E7A]/55">Live network ledger</span>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col">
+          <span
+            className="text-4xl font-light tracking-tight text-[#0B2E7A]"
+            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+          >
+            ₹0
+          </span>
+          <span className="mt-1 text-xs font-medium text-[#0B2E7A]/55">setup cost, ever</span>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3E7A1C]/10 px-3 py-1.5 font-mono text-[11px] font-semibold text-[#3E7A1C]">
+            <Sparkles size={12} strokeWidth={2.5} /> +100 pts referral
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1857D6]/10 px-3 py-1.5 font-mono text-[11px] font-semibold text-[#1857D6]">
+            <ShieldCheck size={12} strokeWidth={2.5} /> OTP verified
+          </span>
+        </div>
+
+        <div className="mt-6 flex items-center gap-2.5 border-t border-[#0B2E7A]/10 pt-5">
+          <div className="flex">
+            <span className="-ml-0 h-5 w-5 rounded-full border-2 border-white bg-[#1857D6]" />
+            <span className="-ml-2 h-5 w-5 rounded-full border-2 border-white bg-[#3E7A1C]" />
+            <span className="-ml-2 h-5 w-5 rounded-full border-2 border-white bg-[#7BC142]" />
+          </div>
+          <span className="font-mono text-[11px] text-[#0B2E7A]/55">20+ categories on network</span>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Register demo — ledger-styled application form                    */
+/* ------------------------------------------------------------------ */
+
+function RegisterDemo() {
+  const [form, setForm] = useState({ shop: "", category: CATEGORIES[0], phone: "" });
+  const [submitted, setSubmitted] = useState(false);
+  const [merchantId, setMerchantId] = useState("");
+
+  const update =
+    (key: "shop" | "category" | "phone") =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!form.shop.trim() || form.phone.trim().length < 10) return;
+    setMerchantId(`RK-${Math.floor(1000 + Math.random() * 9000)}`);
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: EASE }}
+        className="flex h-full flex-col items-center rounded-3xl bg-white p-8 text-center shadow-xl"
+      >
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.1 }}
+        >
+          <CheckCircle2 size={32} className="text-[#3E7A1C]" strokeWidth={1.75} />
+        </motion.div>
+        <h3
+          className="mt-4 text-2xl text-[#0B2E7A]"
+          style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+        >
+          Application received
+        </h3>
+        <p className="mt-2 text-sm text-[#0B2E7A]/70">
+          <strong className="font-semibold text-[#0B2E7A]">{form.shop}</strong> is queued for
+          verification under <strong className="font-semibold text-[#0B2E7A]">{form.category}</strong>.
+        </p>
+        <div className="mt-5 w-full rounded-2xl bg-[#FAFCFF] px-6 py-4">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-[#0B2E7A]/50">
+            Merchant ID
+          </span>
+          <div className="mt-1 text-xl font-semibold text-[#0B2E7A]">{merchantId}</div>
+        </div>
+        <p className="mt-4 text-xs text-[#0B2E7A]/50">
+          This is a demo confirmation — no data leaves your browser yet.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setSubmitted(false);
+            setForm({ shop: "", category: CATEGORIES[0], phone: "" });
+          }}
+          className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-[#1857D6] px-5 py-2.5 font-mono text-xs font-semibold text-[#1857D6] transition hover:bg-[#1857D6] hover:text-white"
+        >
+          Start another application
+        </button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="flex h-full flex-col rounded-3xl bg-white p-8 shadow-xl">
+      <h3
+        className="text-2xl text-[#0B2E7A]"
+        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+      >
+        Apply as a Merchant Partner
+      </h3>
+      <p className="mt-1.5 text-sm text-[#0B2E7A]/60">Takes under two minutes. No commitment</p>
+
+      <label className="mt-6 flex flex-col gap-1.5">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0B2E7A]/60">
+          Shop name
+        </span>
+        <input
+          value={form.shop}
+          onChange={update("shop")}
+          placeholder="e.g. Sri Lakshmi Kirana Store"
+          required
+          className="rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] outline-none transition focus:border-[#1857D6] focus:bg-white focus:ring-4 focus:ring-[#1857D6]/10"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+      </label>
+
+      <label className="mt-4 flex flex-col gap-1.5">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0B2E7A]/60">
+          Business category
+        </span>
+        <select
+          value={form.category}
+          onChange={update("category")}
+          className="rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] outline-none transition focus:border-[#1857D6] focus:bg-white focus:ring-4 focus:ring-[#1857D6]/10"
+        >
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="mt-4 flex flex-col gap-1.5">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#0B2E7A]/60">
+          Mobile number
+        </span>
+        <input
+          value={form.phone}
+          onChange={update("phone")}
+          placeholder="10-digit mobile number"
+          inputMode="numeric"
+          required
+          className="rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] outline-none transition focus:border-[#1857D6] focus:bg-white focus:ring-4 focus:ring-[#1857D6]/10"
+        />
+      </label>
+
+      <button
+        type="submit"
+        className="group relative mt-7 inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-6 py-3.5 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_8px_25px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(62,122,28,0.5)]"
+      >
+        <span className="absolute inset-0 h-full w-full -translate-x-full skew-x-12 transform bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
+        <span>Submit application</span>
+        <ArrowRight size={16} strokeWidth={2} className="transition-transform duration-300 group-hover:translate-x-1" />
+      </button>
+    </form>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export default function RakvihLanding() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"],
+  });
+
+  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0.4]);
+
+  return (
+    <div className="relative min-h-screen overflow-x-hidden bg-[#FAFCFF] font-sans text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A]">
+ <Header />
+      {/* ---------------------------------------------------------- */}
+      {/* HERO                                                        */}
+      {/* ---------------------------------------------------------- */}
+      <section
+        ref={containerRef}
+        className="relative flex min-h-[80vh] flex-col justify-center overflow-hidden border-b border-[#0B2E7A]/10 px-6 pb-16 pt-20"
+      >
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full blur-[100px]"
+          style={{ background: "#7BC142" }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="pointer-events-none absolute -left-20 bottom-0 h-96 w-96 rounded-full blur-[120px]"
+          style={{ background: "#1857D6" }}
+        />
+
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
+          <motion.div style={{ y: heroTextY, opacity: heroOpacity }}>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: EASE }}
+              className="mb-5 inline-flex items-center gap-2.5 rounded-full border border-[#3E7A1C]/20 bg-[#3E7A1C]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#3E7A1C] shadow-sm"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <Store size={15} strokeWidth={2} />
+              <span>MERCHANT PARTNER NETWORK</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
+              className="max-w-xl text-4xl font-light leading-tight tracking-tight sm:text-5xl md:text-6xl"
+              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Every shop counter is a{" "}
+              <span className="font-normal italic text-[#3E7A1C] underline decoration-[#7BC142]/40 underline-offset-8">
+                growth engine
+              </span>
+              .
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 25 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
+              className="mt-6 max-w-lg text-base leading-relaxed text-[#0B2E7A]/80 sm:text-lg"
+            >
+              One QR code turns walk-in customers into rewards, referrals into revenue,
+              and every sale into a tracked, redeemable point — built for Kirana stores,
+              salons, electronics shops, and 20+ business categories.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.42, ease: EASE }}
+              className="mt-9 flex flex-wrap gap-4"
+            >
+              <motion.a
+                href="#apply"
+                whileHover={{ y: -3 }}
+                whileTap={{ y: 0, scale: 0.98 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-8 py-4 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_8px_25px_rgba(62,122,28,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_rgba(62,122,28,0.55)]"
+              >
+                <span className="absolute inset-0 h-full w-full -translate-x-full skew-x-12 transform bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
+                <span>Become a partner</span>
+                <ArrowUpRight size={17} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </motion.a>
+              <motion.a
+                href="#how"
+                whileHover={{ y: -3 }}
+                whileTap={{ y: 0, scale: 0.98 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-[#0B2E7A]/20 px-7 py-4 font-mono text-sm font-semibold tracking-wide text-[#0B2E7A] transition-colors hover:bg-[#0B2E7A]/5"
+              >
+                See how it works
+              </motion.a>
+            </motion.div>
+
+            <StaggerGroup className="mt-10 flex flex-wrap gap-x-7 gap-y-3">
+              {["QR-linked in real time", "Unified wallet & commerce", "Audited transactions"].map((t) => (
+                <StaggerItem key={t} className="flex items-center gap-2 text-sm font-medium text-[#0B2E7A]/70">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#3E7A1C] shadow-[0_0_0_3px_rgba(62,122,28,0.15)]" />
+                  {t}
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          </motion.div>
+
+          <HeroVisual />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* CATEGORY MARQUEE                                            */}
+      {/* ---------------------------------------------------------- */}
+      <div className="overflow-hidden border-b border-[#0B2E7A]/10 bg-[#0B2E7A]/[0.03] py-5">
+        <motion.div
+          className="flex w-max gap-10 whitespace-nowrap"
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ duration: 32, repeat: Infinity, ease: "linear" }}
+        >
+          {[...CATEGORIES, ...CATEGORIES].map((c, i) => (
+            <span
+              key={i}
+              className="flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#0B2E7A]/55"
+            >
+              <Store size={13} strokeWidth={2} className="text-[#3E7A1C]" />
+              {c}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ---------------------------------------------------------- */}
+      {/* HOW IT WORKS — FIVE-STEP FLOW                               */}
+      {/* ---------------------------------------------------------- */}
+      <section id="how" className="relative px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp className="mb-12 text-center">
+            <span className="rounded-full border border-[#1857D6]/20 bg-[#1857D6]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6]">
+              THE FIVE-STEP FLOW
+            </span>
+            <h2
+              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
+              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+            >
+              From registration to reward, tracked at every step
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-[#0B2E7A]/70">
+              No apps for your customers to download, no hardware to buy — just a simple flow that benefits everyone.
+            </p>
+          </FadeUp>
+
+          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <StaggerItem key={item.step}>
+                  <motion.div
+                    whileHover={{ y: -8 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="group relative flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-6 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
+                  >
+                    <div className="mb-5 flex items-center justify-between">
+                      <span className="rounded-full bg-[#1857D6]/10 px-3 py-1 font-mono text-xs font-bold text-[#1857D6]">
+                        STEP {item.step}
+                      </span>
+                      <div className="rounded-xl border border-[#0B2E7A]/10 bg-[#FAFCFF] p-2.5 transition-transform group-hover:scale-110">
+                        <Icon size={18} className="text-[#0B2E7A]" />
+                      </div>
+                    </div>
+                    <h3
+                      className="mb-2.5 text-xl font-normal text-[#0B2E7A]"
+                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className="flex-1 text-xs leading-relaxed text-[#0B2E7A]/75 sm:text-[13px]">
+                      {item.desc}
+                    </p>
+                    <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#3E7A1C]/10 px-3 py-1 font-mono text-[11px] font-semibold text-[#3E7A1C]">
+                      {item.detail}
+                    </span>
+                  </motion.div>
+                </StaggerItem>
+              );
+            })}
+          </StaggerGroup>
         </div>
-      </main>
+      </section>
+
+      <LedgerRule label="PLATFORM MODULES" />
+
+      {/* ---------------------------------------------------------- */}
+      {/* FEATURES                                                    */}
+      {/* ---------------------------------------------------------- */}
+      <section className="bg-gradient-to-b from-transparent via-[#1857D6]/[0.02] to-transparent px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp className="mb-12 text-center">
+            <span className="rounded-full border border-[#3E7A1C]/20 bg-[#3E7A1C]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#3E7A1C]">
+              PLATFORM MODULES
+            </span>
+            <h2
+              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
+              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+            >
+              Everything a merchant partner needs
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-[#0B2E7A]/70">
+              A complete toolkit to acquire, engage, and retain customers while building a peer network.
+            </p>
+          </FadeUp>
+
+          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f) => {
+              const c = ACCENT_CLASSES[f.accent];
+              return (
+                <StaggerItem key={f.title}>
+                  <motion.div
+                    whileHover={{ y: -8 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
+                  >
+                    <div className={`mb-5 inline-flex w-fit rounded-2xl border ${c.border} ${c.bg} p-3 ${c.text}`}>
+                      <f.icon size={22} strokeWidth={2} />
+                    </div>
+                    <h3
+                      className="mb-2 text-xl font-normal text-[#0B2E7A]"
+                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                    >
+                      {f.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-[#0B2E7A]/75">{f.body}</p>
+                  </motion.div>
+                </StaggerItem>
+              );
+            })}
+          </StaggerGroup>
+
+          {/* Ecosystem strip — items stagger in individually */}
+          <FadeUp delay={0.1} className="mt-10">
+            <StaggerGroup className="grid gap-5 rounded-3xl border border-[#0B2E7A]/10 bg-white p-8 shadow-lg shadow-[#0B2E7A]/5 sm:grid-cols-2 sm:p-10">
+              {ECOSYSTEM.map((e) => (
+                <StaggerItem key={e.title} className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-[#0B2E7A]/10 bg-[#FAFCFF] text-[#0B2E7A]">
+                    <e.icon size={19} strokeWidth={2} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[#0B2E7A]">{e.title}</h4>
+                    <p className="mt-1 text-[13px] leading-relaxed text-[#0B2E7A]/70">{e.body}</p>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          </FadeUp>
+        </div>
+      </section>
+
+      <LedgerRule label="NETWORK AT SCALE" />
+
+      {/* ---------------------------------------------------------- */}
+      {/* STATS BAND                                                  */}
+      {/* ---------------------------------------------------------- */}
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0B2E7A] to-[#1857D6] p-8 text-white shadow-xl sm:p-12">
+              <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 -translate-y-12 translate-x-12 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative z-10 max-w-xl">
+                <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#7BC142]">
+                  Built for scale
+                </span>
+                <h3
+                  className="mt-3 text-2xl font-light leading-tight sm:text-3xl"
+                  style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                >
+                  Fast, trackable, and mutually beneficial for merchant and customer alike.
+                </h3>
+              </div>
+              <StaggerGroup className="relative z-10 mt-10 grid grid-cols-2 gap-8 sm:grid-cols-4">
+                {CAPABILITY_STATS.map((s) => (
+                  <StaggerItem key={s.label}>
+                    <div className="font-mono text-3xl font-bold text-[#7BC142] sm:text-4xl">{s.value}</div>
+                    <div className="mt-1.5 text-xs leading-snug text-slate-200 sm:text-sm">{s.label}</div>
+                  </StaggerItem>
+                ))}
+              </StaggerGroup>
+            </div>
+          </FadeUp>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* SCENARIO — A DAY AT THE COUNTER                             */}
+      {/* ---------------------------------------------------------- */}
+      <section className="px-6 pb-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp>
+            <div className="grid gap-10 rounded-3xl border border-[#0B2E7A]/10 bg-white p-8 shadow-lg shadow-[#0B2E7A]/5 sm:p-12 lg:grid-cols-[0.42fr_0.58fr]">
+              <div>
+                <span className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-[#3E7A1C]">
+                  A day at the counter
+                </span>
+                <p
+                  className="mt-4 text-2xl font-light leading-snug text-[#0B2E7A] sm:text-[26px]"
+                  style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                >
+                  "The QR sits by the billing counter. A customer scans it while I pack their
+                  order — by the time they've paid, they've already scratched a card."
+                </p>
+                <div className="mt-5 font-mono text-xs text-[#0B2E7A]/50">
+                  Illustrative example — Kirana Store, daily engagement flow
+                </div>
+              </div>
+              <StaggerGroup className="flex flex-col gap-4">
+                {[
+                  "Customer scans the shop's unique QR at checkout.",
+                  "Mobile number verified instantly via secure OTP.",
+                  "Digital scratch card delivered to their browser.",
+                  "Win or not, the interaction is logged to your dashboard.",
+                  "Merchant earns engagement credit and points automatically.",
+                ].map((s, i) => (
+                  <StaggerItem key={i} className="flex items-start gap-3.5 text-sm leading-relaxed text-[#0B2E7A]/80">
+                    <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-[#0B2E7A]/15 bg-[#FAFCFF] font-mono text-[11px] font-semibold text-[#1857D6]">
+                      {i + 1}
+                    </span>
+                    {s}
+                  </StaggerItem>
+                ))}
+              </StaggerGroup>
+            </div>
+          </FadeUp>
+        </div>
+      </section>
+
+      <LedgerRule label="ONBOARDING TIMELINE" />
+
+      {/* ---------------------------------------------------------- */}
+      {/* ONBOARDING TIMELINE                                         */}
+      {/* ---------------------------------------------------------- */}
+      <section className="bg-gradient-to-b from-transparent via-[#3E7A1C]/[0.02] to-transparent px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp className="mb-12 text-center">
+            <span className="rounded-full border border-[#1857D6]/20 bg-[#1857D6]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6]">
+              GO LIVE IN 4 DAYS
+            </span>
+            <h2
+              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
+              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+            >
+              A streamlined path to earning
+            </h2>
+          </FadeUp>
+
+          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {ONBOARDING_TIMELINE.map((item) => (
+              <StaggerItem key={item.phase}>
+                <motion.div
+                  whileHover={{ y: -8 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="group relative flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
+                >
+                  <div className="mb-6 flex items-center justify-between">
+                    <span className="rounded-full bg-[#1857D6]/10 px-3 py-1 font-mono text-xs font-bold text-[#1857D6]">
+                      {item.phase}
+                    </span>
+                    <CheckCircle2 size={20} className="text-[#3E7A1C]" />
+                  </div>
+                  <h3
+                    className="mb-3 text-2xl font-normal text-[#0B2E7A]"
+                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p className="text-xs leading-relaxed text-[#0B2E7A]/75 sm:text-sm">{item.desc}</p>
+                </motion.div>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* APPLY — CLOSING CTA + REGISTRATION FORM                     */}
+      {/* ---------------------------------------------------------- */}
+      <section id="apply" className="relative overflow-hidden px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <FadeUp>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2E7A] to-[#0B2E7A]/90 p-8 shadow-xl sm:p-12">
+              <div className="pointer-events-none absolute -left-16 -top-16 h-72 w-72 rounded-full bg-[#7BC142]/20 blur-3xl" />
+              <div className="relative z-10 grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+                <div>
+                  <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#7BC142]">
+                    Joining Privilege
+                  </span>
+                  <h2
+                    className="mt-3 text-3xl font-light leading-tight text-white sm:text-4xl"
+                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                  >
+                    Ready to put a QR on your counter?
+                  </h2>
+                  <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">
+                    Applications are reviewed within 24–48 hours. Once approved, your Merchant ID,
+                    referral code, and shop QR are generated automatically.
+                  </p>
+                  <StaggerGroup as="ul" className="mt-7 flex flex-col gap-3">
+                    {[
+                      "200 joining points on approval, equivalent to ₹100",
+                      "100 points per successful merchant referral",
+                      "Zero setup cost or hardware investment",
+                      "Free standard QR stand shipped to your shop",
+                    ].map((li) => (
+                      <StaggerItem
+                        key={li}
+                        as="li"
+                        className="flex items-center gap-2.5 text-sm font-normal text-white/90"
+                      >
+                        <CheckCircle2 size={17} className="flex-shrink-0 text-[#7BC142]" strokeWidth={2} />
+                        {li}
+                      </StaggerItem>
+                    ))}
+                  </StaggerGroup>
+                </div>
+                <RegisterDemo />
+              </div>
+            </div>
+          </FadeUp>
+        </div>
+      </section>
+
+
+         <Footer />
     </div>
   );
 }
