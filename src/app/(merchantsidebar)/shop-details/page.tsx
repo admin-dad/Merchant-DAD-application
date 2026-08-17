@@ -143,14 +143,14 @@ export default function ShopDetailsPage() {
 
   const [loading, setLoading] = useState(true)
   const [merchant, setMerchant] = useState<MerchantRow | null>(null)
-  
+
   // business_name and status are locked/read-only. Only address, category, and sub_category are editable.
   const [form, setForm] = useState<Pick<MerchantRow, EditableField>>({
     address: '',
     category: '',
     sub_category: '',
   })
-  
+
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -226,7 +226,7 @@ export default function ShopDetailsPage() {
       .update({
         address: form.address.trim(),
         category: form.category,
-        sub_category: form.sub_category.trim() || null,
+sub_category: (form.sub_category ?? '').trim() || null,
       })
       .eq('id', merchant.id)
 
@@ -402,11 +402,10 @@ export default function ShopDetailsPage() {
 
         {saveMessage && (
           <div
-            className={`mt-6 flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium ${
-              saveMessage.type === 'success'
+            className={`mt-6 flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium ${saveMessage.type === 'success'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                 : 'border-rose-200 bg-rose-50 text-rose-800'
-            }`}
+              }`}
           >
             {saveMessage.type === 'success' ? (
               <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
