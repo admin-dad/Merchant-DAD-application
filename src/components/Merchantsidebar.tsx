@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
   Store,
-  LayoutDashboard,
+  LayoutDashboard,History,
   QrCode,
   Share2,
   Gift,
@@ -22,7 +22,7 @@ import {
   ShoppingBag,
   Bell,
   FileBarChart2,
-  LifeBuoy,
+  LifeBuoy,Video ,
   Menu,
   X,
   LogOut,
@@ -40,15 +40,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/profile', label: 'My Profile', icon: User },
-  { href: '/shop-details', label: 'Business / Shop Details', icon: Store },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  //{ href: '/shop-details', label: 'Business / Shop Details', icon: Store },
   { href: '/qr-code', label: 'QR Code Management', icon: QrCode },
   { href: '/referrals', label: 'Referral Program', icon: Share2 },
   //{ href: '/points-rewards', label: 'Points & Rewards Wallet', icon: Gift },
   { href: '/wallet', label: 'Digital Wallet', icon: Wallet },
+  { href: '/payment-history', label: 'Payment History', icon: History }, // Added Payment History link
   { href: '/engagement', label: 'Customer Engagement', icon: Users },
-  { href: '/scratch-cards', label: 'Scratch Card Participation', icon: Ticket },
+  { href: '/videos', label: 'Video Feed', icon: Video },
+  //{ href: '/scratch-cards', label: 'Scratch Card Participation', icon: Ticket },
   //{ href: '/billing', label: 'Merchant Billing Summary', icon: Receipt },
   { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard },
   { href: '/benefits', label: 'Merchant Benefits', icon: Award },

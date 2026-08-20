@@ -15,8 +15,11 @@ export async function POST(req: NextRequest) {
       razorpay_signature,
       merchant_id,
       amount,
+      base_amount,
+      gst_amount,
       scan_ids,
       payment_mode,
+      billing_month,
     } = await req.json()
 
     // 1. Check required inputs
@@ -55,15 +58,31 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Log verified payment entry in merchant_payments
+    // base_amount / gst_amount are recorded when provided (per-scan and
+    // monthly flows now both send them) so payment history and any future
+    // invoicing can show the GST breakdown, not just the final total.
     const paymentPayload: Record<string, any> = {
       merchant_id,
       amount: Number(amount),
       payment_method: 'razorpay',
       utr_number: razorpay_payment_id,
       status: 'completed',
-      remarks: `Razorpay Order: ${razorpay_order_id}`,
+      remarks: `Razorpay Order: ${razorpay_order_id}${billing_month ? ` | Billing month: ${billing_month}` : ''}`,
       razorpay_order_id,
       razorpay_payment_id,
+    }
+
+    if (base_amount !== undefined && base_amount !== null) {
+      paymentPayload.base_amount = Number(base_amount)
+    }
+    if (gst_amount !== undefined && gst_amount !== null) {
+      paymentPayload.gst_amount = Number(gst_amount)
+    }
+    if (billing_month) {
+      paymentPayload.billing_month = billing_month
+    }
+    if (payment_mode) {
+      paymentPayload.payment_mode = payment_mode
     }
 
     const { data: paymentRecord, error: insertError } = await supabaseAdmin
@@ -80,15 +99,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 4. Resolve which scans need to be marked as Paid
-    // Skip entirely for points purchases — this route's scan-marking logic
-    // only applies to scan-billing payments, never to buying reward points.
+    // 4. Resolve which scans need to be marked as Paid.
+    // Skip entirely for points purchases and for the monthly plan — monthly
+    // merchants pay a flat fee, not per scan, so no qr_scans rows should be
+    // touched here.
     let idsToUpdate: string[] = []
 
-    if (payment_mode !== 'points_purchase') {
+    if (payment_mode !== 'points_purchase' && payment_mode !== 'monthly') {
       idsToUpdate = Array.isArray(scan_ids) ? scan_ids : []
 
-      // Fallback: only for actual billing payment modes, never as a default
+      // Fallback: only for actual per-scan billing payments, never as a default
       if (idsToUpdate.length === 0 && payment_mode === 'outstanding') {
         const { data: unpaidScans } = await supabaseAdmin
           .from('qr_scans')

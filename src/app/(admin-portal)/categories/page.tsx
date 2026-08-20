@@ -21,6 +21,7 @@ import {
   EyeOff,
   CheckCircle2,
   ListTree,
+  IndianRupee,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -32,6 +33,7 @@ interface Subcategory {
   id: string
   category_id: string
   name: string
+  scan_amount: number
   sort_order: number
   is_active: boolean
   created_at: string
@@ -40,7 +42,6 @@ interface Subcategory {
 interface Category {
   id: string
   name: string
-  icon: string | null
   sort_order: number
   is_active: boolean
   created_at: string
@@ -108,7 +109,9 @@ export default function AdminCategoriesPage() {
 
     const { data, error: catError } = await supabase
       .from('categories')
-      .select('id, name, icon, sort_order, is_active, created_at, subcategories ( id, category_id, name, sort_order, is_active, created_at )')
+      .select(
+        'id, name, sort_order, is_active, created_at, subcategories ( id, category_id, name, scan_amount, sort_order, is_active, created_at )'
+      )
       .order('sort_order', { ascending: true })
 
     if (!catError && data) {
@@ -155,7 +158,7 @@ export default function AdminCategoriesPage() {
   }
 
   // ── Category CRUD ────────────────────────────────────────────────
-  const saveCategory = async (values: { name: string; icon: string; is_active: boolean }) => {
+  const saveCategory = async (values: { name: string; is_active: boolean }) => {
     setSaving(true)
     setPageError(null)
     try {
@@ -164,7 +167,6 @@ export default function AdminCategoriesPage() {
           categories.length > 0 ? Math.max(...categories.map((c) => c.sort_order)) + 1 : 1
         const { error } = await supabase.from('categories').insert({
           name: values.name.trim(),
-          icon: values.icon.trim() || null,
           is_active: values.is_active,
           sort_order: nextOrder,
         })
@@ -174,7 +176,6 @@ export default function AdminCategoriesPage() {
           .from('categories')
           .update({
             name: values.name.trim(),
-            icon: values.icon.trim() || null,
             is_active: values.is_active,
           })
           .eq('id', categoryModal.category.id)
@@ -190,7 +191,7 @@ export default function AdminCategoriesPage() {
   }
 
   // ── Subcategory CRUD ─────────────────────────────────────────────
-  const saveSubcategory = async (values: { name: string; is_active: boolean }) => {
+  const saveSubcategory = async (values: { name: string; scan_amount: number; is_active: boolean }) => {
     setSaving(true)
     setPageError(null)
     try {
@@ -203,6 +204,7 @@ export default function AdminCategoriesPage() {
         const { error } = await supabase.from('subcategories').insert({
           category_id: subcategoryModal.categoryId,
           name: values.name.trim(),
+          scan_amount: values.scan_amount,
           is_active: values.is_active,
           sort_order: nextOrder,
         })
@@ -212,6 +214,7 @@ export default function AdminCategoriesPage() {
           .from('subcategories')
           .update({
             name: values.name.trim(),
+            scan_amount: values.scan_amount,
             is_active: values.is_active,
           })
           .eq('id', subcategoryModal.subcategory.id)
@@ -458,6 +461,12 @@ export default function AdminCategoriesPage() {
                                 className="flex items-center gap-3 rounded-lg bg-white border border-slate-200/70 px-3.5 py-2"
                               >
                                 <span className="flex-1 min-w-0 truncate text-sm text-slate-700">{sub.name}</span>
+
+                                <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-[#1857D6]">
+                                  <IndianRupee size={10} />
+                                  {Number(sub.scan_amount).toFixed(2)} / scan
+                                </span>
+
                                 <span
                                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
                                     sub.is_active
@@ -679,21 +688,18 @@ function CategoryFormModal({
   state: CategoryModalState
   saving: boolean
   onClose: () => void
-  onSave: (values: { name: string; icon: string; is_active: boolean }) => void
+  onSave: (values: { name: string; is_active: boolean }) => void
 }) {
   const [name, setName] = useState('')
-  const [icon, setIcon] = useState('')
   const [isActive, setIsActive] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (state.mode === 'edit') {
       setName(state.category.name)
-      setIcon(state.category.icon || '')
       setIsActive(state.category.is_active)
     } else if (state.mode === 'create') {
       setName('')
-      setIcon('')
       setIsActive(true)
     }
     setError(null)
@@ -705,7 +711,7 @@ function CategoryFormModal({
       setError('Category name is required')
       return
     }
-    onSave({ name, icon, is_active: isActive })
+    onSave({ name, is_active: isActive })
   }
 
   return (
@@ -731,16 +737,6 @@ function CategoryFormModal({
             placeholder="e.g. Kirana Store"
             className={inputClass(!!error)}
             autoFocus
-          />
-        </Field>
-
-        <Field label="Icon name (optional)" icon={<Layers size={16} />}>
-          <input
-            type="text"
-            value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-            placeholder="e.g. store (lucide-react icon key)"
-            className={inputClass(false)}
           />
         </Field>
 
@@ -787,30 +783,46 @@ function SubcategoryFormModal({
   state: SubcategoryModalState
   saving: boolean
   onClose: () => void
-  onSave: (values: { name: string; is_active: boolean }) => void
+  onSave: (values: { name: string; scan_amount: number; is_active: boolean }) => void
 }) {
   const [name, setName] = useState('')
+  const [scanAmount, setScanAmount] = useState('')
   const [isActive, setIsActive] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [amountError, setAmountError] = useState<string | null>(null)
 
   useEffect(() => {
     if (state.mode === 'edit') {
       setName(state.subcategory.name)
+      setScanAmount(String(state.subcategory.scan_amount ?? ''))
       setIsActive(state.subcategory.is_active)
     } else if (state.mode === 'create') {
       setName('')
+      setScanAmount('')
       setIsActive(true)
     }
-    setError(null)
+    setNameError(null)
+    setAmountError(null)
   }, [state])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    let hasError = false
     if (!name.trim()) {
-      setError('Sub-category name is required')
-      return
+      setNameError('Sub-category name is required')
+      hasError = true
     }
-    onSave({ name, is_active: isActive })
+
+    const parsedAmount = Number(scanAmount)
+    if (scanAmount.trim() === '' || Number.isNaN(parsedAmount) || parsedAmount < 0) {
+      setAmountError('Enter a valid scan amount (0 or more)')
+      hasError = true
+    }
+
+    if (hasError) return
+
+    onSave({ name, scan_amount: parsedAmount, is_active: isActive })
   }
 
   return (
@@ -825,17 +837,33 @@ function SubcategoryFormModal({
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Sub-category Name" icon={<Tag size={16} />} error={error || undefined}>
+        <Field label="Sub-category Name" icon={<Tag size={16} />} error={nameError || undefined}>
           <input
             type="text"
             value={name}
             onChange={(e) => {
               setName(e.target.value)
-              if (error) setError(null)
+              if (nameError) setNameError(null)
             }}
             placeholder="e.g. General Store"
-            className={inputClass(!!error)}
+            className={inputClass(!!nameError)}
             autoFocus
+          />
+        </Field>
+
+        <Field label="Scan Amount (₹ per scan)" icon={<IndianRupee size={16} />} error={amountError || undefined}>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            value={scanAmount}
+            onChange={(e) => {
+              setScanAmount(e.target.value)
+              if (amountError) setAmountError(null)
+            }}
+            placeholder="e.g. 4.00"
+            className={inputClass(!!amountError)}
           />
         </Field>
 

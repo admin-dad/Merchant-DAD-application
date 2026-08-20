@@ -7,8 +7,8 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard,
-  Store,
+  LayoutDashboard,Video ,
+  Store,ShieldCheck,Tag,Sparkles, 
   Users,
   Truck,
   Package,
@@ -52,19 +52,24 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/merchants', label: 'Merchants', icon: Store },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/aproducts', label: 'Products Management', icon: Package },
+    // Added Coupons here
+  { href: '/coupons', label: 'Coupons Management', icon: Tag }, 
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard }, 
   { href: '/campaigns', label: 'Campaigns & Scratch Cards', icon: Ticket },
+  { href: '/merchant-scratch-cards', label: 'Merchant Scratch Cards', icon: Sparkles },
   { href: '/winners', label: 'Winners', icon: Trophy },
   { href: '/gifts', label: 'Gifts', icon: Gift },
   { href: '/abenefit', label: 'Merchant Benefits', icon: Award },
   { href: '/admin-billing', label: 'Merchant Billing', icon: Receipt },
   { href: '/admin-payments', label: 'QR Payment Collection', icon: CreditCard },
   { href: '/points', label: 'Points Ledger', icon: Coins },
-//  { href: '/wallet', label: 'Wallet Transactions', icon: Wallet },
+  // { href: '/wallet', label: 'Wallet Transactions', icon: Wallet },
   { href: '/areferrals', label: 'Referrals', icon: Share2 },
   { href: '/aqr-codes', label: 'QR Code Tracking', icon: QrCode },
- // { href: '/notifications', label: 'Notifications', icon: Bell },
+  // Added Video Feed here
+  { href: '/admin-videos', label: 'Video Feed', icon: Video },
   { href: '/admin-reports', label: 'Reports & Analytics', icon: BarChart3 },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
@@ -74,7 +79,7 @@ const PRODUCT_LINKS: NavItem[] = [
     { href: '/aproducts/add', label: 'Add Product', icon: Plus },
   { href: '/aproducts', label: 'All Products', icon: Package },
   { href: '/aproducts/inventory', label: 'Inventory', icon: Boxes },
-  { href: '/aproducts/pricing', label: 'Products Points', icon: IndianRupee },
+  { href: '/aproducts/pricing', label: 'Products Points', icon: Coins },
 ]
 
 export default function AdminSidebar({

@@ -93,14 +93,14 @@ export default function Header() {
               style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontStyle: 'normal' }}
             >
 
-              {/* Become a Merchant Button triggers MerchantModal */}
+              {/* Become a partner Button triggers MerchantModal */}
               <button
                 onClick={() => setIsMerchantModalOpen(true)}
                 className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3 text-sm text-white shadow-[0_4px_16px_rgba(62,122,28,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.6)] active:translate-y-0 cursor-pointer"
               >
                 <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 <Sparkles size={16} />
-                <span>Become a Merchant</span>
+                <span>Become a partner</span>
               </button>
             </div>
 
@@ -157,7 +157,7 @@ export default function Header() {
                     className="relative flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3.5 text-center text-white shadow-lg shadow-[#3E7A1C]/30 w-full cursor-pointer"
                   >
                     <Sparkles size={16} />
-                    <span>Become a Merchant</span>
+                    <span>Become a partner</span>
                   </button>
                 </div>
               </nav>

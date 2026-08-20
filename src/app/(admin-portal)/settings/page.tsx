@@ -229,7 +229,7 @@ export default function AdminSettingsPage() {
               type="email"
               value={form.support_email}
               onChange={(e) => update('support_email', e.target.value)}
-              placeholder="support@rakvih.com"
+              placeholder="admin.dadbharat999@gmail.com"
               className={inputClass}
             />
           </FieldRow>

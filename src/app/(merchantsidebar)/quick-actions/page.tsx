@@ -223,7 +223,7 @@ export default function QuickActionsSupportPage() {
             {/* Support Options List */}
             <div className="space-y-4">
               <a 
-                href="mailto:support@rakvih.com" 
+                href="mailto:admin.dadbharat999@gmail.com" 
                 className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:border-blue-200 hover:bg-white transition-all group"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]">
@@ -231,7 +231,7 @@ export default function QuickActionsSupportPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Email Support</p>
-                  <p className="text-sm font-semibold text-slate-900 group-hover:text-[#1857D6] truncate">support@rakvih.com</p>
+                  <p className="text-sm font-semibold text-slate-900 group-hover:text-[#1857D6] truncate">admin.dadbharat999@gmail.com</p>
                 </div>
                 <ExternalLink size={14} className="text-slate-400 shrink-0" />
               </a>
@@ -245,26 +245,12 @@ export default function QuickActionsSupportPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Helpline Number</p>
-                  <p className="text-sm font-semibold text-slate-900 group-hover:text-[#3E7A1C] truncate">+91 98765 43210</p>
+                  <p className="text-sm font-semibold text-slate-900 group-hover:text-[#3E7A1C] truncate">+91 90088 83444</p>
                 </div>
                 <ExternalLink size={14} className="text-slate-400 shrink-0" />
               </a>
 
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-blue-50/50 to-emerald-50/30 border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-2 text-slate-900 font-semibold text-sm">
-                  <MessageSquare size={16} className="text-[#1857D6]" />
-                  Live Merchant Chat
-                </div>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Have technical issues with QR codes, wallet payouts, or store settings? Connect directly with our agents.
-                </p>
-                <button 
-                  onClick={() => alert('Live Chat widget will open shortly.')}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-3 text-xs font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:shadow-lg cursor-pointer"
-                >
-                  Start Live Chat
-                </button>
-              </div>
+          
             </div>
 
           </motion.div>

@@ -9,9 +9,6 @@ import {
   User,
   Phone,
   Mail,
-  MapPin,
-  FileText,
-  ChevronDown,
   CheckCircle2,
   MailCheck,
   AlertCircle,
@@ -27,6 +24,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import SubscriptionPlans from '@/components/SubscriptionPlans'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -47,12 +45,7 @@ interface FormState {
   email: string
   password: string
   confirmPassword: string
-  category: string
-  subCategory: string
-  address: string
-  gst: string
   referralCode: string
-  pan: string
 }
 
 const INITIAL_FORM: FormState = {
@@ -62,26 +55,7 @@ const INITIAL_FORM: FormState = {
   email: '',
   password: '',
   confirmPassword: '',
-  category: '',
-  subCategory: '',
-  address: '',
-  gst: '',
   referralCode: '',
-  pan: '',
-}
-
-// Row shapes coming back from Supabase
-interface CategoryRow {
-  id: string
-  name: string
-  sort_order: number
-}
-
-interface SubcategoryRow {
-  id: string
-  category_id: string
-  name: string
-  sort_order: number
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>
@@ -114,64 +88,12 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
   // allowed into the dashboard yet (pending / suspended / rejected).
   const [blockedStatus, setBlockedStatus] = useState<BlockedStatus | null>(null)
 
-  // ── Categories / Sub-categories pulled from the database ────────────
-  const [categories, setCategories] = useState<CategoryRow[]>([])
-  const [subcategoriesByCategoryId, setSubcategoriesByCategoryId] = useState<
-    Record<string, SubcategoryRow[]>
-  >({})
-  const [categoriesLoading, setCategoriesLoading] = useState(false)
-  const [categoriesError, setCategoriesError] = useState<string | null>(null)
-
-  // Fetch active categories + sub-categories once when the modal opens
-  useEffect(() => {
-    if (!isOpen) return
-    // Already loaded from a previous open — no need to refetch
-    if (categories.length > 0) return
-
-    const loadCategories = async () => {
-      setCategoriesLoading(true)
-      setCategoriesError(null)
-      const supabase = createClient()
-
-      const [{ data: catData, error: catError }, { data: subData, error: subError }] =
-        await Promise.all([
-          supabase
-            .from('categories')
-            .select('id, name, sort_order')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true }),
-          supabase
-            .from('subcategories')
-            .select('id, category_id, name, sort_order')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true }),
-        ])
-
-      if (catError || subError) {
-        setCategoriesError('Could not load business categories. Please refresh and try again.')
-        setCategoriesLoading(false)
-        return
-      }
-
-      const grouped: Record<string, SubcategoryRow[]> = {}
-      ;(subData || []).forEach((s) => {
-        if (!grouped[s.category_id]) grouped[s.category_id] = []
-        grouped[s.category_id].push(s)
-      })
-
-      setCategories(catData || [])
-      setSubcategoriesByCategoryId(grouped)
-      setCategoriesLoading(false)
-    }
-
-    loadCategories()
-  }, [isOpen, categories.length])
-
-  // Currently selected category row (form.category stores the category id)
-  const selectedCategory = categories.find((c) => c.id === form.category)
-  const subcategoryOptions = selectedCategory
-    ? subcategoriesByCategoryId[selectedCategory.id] || []
-    : []
+  // Set right after a successful immediate-session registration, so we can
+  // show the plan-picker popup with a real merchant.id to attach payment to.
+  // Only populated on the no-email-confirmation-needed signup path.
+  const [newMerchant, setNewMerchant] = useState<{ id: string; planId: string | null } | null>(
+    null
+  )
 
   useEffect(() => {
     if (isOpen) setMode(initialMode)
@@ -224,6 +146,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       setShowPassword(false)
       setShowConfirm(false)
       setBlockedStatus(null)
+      setNewMerchant(null)
     }, 300)
   }
 
@@ -235,11 +158,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
   }
 
   const update = (field: keyof FormState, value: string) => {
-    setForm((prev) => {
-      const next = { ...prev, [field]: value }
-      if (field === 'category') next.subCategory = '' // reset dependent field when category changes
-      return next
-    })
+    setForm((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
     if (serverError) setServerError(null)
   }
@@ -256,10 +175,6 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       } else if (!/^[6-9]\d{9}$/.test(form.mobile.trim())) {
         next.mobile = 'Enter a valid 10-digit mobile number'
       }
-
-      if (!form.category) next.category = 'Select a business category'
-      if (form.category && !form.subCategory) next.subCategory = 'Select a sub-category'
-      if (!form.address.trim()) next.address = 'Business address is required'
     }
 
     if (!form.email.trim()) {
@@ -295,11 +210,6 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
 
     setSubmitting(true)
     const supabase = createClient()
-
-    // Resolve category/sub-category ids to their display names for storage,
-    // since "merchants" stores human-readable category/sub_category text.
-    const categoryName = categories.find((c) => c.id === form.category)?.name || ''
-    const subCategoryName = subcategoryOptions.find((s) => s.id === form.subCategory)?.name || ''
 
     try {
       if (mode === 'login') {
@@ -354,7 +264,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
         }
 
         resetAndClose()
-        router.push('/dashboard')
+        router.push('/profile')
         router.refresh()
         return
       }
@@ -363,7 +273,10 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       // All business fields go into signUp metadata — a DB trigger reads
       // this metadata and creates the "merchants" row itself (running with
       // elevated privileges), so it works even before email confirmation,
-      // when the browser doesn't have an authenticated session yet.
+      // when the browser doesn't have an authenticated session yet. That
+      // trigger-created row picks up the Free plan from the
+      // subscription_plan_id column default (see subscription_plans
+      // migration), so no client call is needed for that path.
       const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.password,
@@ -372,12 +285,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
             business_name: form.businessName.trim(),
             owner_name: form.ownerName.trim(),
             mobile: form.mobile.trim(),
-            category: categoryName,
-            sub_category: subCategoryName,
-            address: form.address.trim(),
-            gst: form.gst.trim() || null,
             referred_by: form.referralCode.trim() || null,
-            pan: form.pan.trim() || null,
           },
         },
       })
@@ -406,7 +314,9 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       if (!data.session) {
         // Email confirmation is required before the user can log in.
         // The DB trigger creates the "merchants" row server-side in this
-        // case, since the browser has no authenticated session yet.
+        // case, since the browser has no authenticated session yet — so
+        // there's no session to attach a plan-picker payment to. They'll
+        // pick a plan from the dashboard after confirming + logging in.
         setNeedsEmailConfirm(true)
         return
       }
@@ -415,22 +325,34 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       // profile directly. Upsert on user_id so this is safe even if the
       // trigger already created the row first; ignoreDuplicates skips the
       // conflict instead of erroring.
-      const { error: profileError } = await supabase.from('merchants').upsert(
-        {
-          user_id: data.user.id,
-          business_name: form.businessName.trim(),
-          owner_name: form.ownerName.trim(),
-          mobile: form.mobile.trim(),
-          email: form.email.trim(),
-          category: categoryName,
-          sub_category: subCategoryName,
-          address: form.address.trim(),
-          gst: form.gst.trim() || null,
-          referred_by: form.referralCode.trim() || null,
-          pan: form.pan.trim() || null,
-        },
-        { onConflict: 'user_id', ignoreDuplicates: true }
-      )
+      //
+      // subscription_plan_id: every merchant starts on the Free plan. We
+      // look it up by slug rather than hardcoding its uuid so this keeps
+      // working if the plan row is ever recreated. If the lookup fails for
+      // some reason we still let signup succeed — the column's DB default
+      // (see subscription_plans migration) covers us as a fallback.
+      const { data: freePlan } = await supabase
+        .from('subscription_plans')
+        .select('id')
+        .eq('slug', 'free')
+        .maybeSingle()
+
+      const { data: upsertedRow, error: profileError } = await supabase
+        .from('merchants')
+        .upsert(
+          {
+            user_id: data.user.id,
+            business_name: form.businessName.trim(),
+            owner_name: form.ownerName.trim(),
+            mobile: form.mobile.trim(),
+            email: form.email.trim(),
+            referred_by: form.referralCode.trim() || null,
+            ...(freePlan?.id ? { subscription_plan_id: freePlan.id } : {}),
+          },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        )
+        .select('id, subscription_plan_id')
+        .maybeSingle()
 
       if (profileError) {
         if (profileError.code === '23505') {
@@ -444,7 +366,31 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
         return
       }
 
-      setSubmitted(true)
+      // With ignoreDuplicates, upsert only returns a row when it actually
+      // inserted one — if the DB trigger beat us to creating the row, the
+      // insert here is skipped and upsertedRow comes back null. Fall back
+      // to a plain select so we still get the merchant.id for the popup.
+      let merchantId = upsertedRow?.id ?? null
+      let merchantPlanId = upsertedRow?.subscription_plan_id ?? freePlan?.id ?? null
+
+      if (!merchantId) {
+        const { data: existingRow } = await supabase
+          .from('merchants')
+          .select('id, subscription_plan_id')
+          .eq('user_id', data.user.id)
+          .maybeSingle()
+        merchantId = existingRow?.id ?? null
+        merchantPlanId = existingRow?.subscription_plan_id ?? merchantPlanId
+      }
+
+      if (merchantId) {
+        // Show the plan-picker popup instead of the plain success screen.
+        setNewMerchant({ id: merchantId, planId: merchantPlanId })
+      } else {
+        // Couldn't resolve a merchant id — don't block on the picker,
+        // just show the normal success message.
+        setSubmitted(true)
+      }
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : 'Unable to reach the server. Please try again.'
@@ -454,7 +400,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
     }
   }
 
-  const showResult = submitted || needsEmailConfirm || !!blockedStatus
+  const showResult = submitted || needsEmailConfirm || !!blockedStatus || !!newMerchant
 
   return (
     <AnimatePresence>
@@ -479,7 +425,9 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
             role="dialog"
             aria-modal="true"
             aria-labelledby="merchant-modal-title"
-            className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200"
+            className={`relative z-10 w-full ${
+              newMerchant ? 'max-w-2xl' : 'max-w-lg'
+            } max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200`}
             style={{ fontFamily: 'var(--font-display)' }}
           >
             {/* Top accent bar */}
@@ -590,99 +538,6 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                               onChange={(e) => update('mobile', e.target.value.replace(/\D/g, ''))}
                               placeholder="10-digit number"
                               className={inputClass(!!errors.mobile)}
-                            />
-                          </Field>
-
-                          {/* Category — now pulled from the database */}
-                          <Field
-                            label="Business Category"
-                            icon={<ChevronDown size={16} />}
-                            error={errors.category || categoriesError || undefined}
-                          >
-                            <div className="relative">
-                              <select
-                                value={form.category}
-                                onChange={(e) => update('category', e.target.value)}
-                                disabled={categoriesLoading || !!categoriesError}
-                                className={`${inputClass(!!errors.category)} appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60`}
-                              >
-                                <option value="">
-                                  {categoriesLoading ? 'Loading categories...' : 'Select a category'}
-                                </option>
-                                {categories.map((cat) => (
-                                  <option key={cat.id} value={cat.id}>
-                                    {cat.name}
-                                  </option>
-                                ))}
-                              </select>
-                              {categoriesLoading && (
-                                <Loader2
-                                  size={15}
-                                  className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-slate-400"
-                                />
-                              )}
-                            </div>
-                          </Field>
-
-                          {/* Sub Category — options depend on selected category */}
-                          <Field
-                            label="Sub Category"
-                            icon={<ChevronDown size={16} />}
-                            error={errors.subCategory}
-                          >
-                            <select
-                              value={form.subCategory}
-                              onChange={(e) => update('subCategory', e.target.value)}
-                              disabled={!form.category || categoriesLoading}
-                              className={`${inputClass(!!errors.subCategory)} appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50`}
-                            >
-                              <option value="">
-                                {form.category ? 'Select a sub-category' : 'Select a category first'}
-                              </option>
-                              {subcategoryOptions.map((sub) => (
-                                <option key={sub.id} value={sub.id}>
-                                  {sub.name}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-
-                          {/* Address */}
-                          <Field
-                            label="Business Address"
-                            icon={<MapPin size={16} />}
-                            error={errors.address}
-                          >
-                            <textarea
-                              value={form.address}
-                              onChange={(e) => update('address', e.target.value)}
-                              placeholder="Shop no., street, city, state, PIN code"
-                              rows={2}
-                              className={`${inputClass(!!errors.address)} resize-none`}
-                            />
-                          </Field>
-
-                          {/* GST */}
-                          <Field label="GST Number (if applicable)" icon={<FileText size={16} />}>
-                            <input
-                              type="text"
-                              value={form.gst}
-                              onChange={(e) => update('gst', e.target.value.toUpperCase())}
-                              placeholder="22AAAAA0000A1Z5"
-                              maxLength={15}
-                              className={inputClass(false)}
-                            />
-                          </Field>
-
-                          {/* PAN */}
-                          <Field label="PAN Number (if applicable)" icon={<FileText size={16} />}>
-                            <input
-                              type="text"
-                              value={form.pan}
-                              onChange={(e) => update('pan', e.target.value.toUpperCase())}
-                              placeholder="AAAAA0000A"
-                              maxLength={10}
-                              className={inputClass(false)}
                             />
                           </Field>
 
@@ -861,6 +716,16 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                     </p>
                   </form>
                 </>
+              ) : newMerchant ? (
+                <PlanPickerState
+                  merchantId={newMerchant.id}
+                  currentPlanId={newMerchant.planId}
+                  businessName={form.businessName}
+                  onDone={() => {
+                    setNewMerchant(null)
+                    setSubmitted(true)
+                  }}
+                />
               ) : needsEmailConfirm ? (
                 <ConfirmEmailState onDone={resetAndClose} email={form.email} />
               ) : blockedStatus ? (
@@ -916,6 +781,51 @@ function inputClass(hasError: boolean) {
       ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
       : 'border-slate-200 focus:border-[#1857D6] focus:ring-[#1857D6]/15',
   ].join(' ')
+}
+
+// Shown right after a successful (immediate-session) registration — lets the
+// merchant pick Free or upgrade to a paid plan via Razorpay before finishing.
+function PlanPickerState({
+  merchantId,
+  currentPlanId,
+  businessName,
+  onDone,
+}: {
+  merchantId: string
+  currentPlanId: string | null
+  businessName: string
+  onDone: () => void
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="py-2"
+    >
+      <div className="mb-5 flex flex-col items-center text-center">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#7BC142]/15 to-[#1857D6]/15">
+          <CheckCircle2 size={28} className="text-[#3E7A1C]" />
+        </div>
+        <h3 className="text-xl font-semibold text-[#0B0F19]">
+          Welcome{businessName ? `, ${businessName}` : ''}!
+        </h3>
+        <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-500">
+          You&apos;re on the Free plan by default. Upgrade now for more, or continue with Free —
+          you can always change this later from your dashboard.
+        </p>
+      </div>
+
+      <SubscriptionPlans merchantId={merchantId} currentPlanId={currentPlanId} />
+
+      <button
+        onClick={onDone}
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(24,87,214,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(24,87,214,0.5)] cursor-pointer"
+      >
+        Continue to Dashboard
+      </button>
+    </motion.div>
+  )
 }
 
 function SuccessState({ onDone, businessName }: { onDone: () => void; businessName: string }) {

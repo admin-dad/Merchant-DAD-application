@@ -28,11 +28,11 @@ const ScratchCardCanvas = ({ onScratch }: { onScratch: () => void }) => {
 
     // 1. Draw metallic foil gradient (Purple/Silver themed for B2B)
     const gradient = ctx.createLinearGradient(0, 0, rect.width, rect.height)
-    gradient.addColorStop(0, '#e2e8f0') 
+    gradient.addColorStop(0, '#e2e8f0')
     gradient.addColorStop(0.2, '#c084fc') // subtle purple
-    gradient.addColorStop(0.5, '#f1f5f9') 
+    gradient.addColorStop(0.5, '#f1f5f9')
     gradient.addColorStop(0.8, '#a855f7') // deeper purple
-    gradient.addColorStop(1, '#64748b') 
+    gradient.addColorStop(1, '#64748b')
 
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, rect.width, rect.height)
@@ -158,13 +158,26 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
 
   useEffect(() => {
     const fetchPendingCard = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('merchant_scratch_cards')
-        .select('id, prize_type, prize_amount, winning_probability')
+        .select(`
+    id,
+    prize_type,
+    prize_amount,
+    winning_probability,
+    campaign:campaigns!inner (
+      id, name, type,
+      gift:gifts ( id, name, description, image_url )
+    )
+  `)
         .eq('merchant_id', merchantId)
         .eq('status', 'pending')
+        .eq('campaign.type', 'merchant')
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
+
+      console.log('scratch card fetch →', { data, error, merchantId })
 
       if (data) setCard(data as ScratchCard)
       setLoading(false)
@@ -215,18 +228,18 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       {card && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           {/* Backdrop */}
-          <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
-            className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm" 
-            onClick={result ? handleClose : undefined} 
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm"
+            onClick={result ? handleClose : undefined}
           />
-          
+
           {/* Modal Container */}
-          <motion.div 
-            initial={{ opacity: 0, y: 24, scale: 0.97 }} 
-            animate={{ opacity: 1, y: 0, scale: 1 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-8 text-center"
           >
@@ -240,7 +253,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                 <p className="text-sm text-slate-500 mb-6">
                   {isScratching ? 'Hold on, revealing your reward...' : 'Rub the card below to scratch and reveal!'}
                 </p>
-                
+
                 {/* Card wrapper */}
                 <div className="relative w-64 h-40 select-none">
                   {/* Ambient pulsing glow behind the card (Purple theme) */}
@@ -310,7 +323,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                           const size = 3 + Math.random() * 5
                           const colors = ['#FDE047', '#A855F7', '#34D399', '#60A5FA', '#F472B6']
                           const color = colors[i % colors.length]
-                          
+
                           return (
                             <motion.div
                               key={`sparkle-${i}`}
@@ -367,8 +380,8 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                     <p className="mt-2 text-sm text-slate-500">Keep engaging customers to earn more rewards!</p>
                   </>
                 )}
-                <button 
-                  onClick={handleClose} 
+                <button
+                  onClick={handleClose}
                   className="mt-6 w-full rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 py-3 text-sm font-semibold cursor-pointer transition-colors"
                 >
                   Done

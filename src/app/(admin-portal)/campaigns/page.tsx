@@ -20,15 +20,20 @@ import {
   Search,
   Pencil,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Store,
+  Users
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────
+type CampaignType = 'merchant' | 'customer'
+
 interface Campaign {
   id: string
   name: string
+  type: CampaignType
   gift_id: string | null
   prize_details: string | null
   winning_probability: number
@@ -58,6 +63,21 @@ interface CampaignStats {
   claimedRewards: number
 }
 
+const TYPE_META: Record<CampaignType, { label: string; icon: typeof Store; badgeClass: string; iconClass: string }> = {
+  merchant: {
+    label: 'Merchant',
+    icon: Store,
+    badgeClass: 'bg-violet-50 text-violet-700 border-violet-200',
+    iconClass: 'text-violet-500'
+  },
+  customer: {
+    label: 'Customer',
+    icon: Users,
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+    iconClass: 'text-blue-500'
+  }
+}
+
 export default function AdminCampaignsPage() {
   const supabase = createClient()
   
@@ -67,12 +87,15 @@ export default function AdminCampaignsPage() {
   const [gifts, setGifts] = useState<GiftItem[]>([])
   const [statsMap, setStatsMap] = useState<Record<string, CampaignStats>>({})
   const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | CampaignType>('all')
   
   // Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
+    type: 'customer' as CampaignType,
     gift_id: '',
     prize_details: '',
     winning_probability: '0.1',
@@ -85,8 +108,10 @@ export default function AdminCampaignsPage() {
   // Edit Modal State (Fully Editable)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingCamp, setEditingCamp] = useState<Campaign | null>(null)
+  const [editFormError, setEditFormError] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
     name: '',
+    type: 'customer' as CampaignType,
     gift_id: '',
     prize_details: '',
     winning_probability: '0.1',
@@ -158,16 +183,26 @@ export default function AdminCampaignsPage() {
     fetchData()
   }, [supabase])
 
+  // ── Helper: friendly error for the "one active campaign per type" rule ──
+  const describeCampaignError = (err: { code?: string; message?: string } | null, type: CampaignType) => {
+    if (err?.code === '23505') {
+      return `There's already an active ${TYPE_META[type].label.toLowerCase()} campaign. Pause or delete it before activating another one of the same type.`
+    }
+    return err?.message || 'Something went wrong. Please try again.'
+  }
+
   // ── Handle Create Campaign ───────────────────────────────────────────
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setFormError(null)
 
     const { data, error } = await supabase
       .from('campaigns')
       .insert([
         {
           name: form.name,
+          type: form.type,
           gift_id: form.gift_id || null,
           prize_details: form.prize_details || null,
           winning_probability: parseFloat(form.winning_probability),
@@ -183,10 +218,10 @@ export default function AdminCampaignsPage() {
 
     if (!error && data) {
       setCampaigns(prev => [data as Campaign, ...prev])
-      setForm({ name: '', gift_id: '', prize_details: '', winning_probability: '0.1', total_cards: '1000', winning_numbers: '', start_date: '', end_date: '' })
+      setForm({ name: '', type: 'customer', gift_id: '', prize_details: '', winning_probability: '0.1', total_cards: '1000', winning_numbers: '', start_date: '', end_date: '' })
       setIsModalOpen(false)
     } else {
-      alert('Failed to create campaign.')
+      setFormError(describeCampaignError(error, form.type))
     }
     setSubmitting(false)
   }
@@ -194,8 +229,10 @@ export default function AdminCampaignsPage() {
   // ── Handle Edit Click ────────────────────────────────────────────────
   const handleEditClick = (camp: Campaign) => {
     setEditingCamp(camp)
+    setEditFormError(null)
     setEditForm({
       name: camp.name,
+      type: camp.type || 'customer',
       gift_id: camp.gift_id || '',
       prize_details: camp.prize_details || '',
       winning_probability: String(camp.winning_probability),
@@ -213,11 +250,13 @@ export default function AdminCampaignsPage() {
     e.preventDefault()
     if (!editingCamp) return
     setSubmitting(true)
+    setEditFormError(null)
 
     const { data, error } = await supabase
       .from('campaigns')
       .update({
         name: editForm.name,
+        type: editForm.type,
         gift_id: editForm.gift_id || null,
         prize_details: editForm.prize_details || null,
         winning_probability: parseFloat(editForm.winning_probability),
@@ -236,7 +275,7 @@ export default function AdminCampaignsPage() {
       setIsEditModalOpen(false)
       setEditingCamp(null)
     } else {
-      alert('Failed to update campaign.')
+      setEditFormError(describeCampaignError(error, editForm.type))
     }
     setSubmitting(false)
   }
@@ -255,7 +294,7 @@ export default function AdminCampaignsPage() {
   }
 
   // ── Handle Pause/Activate Shortcut ───────────────────────────────────
-  const handleToggleStatus = async (campId: string, currentStatus: string) => {
+  const handleToggleStatus = async (campId: string, currentStatus: string, type: CampaignType) => {
     const newStatus = currentStatus === 'active' ? 'paused' : 'active'
     
     const { error } = await supabase
@@ -267,6 +306,8 @@ export default function AdminCampaignsPage() {
       setCampaigns(prev => 
         prev.map(c => c.id === campId ? { ...c, status: newStatus } : c)
       )
+    } else {
+      alert(describeCampaignError(error, type))
     }
   }
 
@@ -277,8 +318,22 @@ export default function AdminCampaignsPage() {
   }
 
   const filteredCampaigns = useMemo(() => {
-    return campaigns.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [campaigns, searchQuery])
+    return campaigns.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesType = typeFilter === 'all' || c.type === typeFilter
+      return matchesSearch && matchesType
+    })
+  }, [campaigns, searchQuery, typeFilter])
+
+  // Whether an active campaign already exists for a given type (client-side hint only —
+  // the database unique index is the real source of truth)
+  const activeTypeMap = useMemo(() => {
+    const map: Partial<Record<CampaignType, boolean>> = {}
+    campaigns.forEach(c => {
+      if (c.status === 'active') map[c.type] = true
+    })
+    return map
+  }, [campaigns])
 
   if (loading) {
     return (
@@ -309,7 +364,7 @@ export default function AdminCampaignsPage() {
             </div>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { setFormError(null); setIsModalOpen(true) }}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
           >
             <Plus size={18} />
@@ -318,9 +373,9 @@ export default function AdminCampaignsPage() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-6 rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-sm">
-        <div className="relative">
+      {/* Search & Type Filter Bar */}
+      <div className="mb-6 flex flex-col gap-3 rounded-3xl border border-slate-200/80 bg-white p-4 sm:flex-row sm:items-center sm:p-5 shadow-sm">
+        <div className="relative flex-1">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -329,6 +384,19 @@ export default function AdminCampaignsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-11 pr-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
           />
+        </div>
+        <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1 self-start sm:self-auto">
+          {(['all', 'customer', 'merchant'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors cursor-pointer ${
+                typeFilter === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {t === 'all' ? 'All Types' : TYPE_META[t].label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -347,6 +415,8 @@ export default function AdminCampaignsPage() {
             const stats = statsMap[camp.id] || { issued: 0, opened: 0, winners: 0, nonWinners: 0, pendingRewards: 0, claimedRewards: 0 }
             const isActive = camp.status === 'active'
             const openedPercentage = stats.issued > 0 ? (stats.opened / stats.issued) * 100 : 0
+            const typeMeta = TYPE_META[camp.type] || TYPE_META.customer
+            const TypeIcon = typeMeta.icon
             
             return (
               <motion.div
@@ -379,7 +449,13 @@ export default function AdminCampaignsPage() {
                       <Gift size={20} />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-slate-900 truncate">{camp.name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-semibold text-slate-900 truncate">{camp.name}</h3>
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${typeMeta.badgeClass}`}>
+                          <TypeIcon size={10} />
+                          {typeMeta.label}
+                        </span>
+                      </div>
                       <p className="text-xs font-medium text-[#3E7A1C]">
                         Prize: {camp.gifts?.name || 'No specific gift attached'}
                       </p>
@@ -468,7 +544,7 @@ export default function AdminCampaignsPage() {
 
                 {/* Action Button */}
                 <button
-                  onClick={() => handleToggleStatus(camp.id, camp.status)}
+                  onClick={() => handleToggleStatus(camp.id, camp.status, camp.type)}
                   className={`mt-auto w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold transition-colors cursor-pointer border ${
                     isActive 
                       ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' 
@@ -521,6 +597,13 @@ export default function AdminCampaignsPage() {
                   <p className="mt-1.5 text-sm text-slate-500">Wire your gifts and set winning logic.</p>
                 </div>
 
+                {formError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 <form onSubmit={handleCreateCampaign} className="space-y-4">
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Campaign Name</label>
@@ -532,6 +615,37 @@ export default function AdminCampaignsPage() {
                       required
                       className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                     />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Campaign Type</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(['customer', 'merchant'] as const).map(t => {
+                        const meta = TYPE_META[t]
+                        const Icon = meta.icon
+                        const selected = form.type === t
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setForm({...form, type: t})}
+                            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors cursor-pointer ${
+                              selected
+                                ? 'border-[#1857D6] bg-[#1857D6]/5 text-[#1857D6]'
+                                : 'border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Icon size={16} className={selected ? 'text-[#1857D6]' : 'text-slate-400'} />
+                            {meta.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {activeTypeMap[form.type] && (
+                      <p className="mt-1.5 text-[11px] text-amber-600">
+                        There's already an active {TYPE_META[form.type].label.toLowerCase()} campaign — this one will need to wait until it's paused.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -674,6 +788,13 @@ export default function AdminCampaignsPage() {
                   <p className="mt-1.5 text-sm text-slate-500">Make changes to any parameter of this campaign.</p>
                 </div>
 
+                {editFormError && (
+                  <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <span>{editFormError}</span>
+                  </div>
+                )}
+
                 <form onSubmit={handleUpdateCampaign} className="space-y-4">
                   <div>
                     <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Campaign Name</label>
@@ -684,6 +805,32 @@ export default function AdminCampaignsPage() {
                       required
                       className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                     />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Campaign Type</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(['customer', 'merchant'] as const).map(t => {
+                        const meta = TYPE_META[t]
+                        const Icon = meta.icon
+                        const selected = editForm.type === t
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setEditForm({...editForm, type: t})}
+                            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors cursor-pointer ${
+                              selected
+                                ? 'border-[#1857D6] bg-[#1857D6]/5 text-[#1857D6]'
+                                : 'border-slate-200 bg-slate-50/50 text-slate-500 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Icon size={16} className={selected ? 'text-[#1857D6]' : 'text-slate-400'} />
+                            {meta.label}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   <div>

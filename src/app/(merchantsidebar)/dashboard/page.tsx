@@ -28,6 +28,8 @@ import {
   Loader2,
   AlertCircle,
   Store,
+  Lock,
+  Building2,
 } from 'lucide-react'
 import { AreaChart, Area, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
 
@@ -37,8 +39,34 @@ import { AreaChart, Area, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAx
 interface MerchantData {
   id: string
   business_name: string
+  owner_name: string | null
+  mobile: string | null
+  email: string | null
+  category: string | null
+  sub_category: string | null
+  house_floor: string | null
+  district: string | null
+  state: string | null
+  country: string | null
+  pincode: string | null
   billing_rate: number
 }
+
+// Keep this list in sync with the required-field validation on /profile so
+// the dashboard, profile page, and QR page all agree on what "complete" means.
+const REQUIRED_FIELDS: { key: keyof MerchantData; label: string }[] = [
+  { key: 'business_name', label: 'Business Name' },
+  { key: 'owner_name', label: 'Owner Name' },
+  { key: 'mobile', label: 'Mobile Number' },
+  { key: 'email', label: 'Email Address' },
+  { key: 'category', label: 'Business Category' },
+  { key: 'sub_category', label: 'Sub Category' },
+  { key: 'house_floor', label: 'House / Floor No.' },
+  { key: 'district', label: 'District' },
+  { key: 'state', label: 'State' },
+  { key: 'country', label: 'Country' },
+  { key: 'pincode', label: 'Pincode' },
+]
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -47,6 +75,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
+
+  // Network-wide merchant count (shown in header)
+  const [approvedMerchantCount, setApprovedMerchantCount] = useState(0)
 
   // Stats State
   const [points, setPoints] = useState(0)
@@ -60,7 +91,7 @@ export default function DashboardPage() {
   const [totalCustomers, setTotalCustomers] = useState(0)
   const [outstandingAmount, setOutstandingAmount] = useState(0)
   const [totalPaid, setTotalPaid] = useState(0)
-  
+
   const [chartData, setChartData] = useState<{day: string, scans: number}[]>([
     { day: 'Mon', scans: 0 }, { day: 'Tue', scans: 0 }, { day: 'Wed', scans: 0 },
     { day: 'Thu', scans: 0 }, { day: 'Fri', scans: 0 }, { day: 'Sat', scans: 0 }, { day: 'Sun', scans: 0 }
@@ -70,17 +101,19 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true)
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError || !user) {
         router.push('/login')
         return
       }
 
-      // 1. Fetch Merchant
+      // 1. Fetch Merchant (including fields needed for the profile-completeness check)
       const { data: merchData, error: merchError } = await supabase
         .from('merchants')
-        .select('id, business_name, billing_rate')
+        .select(
+          'id, business_name, owner_name, mobile, email, category, sub_category, house_floor, district, state, country, pincode, billing_rate'
+        )
         .eq('user_id', user.id)
         .single()
 
@@ -91,10 +124,18 @@ export default function DashboardPage() {
       }
       setMerchant(merchData)
 
-      // 2. Fetch Scans
+      // 2. Fetch network-wide count of approved merchants (shown in header)
+      const { count: merchantCount } = await supabase
+        .from('merchants')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'approved')
+
+      setApprovedMerchantCount(Math.floor((merchantCount || 0) / 2))
+
+      // 3. Fetch Scans
       const { data: scansData } = await supabase
         .from('qr_scans')
-        .select('id, customer_phone, status, created_at')
+        .select('id, customer_name, status, created_at')
         .eq('merchant_id', merchData.id)
         .order('created_at', { ascending: false })
 
@@ -123,7 +164,7 @@ export default function DashboardPage() {
           if (scanDate >= startOfToday) todayCount++
           if (scanDate >= startOfMonth) monthCount++
           if (scan.status === 'Reward Won') wins++
-          if (scan.customer_phone) uniquePhones.add(scan.customer_phone)
+          if (scan.customer_name) uniquePhones.add(scan.customer_name)
 
           // Match for chart
           const scanDateStr = scanDate.toDateString()
@@ -138,7 +179,7 @@ export default function DashboardPage() {
           const time = diffHrs < 1 ? `${Math.floor(diffMs / (1000 * 60))} min ago` : `${diffHrs}h ago`
           return {
             id: scan.id,
-            text: `QR scanned by ${scan.customer_phone ? `+91 ${scan.customer_phone}` : 'a customer'}`,
+            text: `QR scanned by ${scan.customer_name ? ` ${scan.customer_name}` : 'a customer'}`,
             time: time
           }
         })
@@ -152,7 +193,7 @@ export default function DashboardPage() {
         setActivities(tempActivities)
       }
 
-      // 3. Fetch Ledger (Points & Rewards Only)
+      // 4. Fetch Ledger (Points & Rewards Only)
       const { data: txData } = await supabase
         .from('merchant_transactions')
         .select('amount, transaction_type, wallet_type, category, description')
@@ -161,24 +202,24 @@ export default function DashboardPage() {
       if (txData) {
         let pts = 0
         let b2bWon = 0
-        
+
         txData.forEach(tx => {
           if (tx.wallet_type === 'points') {
             // Calculate total points balance
             pts += tx.transaction_type === 'credit' ? tx.amount : -tx.amount
-            
+
             // Calculate points specifically won from Admin B2B Scratch Cards
             if (tx.transaction_type === 'credit' && (tx.category === 'reward' || tx.description?.toLowerCase().includes('scratch card'))) {
               b2bWon += tx.amount
             }
           }
         })
-        
+
         setPoints(pts)
         setB2bRewards(b2bWon)
       }
 
-      // 4. Fetch Referrals
+      // 5. Fetch Referrals
       const { data: refData } = await supabase
         .from('merchant_referrals')
         .select('status')
@@ -189,7 +230,7 @@ export default function DashboardPage() {
         setSuccessfulReferrals(refData.filter(r => r.status === 'approved').length)
       }
 
-      // 5. Fetch Payments & Calculate Billing (in Points)
+      // 6. Fetch Payments & Calculate Billing (in Points)
       const { data: payData } = await supabase
         .from('merchant_payments')
         .select('amount, status')
@@ -207,6 +248,12 @@ export default function DashboardPage() {
 
     fetchDashboardData()
   }, [router, supabase])
+
+  // ── Profile completeness check ───────────────────────────────────────
+  const missingFields = merchant
+    ? REQUIRED_FIELDS.filter((f) => !merchant[f.key] || String(merchant[f.key]).trim() === '')
+    : REQUIRED_FIELDS
+  const isProfileComplete = merchant !== null && missingFields.length === 0
 
   // ── Loading State ───────────────────────────────────────────────────
   if (loading) {
@@ -266,8 +313,8 @@ export default function DashboardPage() {
   const ROSE_COLORS = ['#E11D48', '#E2E8F0']
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 lg:px-8" style={{ fontFamily: 'var(--font-display)' }}>
-      
+    <div className="mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 lg:px-8 bg-white" style={{ fontFamily: 'var(--font-display)' }}>
+
       {/* Page Header Banner */}
       <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/15 blur-2xl" />
@@ -277,38 +324,84 @@ export default function DashboardPage() {
               <Store size={30} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Welcome back, {merchant.business_name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Welcome back, {merchant.business_name}
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1857D6]">
+                  <Building2 size={12} />
+                  {approvedMerchantCount.toLocaleString()} Partner Merchants
+                </span>
+              </div>
               <p className="mt-1 text-sm text-slate-500">
                 Here&apos;s what&apos;s happening at your shop today. Monitor analytics, scans, and rewards.
               </p>
             </div>
           </div>
-          <Link
-            href="/qr-code"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
-          >
-            <QrCode size={18} />
-            <span>View Shop QR</span>
-          </Link>
+
+          {isProfileComplete ? (
+            <Link
+              href="/qr-code"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
+            >
+              <QrCode size={18} />
+              <span>View Shop QR</span>
+            </Link>
+          ) : (
+            <Link
+              href="/profile"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(217,119,6,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(217,119,6,0.55)] cursor-pointer"
+            >
+              <Lock size={18} />
+              <span>Complete Profile to Get QR</span>
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* Profile Incomplete Banner */}
+      {!isProfileComplete && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-8 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <AlertCircle size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Your shop QR code is locked</p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                Complete your profile ({missingFields.length} field{missingFields.length === 1 ? '' : 's'} remaining) to generate and download your QR code.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/profile"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-semibold text-white transition-all hover:bg-amber-700 cursor-pointer"
+          >
+            Complete Profile
+            <ArrowUpRight size={14} />
+          </Link>
+        </motion.div>
+      )}
 
       {/* Primary Stat Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<Gift size={18} />}
           label="Available Points"
-          value={points.toLocaleString()}
-          sub="+200 joining bonus"
+          value={`${points.toLocaleString()} Points`}
+          sub="joining bonus"
           accent="blue"
         />
         {/* Replaced Wallet Cash Balance with B2B Scratch Card Wins */}
         <StatCard
           icon={<Trophy size={18} />}
           label="B2B Points Won"
-          value={b2bRewards.toLocaleString()}
+          value={`${b2bRewards.toLocaleString()} Points`}
           sub="From scratch cards"
           accent="green"
         />
@@ -330,7 +423,7 @@ export default function DashboardPage() {
 
       {/* Beautiful Pie Chart Stat Cards */}
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        
+
         {/* Total Scans - Pie Chart */}
         <ChartStatCard icon={<TrendingUp size={18} />} label="Total Scans" value={totalScans.toLocaleString()} sub="All-time engagements">
           <ResponsiveContainer width="100%" height="100%">
@@ -358,7 +451,7 @@ export default function DashboardPage() {
         </ChartStatCard>
 
         {/* Total Paid - Pie Chart (Now in Points) */}
-        <ChartStatCard icon={<CreditCard size={18} />} label="Total Paid" value={`${totalPaid.toLocaleString()} Pts`} sub="Lifetime payments">
+        <ChartStatCard icon={<CreditCard size={18} />} label="Total Paid" value={`${totalPaid.toLocaleString()} Points`} sub="Lifetime payments">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={paidPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
@@ -371,7 +464,7 @@ export default function DashboardPage() {
         </ChartStatCard>
 
         {/* Outstanding - Pie Chart (Now in Points) */}
-        <ChartStatCard icon={<Clock size={18} />} label="Outstanding" value={`${outstandingAmount} Pts`} sub="Due now">
+        <ChartStatCard icon={<Clock size={18} />} label="Outstanding" value={`${outstandingAmount.toLocaleString()} Points`} sub="Due now">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={outPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
@@ -387,7 +480,7 @@ export default function DashboardPage() {
 
       {/* Charts & Activity Row */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        
+
         {/* 7-Day Scan Chart */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -414,8 +507,8 @@ export default function DashboardPage() {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                   labelStyle={{ fontWeight: 'bold', color: '#0B0F19' }}
                 />
                 <Area type="monotone" dataKey="scans" stroke="#1857D6" strokeWidth={3} fill="url(#colorScans)" />
@@ -469,16 +562,25 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {QUICK_ACTIONS.map((action) => {
             const Icon = action.icon
+            const isQrAction = action.href === '/qr-code'
+            const locked = isQrAction && !isProfileComplete
             return (
               <Link
                 key={action.href}
-                href={action.href}
+                href={locked ? '/profile' : action.href}
                 className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 px-3 py-4 text-center transition-all hover:border-[#1857D6]/30 hover:bg-[#1857D6]/5 hover:shadow-sm"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1857D6] shadow-sm transition-transform group-hover:scale-110">
+                <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1857D6] shadow-sm transition-transform group-hover:scale-110">
                   <Icon size={18} />
+                  {locked && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white">
+                      <Lock size={9} />
+                    </span>
+                  )}
                 </span>
-                <span className="text-xs font-semibold text-slate-600 group-hover:text-[#0B0F19]">{action.label}</span>
+                <span className="text-xs font-semibold text-slate-600 group-hover:text-[#0B0F19]">
+                  {locked ? 'Complete Profile' : action.label}
+                </span>
               </Link>
             )
           })}
@@ -487,7 +589,7 @@ export default function DashboardPage() {
 
       {/* Render B2B Scratch Card if exists */}
       {merchant && <MerchantScratchCard merchantId={merchant.id} />}
-      
+
     </div>
   )
 }
@@ -529,19 +631,19 @@ function StatCard({
   )
 }
 
-function ChartStatCard({ 
-  icon, label, value, sub, children 
-}: { 
+function ChartStatCard({
+  icon, label, value, sub, children
+}: {
   icon: React.ReactNode
   label: string
   value: string | number
   sub: string
-  children: React.ReactNode 
+  children: React.ReactNode
 }) {
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 8 }} 
-      animate={{ opacity: 1, y: 0 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm flex flex-col"
     >

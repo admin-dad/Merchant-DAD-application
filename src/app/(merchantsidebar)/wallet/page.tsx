@@ -404,7 +404,7 @@ export default function DigitalWalletPage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-800">Available Balance</p>
             <p className="text-2xl font-bold text-[#0B0F19]">
-              {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Pts</span>
+              {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
             </p>
           </div>
           <button
@@ -423,7 +423,7 @@ export default function DigitalWalletPage() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-slate-800">Points Earned Free</p>
             <p className="text-2xl font-bold text-[#0B0F19]">
-              {freePointsEarned.toLocaleString()} <span className="text-sm font-medium text-slate-400">Pts</span>
+              {freePointsEarned.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
             </p>
             <p className="text-xs font-medium text-slate-400 mt-0.5">Bonus, referrals & rewards</p>
           </div>
@@ -441,7 +441,7 @@ export default function DigitalWalletPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900">
-            {summary.joining_bonus_points} <span className="text-sm text-slate-400">Pts</span>
+            {summary.joining_bonus_points} <span className="text-sm text-slate-400">Points</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">One-time registration reward</p>
         </div>
@@ -455,7 +455,7 @@ export default function DigitalWalletPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900">
-            {summary.referral_points_earned} <span className="text-sm text-slate-400">Pts</span>
+            {summary.referral_points_earned} <span className="text-sm text-slate-400">Points</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">From approved referrals</p>
         </div>
@@ -469,7 +469,7 @@ export default function DigitalWalletPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900">
-            {scratchCardPoints} <span className="text-sm text-slate-400">Pts</span>
+            {scratchCardPoints} <span className="text-sm text-slate-400">Points</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">Won from Scratch Cards</p>
         </div>
@@ -483,7 +483,7 @@ export default function DigitalWalletPage() {
             </div>
           </div>
           <h3 className="text-2xl font-bold text-slate-900">
-            {summary.purchased_points} <span className="text-sm text-slate-400">Pts</span>
+            {summary.purchased_points} <span className="text-sm text-slate-400">Points</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">Bought via payments</p>
         </div>
@@ -551,7 +551,7 @@ export default function DigitalWalletPage() {
                         tx.transaction_type === 'credit' ? 'text-emerald-600' : 'text-rose-600'
                       }`}
                     >
-                      {tx.transaction_type === 'credit' ? '+' : '-'}{tx.amount} Pts
+                      {tx.transaction_type === 'credit' ? '+' : '-'}{tx.amount} Points
                     </div>
                   </div>
                 </div>
@@ -578,7 +578,7 @@ export default function DigitalWalletPage() {
           </div>
 
           <div className="space-y-3">
-            {[100, 500, 1000, 2500].map((pts) => (
+            {[100, 500, 1000, 2500,3000,3500,4000].map((pts) => (
               <div
                 key={pts}
                 className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all"
@@ -628,7 +628,7 @@ export default function DigitalWalletPage() {
                 <div className="rounded-2xl bg-slate-50 p-4 font-mono text-xs text-slate-600 space-y-1">
                   <div className="flex justify-between">
                     <span>Points Requested:</span>
-                    <span className="font-bold text-slate-900">{selectedPoints} Pts</span>
+                    <span className="font-bold text-slate-900">{selectedPoints} Points</span>
                   </div>
                 </div>
 

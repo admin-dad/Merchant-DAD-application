@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,10 @@ import {
   Smartphone,
   Loader2,
   AlertCircle,
+  ClipboardList,
+  ArrowRight,
+  CalendarClock,
+  Wallet,
 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import jsPDF from 'jspdf'
@@ -25,21 +29,59 @@ import jsPDF from 'jspdf'
 // ─────────────────────────────────────────────────────────────────────────
 // Types matching your exact database schema
 // ─────────────────────────────────────────────────────────────────────────
+// 'per_scan' -> merchant is billed per unpaid scan (handled on the payments page)
+// 'monthly'  -> merchant must pay a flat fee every calendar month, or the
+//               QR code is hidden and treated as inactive.
+type BillingType = 'per_scan' | 'monthly'
+
 interface MerchantProfile {
   id: string
   business_name: string
+  owner_name: string | null
+  mobile: string | null
+  email: string | null
   category: string
   sub_category: string | null
+  house_floor: string | null
+  district: string | null
+  state: string | null
+  country: string | null
+  pincode: string | null
   status: string
+  billing_type: BillingType | null
+  billing_rate: number | null
 }
 
 interface ScanRecord {
   id: string
   customer_name: string | null
-  customer_phone: string | null
   status: string
   created_at: string
 }
+
+interface MonthlyPaymentRecord {
+  id: string
+  amount: number
+  status: string
+  created_at: string
+}
+
+// Fields that must be filled in on the Profile page before the QR code
+// unlocks. Keep this in sync with the required-field validation on
+// /profile so the two pages never disagree about what "complete" means.
+const REQUIRED_FIELDS: { key: keyof MerchantProfile; label: string }[] = [
+  { key: 'business_name', label: 'Business Name' },
+  { key: 'owner_name', label: 'Owner Name' },
+  { key: 'mobile', label: 'Mobile Number' },
+  { key: 'email', label: 'Email Address' },
+  { key: 'category', label: 'Business Category' },
+  { key: 'sub_category', label: 'Sub Category' },
+  { key: 'house_floor', label: 'House / Floor No.' },
+  { key: 'district', label: 'District' },
+  { key: 'state', label: 'State' },
+  { key: 'country', label: 'Country' },
+  { key: 'pincode', label: 'Pincode' },
+]
 
 const statusStyles: Record<string, string> = {
   approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -47,6 +89,20 @@ const statusStyles: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   rejected: 'bg-rose-50 text-rose-700 border-rose-200',
   suspended: 'bg-slate-100 text-slate-700 border-slate-200',
+}
+
+// TODO: point this at your actual monthly-billing / scan-payment route.
+const MONTHLY_PAYMENT_ROUTE = '/scan-payments'
+
+function getCurrentMonthBounds() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return {
+    startISO: start.toISOString(),
+    endISO: end.toISOString(),
+    monthLabel: start.toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+  }
 }
 
 export default function QRCodeManagementPage() {
@@ -58,11 +114,17 @@ export default function QRCodeManagementPage() {
   const [merchant, setMerchant] = useState<MerchantProfile | null>(null)
   const [scans, setScans] = useState<ScanRecord[]>([])
   const [error, setError] = useState<string | null>(null)
-  
+
   const [regenerateRequested, setRegenerateRequested] = useState(false)
-  const [requestingRegen, setRequestingRegen] = useState(false) // Added loading state for button
-  
+  const [requestingRegen, setRequestingRegen] = useState(false)
+
+  // Monthly billing gating
+  const [isMonthlyPaid, setIsMonthlyPaid] = useState<boolean>(false)
+  const [currentMonthPayment, setCurrentMonthPayment] = useState<MonthlyPaymentRecord | null>(null)
+
   const qrCanvasRef = useRef<HTMLDivElement>(null)
+
+  const { startISO, endISO, monthLabel } = useMemo(() => getCurrentMonthBounds(), [])
 
   // ── Fetch Merchant Data & Scan History ───────────────────────────────
   const fetchMerchantData = useCallback(async (isRefresh = false) => {
@@ -80,7 +142,9 @@ export default function QRCodeManagementPage() {
 
     const { data: merchantData, error: merchantError } = await supabase
       .from('merchants')
-      .select('id, business_name, category, sub_category, status')
+      .select(
+        'id, business_name, owner_name, mobile, email, category, sub_category, house_floor, district, state, country, pincode, status, billing_type, billing_rate'
+      )
       .eq('user_id', user.id)
       .single()
 
@@ -91,12 +155,18 @@ export default function QRCodeManagementPage() {
       return
     }
 
-    setMerchant(merchantData)
+    // Default any merchant without an explicit billing_type to 'per_scan'
+    // so existing merchants keep working exactly as before.
+    const normalizedMerchant: MerchantProfile = {
+      ...merchantData,
+      billing_type: (merchantData.billing_type as BillingType) || 'per_scan',
+    }
+    setMerchant(normalizedMerchant)
 
     // Fetch Scans
     const { data: scanData, error: scanError } = await supabase
       .from('qr_scans')
-      .select('id, customer_name, customer_phone, status, created_at')
+      .select('id, customer_name, status, created_at')
       .eq('merchant_id', merchantData.id)
       .order('created_at', { ascending: false })
 
@@ -112,22 +182,61 @@ export default function QRCodeManagementPage() {
       .eq('request_type', 'QR_REGENERATION')
       .eq('status', 'pending')
       .maybeSingle()
-      
+
     if (requestData) {
       setRegenerateRequested(true)
     }
 
+    // For monthly-plan merchants, check whether the current calendar month
+    // already has an approved/completed payment. If not, the QR code stays
+    // hidden and inactive.
+    if (normalizedMerchant.billing_type === 'monthly') {
+      const { data: monthPayData, error: monthPayErr } = await supabase
+        .from('merchant_payments')
+        .select('id, amount, status, created_at')
+        .eq('merchant_id', merchantData.id)
+        .in('status', ['approved', 'completed'])
+        .gte('created_at', startISO)
+        .lt('created_at', endISO)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (!monthPayErr && monthPayData && monthPayData.length > 0) {
+        setIsMonthlyPaid(true)
+        setCurrentMonthPayment(monthPayData[0] as MonthlyPaymentRecord)
+      } else {
+        setIsMonthlyPaid(false)
+        setCurrentMonthPayment(null)
+      }
+    } else {
+      // per_scan merchants are never blocked by the monthly gate
+      setIsMonthlyPaid(true)
+      setCurrentMonthPayment(null)
+    }
+
     setLoading(false)
     setRefreshingScans(false)
-  }, [router, supabase])
+  }, [router, supabase, startISO, endISO])
 
   useEffect(() => {
     fetchMerchantData()
   }, [fetchMerchantData])
 
+  // ── Profile completeness check ───────────────────────────────────────
+  const missingFields = merchant
+    ? REQUIRED_FIELDS.filter((f) => !merchant[f.key] || String(merchant[f.key]).trim() === '')
+    : REQUIRED_FIELDS
+
+  const isProfileComplete = merchant !== null && missingFields.length === 0
+  const isMonthlyMerchant = merchant?.billing_type === 'monthly'
+
+  // The QR code is only unlocked when the profile is complete AND, for
+  // monthly-plan merchants, the current month has been paid for.
+  const isQrUnlocked = isProfileComplete && (!isMonthlyMerchant || isMonthlyPaid)
+
   // ── Download QR as PNG ──────────────────────────────────────────────
   const downloadPNG = () => {
-    if (!merchant) return
+    if (!merchant || !isQrUnlocked) return
     const canvas = qrCanvasRef.current?.querySelector('canvas')
     if (!canvas) return
 
@@ -142,7 +251,7 @@ export default function QRCodeManagementPage() {
 
   // ── Download QR as PDF ──────────────────────────────────────────────
   const downloadPDF = () => {
-    if (!merchant) return
+    if (!merchant || !isQrUnlocked) return
     const canvas = qrCanvasRef.current?.querySelector('canvas')
     if (!canvas) return
 
@@ -170,7 +279,7 @@ export default function QRCodeManagementPage() {
 
   // ── Print QR Code ───────────────────────────────────────────────────
   const printQR = () => {
-    if (!merchant) return
+    if (!merchant || !isQrUnlocked) return
     const canvas = qrCanvasRef.current?.querySelector('canvas')
     if (!canvas) return
 
@@ -206,7 +315,7 @@ export default function QRCodeManagementPage() {
 
   // ── Share QR Code ───────────────────────────────────────────────────
   const shareQR = async () => {
-    if (!merchant) return
+    if (!merchant || !isQrUnlocked) return
     const origin = window.location.origin
     const scanUrl = `${origin}/scan?merchant=${merchant.id}`
 
@@ -288,6 +397,7 @@ export default function QRCodeManagementPage() {
   // Generate the scan URL for the QR Code
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const scanUrl = `${origin}/scan?merchant=${merchant.id}`
+  const monthlyFee = merchant.billing_rate && merchant.billing_rate > 0 ? merchant.billing_rate : 0
 
   return (
     <div className="mx-auto max-w-8xl bg-white px-4 py-8 sm:px-6 lg:px-8" style={{ fontFamily: 'var(--font-display)' }}>
@@ -308,6 +418,17 @@ export default function QRCodeManagementPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                   {merchant.status}
                 </span>
+                {isMonthlyMerchant && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+                      isMonthlyPaid
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}
+                  >
+                    {isMonthlyPaid ? `Paid \u2013 ${monthLabel}` : `Unpaid \u2013 ${monthLabel}`}
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-sm text-slate-500">
                 Display this code at your shop counter. Customers scan it to participate in campaigns and win rewards.
@@ -317,174 +438,215 @@ export default function QRCodeManagementPage() {
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left Column: QR Display & Actions (5/12 width) */}
-        <motion.div 
+      {!isProfileComplete ? (
+        // ── Profile incomplete: block QR code, prompt to finish profile ──
+        <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-5 sm:p-8"
+          className="mx-auto max-w-2xl rounded-3xl border border-slate-200/80 bg-white p-8 shadow-sm text-center sm:p-10"
         >
-          <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-              <Download size={18} />
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 shadow-sm">
+            <Lock size={30} />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">Complete your profile to unlock your QR code</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            We generate your QR code from your business details, so all required profile fields need to be filled in first.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-amber-200/80 bg-amber-50/50 p-5 text-left">
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+              <ClipboardList size={14} />
+              <span>Missing information ({missingFields.length})</span>
             </div>
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">Download & Share</h2>
-              <p className="text-xs text-slate-500">Print or share your unique QR code.</p>
-            </div>
+            <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+              {missingFields.map((f) => (
+                <li key={f.key as string} className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                  {f.label}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* QR Canvas */}
-          <div className="flex flex-col items-center justify-center mb-6">
-            <div ref={qrCanvasRef} className="p-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl shadow-sm">
-              <QRCodeCanvas
-                id="merchant-qr-canvas"
-                value={scanUrl}
-                size={200}
-                level="H"
-                includeMargin={false}
-                fgColor="#0B0F19"
-                bgColor="#FFFFFF"
-              />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-slate-900">{merchant.business_name}</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              ID: {merchant.id.substring(0, 8)}... • {merchant.category}
-              {merchant.sub_category ? ` (${merchant.sub_category})` : ''}
-            </p>
-          </div>
-
-          {/* Action Buttons Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <ActionButton icon={<Download size={18} />} label="Download PNG" onClick={downloadPNG} variant="green" />
-            <ActionButton icon={<FileText size={18} />} label="Download PDF" onClick={downloadPDF} variant="blue" />
-            <ActionButton icon={<Printer size={18} />} label="Print QR" onClick={printQR} variant="slate" />
-            <ActionButton icon={<Share2 size={18} />} label="Share QR" onClick={shareQR} variant="slate" />
-          </div>
-
-          {/* Regenerate Section */}
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200/60 text-slate-700">
-                <RefreshCw size={16} />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                  Regenerate QR Code <Lock size={12} className="text-slate-400" />
-                </h3>
-                {regenerateRequested ? (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                    <CheckCircle2 size={14} className="text-emerald-600" />
-                    <span>Request sent to Admin. You will be notified once approved.</span>
-                  </div>
-                ) : (
-                  <>
-                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                      Requires Admin permission. Click below to request a new QR code if yours is compromised.
-                    </p>
-                    <button
-                      onClick={handleRegenerateRequest}
-                      disabled={requestingRegen}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#1857D6] hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline"
-                    >
-                      {requestingRegen ? <Loader2 size={12} className="animate-spin" /> : null}
-                      {requestingRegen ? 'Sending Request...' : 'Request Regeneration'}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <button
+            onClick={() => router.push('/profile')}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg cursor-pointer sm:w-auto"
+          >
+            <span>Complete My Profile</span>
+            <ArrowRight size={16} />
+          </button>
         </motion.div>
-
-        {/* Right Column: Scan History (7/12 width) */}
-        <motion.div 
+      ) : isMonthlyMerchant && !isMonthlyPaid ? (
+        // ── Profile complete, but monthly fee unpaid: block QR code ─────
+        <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-7 sm:p-8"
+          transition={{ duration: 0.3 }}
+          className="mx-auto max-w-2xl rounded-3xl border border-rose-200/80 bg-white p-8 shadow-sm text-center sm:p-10"
         >
-          <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-3">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 shadow-sm">
+            <CalendarClock size={30} />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900">Your QR code is inactive for {monthLabel}</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Your account is on the monthly plan. Pay this month's fee to reactivate your QR code
+            &mdash; until then it stays hidden and won't work for customers.
+          </p>
+
+          <div className="mt-6 flex items-center justify-between rounded-2xl border border-rose-200/80 bg-rose-50/50 p-5 text-left">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-700">Amount Due</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">₹{monthlyFee.toFixed(2)}</p>
+            </div>
+            <Wallet size={28} className="text-rose-400" />
+          </div>
+
+          <button
+            onClick={() => router.push(MONTHLY_PAYMENT_ROUTE)}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg cursor-pointer sm:w-auto"
+          >
+            <span>Pay Monthly Fee</span>
+            <ArrowRight size={16} />
+          </button>
+        </motion.div>
+      ) : (
+        // ── QR unlocked: show QR code, actions & scan history ───────────
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          {/* Left Column: QR Display & Actions (5/12 width) */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col self-start rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-5 sm:p-8"
+          >
+            <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                <History size={18} />
+                <Download size={18} />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Scan History</h2>
-                <p className="text-xs text-slate-500">Track customer participation and rewards.</p>
+                <h2 className="text-base font-semibold text-slate-900">Download & Share</h2>
+                <p className="text-xs text-slate-500">Print or share your unique QR code.</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fetchMerchantData(true)}
-                disabled={refreshingScans}
-                aria-label="Refresh scan history"
-                className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-all cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw size={12} className={refreshingScans ? 'animate-spin text-[#1857D6]' : ''} />
-                <span>Refresh</span>
-              </button>
-              <span className="hidden sm:inline-block text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-                Total Scans: {scans.length}
-              </span>
-            </div>
-          </div>
 
-          {/* History List */}
-          <div className="flex-1 space-y-3 overflow-y-auto pr-2 max-h-[600px]">
-            {scans.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 shadow-sm">
-                  <Smartphone size={32} />
-                </div>
-                <p className="text-sm font-semibold text-slate-800">No scans yet</p>
-                <p className="mt-1 text-xs text-slate-500 max-w-xs">When customers scan your QR code, their participation will appear here.</p>
+            {/* QR Canvas */}
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div ref={qrCanvasRef} className="p-2 bg-white border-2 border-dashed border-slate-200 rounded-2xl shadow-sm">
+                <QRCodeCanvas
+                  id="merchant-qr-canvas"
+                  value={scanUrl}
+                  size={130}
+                  level="H"
+                  includeMargin={false}
+                  fgColor="#0B0F19"
+                  bgColor="#FFFFFF"
+                />
               </div>
-            ) : (
-              scans.map((scan) => (
-                <div 
-                  key={scan.id} 
-                  className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-200"
+              <h3 className="mt-4 text-lg font-semibold text-slate-900">{merchant.business_name}</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                ID: {merchant.id.substring(0, 8)}... • {merchant.category}
+                {merchant.sub_category ? ` (${merchant.sub_category})` : ''}
+              </p>
+              {isMonthlyMerchant && (
+                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <CheckCircle2 size={12} />
+                  Active for {monthLabel}
+                </p>
+              )}
+            </div>
+
+            {/* Action Buttons Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <ActionButton icon={<Download size={18} />} label="Download PNG" onClick={downloadPNG} variant="green" />
+              <ActionButton icon={<FileText size={18} />} label="Download PDF" onClick={downloadPDF} variant="blue" />
+              <ActionButton icon={<Printer size={18} />} label="Print QR" onClick={printQR} variant="slate" />
+              <ActionButton icon={<Share2 size={18} />} label="Share QR" onClick={shareQR} variant="slate" />
+            </div>
+          </motion.div>
+
+          {/* Right Column: Scan History (7/12 width) */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="flex flex-col self-start rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-7 sm:p-8"
+          >
+            <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <History size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Scan History</h2>
+                  <p className="text-xs text-slate-500">Track customer participation and rewards.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchMerchantData(true)}
+                  disabled={refreshingScans}
+                  aria-label="Refresh scan history"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/10 text-[#1857D6]">
-                      <Smartphone size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {scan.customer_name || 'Walk-in Customer'}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {scan.customer_phone ? `+91 ${scan.customer_phone}` : 'Phone not provided'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span 
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                        scan.status === 'Reward Won' 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                          : scan.status === 'No Win'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}
-                    >
-                      {scan.status}
-                    </span>
-                    <p className="mt-1.5 text-xs text-slate-400 flex items-center justify-end gap-1.5">
-                      <Clock size={12} />
-                      {formatDate(scan.created_at)}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </motion.div>
+                  <RefreshCw size={12} className={refreshingScans ? 'animate-spin text-[#1857D6]' : ''} />
+                  <span>Refresh</span>
+                </button>
+                <span className="hidden sm:inline-block text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+                  Total Scans: {scans.length}
+                </span>
+              </div>
+            </div>
 
-      </div>
+            {/* History List */}
+            <div className="space-y-3 overflow-y-auto pr-2 max-h-[420px]">
+              {scans.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 shadow-sm">
+                    <Smartphone size={32} />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800">No scans yet</p>
+                  <p className="mt-1 text-xs text-slate-500 max-w-xs">When customers scan your QR code, their participation will appear here.</p>
+                </div>
+              ) : (
+                scans.map((scan) => (
+                  <div
+                    key={scan.id}
+                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/10 text-[#1857D6]">
+                        <Smartphone size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {scan.customer_name ? `${scan.customer_name}` : 'Phone not provided'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${scan.status === 'Reward Won'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : scan.status === 'No Win'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                      >
+                        {scan.status}
+                      </span>
+                      <p className="mt-1.5 text-xs text-slate-400 flex items-center justify-end gap-1.5">
+                        <Clock size={12} />
+                        {formatDate(scan.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
@@ -492,9 +654,9 @@ export default function QRCodeManagementPage() {
 // ─────────────────────────────────────────────────────────────────────────
 // Reusable Action Button
 // ─────────────────────────────────────────────────────────────────────────
-function ActionButton({ 
-  icon, label, onClick, variant 
-}: { 
+function ActionButton({
+  icon, label, onClick, variant
+}: {
   icon: React.ReactNode
   label: string
   onClick: () => void

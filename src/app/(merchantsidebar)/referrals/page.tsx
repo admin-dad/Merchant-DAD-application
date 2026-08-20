@@ -181,9 +181,7 @@ export default function ReferralsPage() {
                 Invite fellow merchants to join {businessName} and track your rewards.
                 {pointsPerReferral > 0 && (
                   <>
-                    {' '}Earn <span className="font-semibold text-slate-700">{pointsPerReferral} pts</span> per successful referral
-                    {' '}(<span className="font-mono">{pointsPerReferral} × ₹{valuePerPoint} = ₹{(pointsPerReferral * valuePerPoint).toFixed(2)}</span>).
-                  </>
+                    {' '}Earn <span className="font-semibold text-slate-700">{pointsPerReferral} pts</span> per successful referral.                  </>
                 )}
               </p>
             </div>
@@ -262,9 +260,6 @@ export default function ReferralsPage() {
             </span>
             <span className="text-xs font-medium text-slate-500">Pts</span>
           </div>
-          <p className="mt-1 text-xs font-medium text-amber-600 font-mono">
-            ₹{pointsEarnedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} value
-          </p>
         </motion.div>
       </div>
 

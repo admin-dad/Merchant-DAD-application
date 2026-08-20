@@ -4,18 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import {
-  Store,
-  Smartphone,
-  User,
-  Loader2,
-  AlertCircle,
-  Gift,
-  Sparkles,
-  CheckCircle2,
-  Frown,
-  Ban,
-} from 'lucide-react'
+import {Store,Smartphone,User,Loader2,AlertCircle,Gift, Sparkles, CheckCircle2,Frown,Ban,} from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Interactive Canvas Scratch Card Component
@@ -152,6 +141,27 @@ const ScratchCardCanvas = ({ onScratch }: { onScratch: () => void }) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────
+interface GiftInfo {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+}
+
+interface CampaignInfo {
+  id: string
+  name: string
+  winning_probability: number
+  prize_details: string | null
+  total_cards: number | null
+  winning_numbers: string | null
+  gift_id: string | null
+  gift: GiftInfo | null
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Main Scan Component
 // ─────────────────────────────────────────────────────────────────────────
 function ScanContent() {
@@ -171,10 +181,11 @@ function ScanContent() {
 
   // Scan & Scratch Card States
   const [scanRecordId, setScanRecordId] = useState<string | null>(null)
-  const [activeCampaign, setActiveCampaign] = useState<any>(null)
+  const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [isScratching, setIsScratching] = useState(false)
   const [scratchResult, setScratchResult] = useState<'win' | 'lose' | null>(null)
   const [prizeWon, setPrizeWon] = useState<string | null>(null)
+  const [prizeGift, setPrizeGift] = useState<GiftInfo | null>(null)
   const [alreadyParticipated, setAlreadyParticipated] = useState(false)
 
   // ── 1. Read Merchant ID from URL & Fetch Merchant Name ───────────────
@@ -254,17 +265,40 @@ function ScanContent() {
       return
     }
 
-    // ── FETCH ACTIVE CAMPAIGN ──
-    const { data: campaignData } = await supabase
+    // ── FETCH ACTIVE CUSTOMER-TYPE CAMPAIGN (with linked gift) ──
+    const { data: campaignData, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id, name, winning_probability, prize_details, total_cards, winning_numbers')
+      .select(
+        `
+        id,
+        name,
+        winning_probability,
+        prize_details,
+        total_cards,
+        winning_numbers,
+        gift_id,
+        gift:gifts ( id, name, description, image_url )
+        `
+      )
       .eq('status', 'active')
+      .eq('type', 'customer')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    const activeCampaignId = campaignData?.id || null
-    setActiveCampaign(campaignData)
+    if (campaignError) {
+      console.error('campaign fetch error →', campaignError)
+    }
+
+    const normalizedCampaign: CampaignInfo | null = campaignData
+      ? {
+          ...campaignData,
+          gift: Array.isArray(campaignData.gift) ? campaignData.gift[0] ?? null : campaignData.gift,
+        }
+      : null
+
+    const activeCampaignId = normalizedCampaign?.id || null
+    setActiveCampaign(normalizedCampaign)
 
     // ── CHECK INVENTORY LIMIT (SOW Section 12) ──
     if (activeCampaignId) {
@@ -273,7 +307,7 @@ function ScanContent() {
         .select('id', { count: 'exact', head: true })
         .eq('campaign_id', activeCampaignId)
 
-      if (count !== null && count >= (campaignData?.total_cards || 999999)) {
+      if (count !== null && count >= (normalizedCampaign?.total_cards || 999999)) {
         setError('Sorry, this campaign has reached its maximum scratch card limit!')
         setSubmitting(false)
         return
@@ -311,7 +345,7 @@ function ScanContent() {
     setIsScratching(true) // Triggers the particle animation state
 
     let isWinner = false
-    const wonPrize = activeCampaign?.prize_details || 'Exciting Reward!'
+    const wonPrize = activeCampaign?.gift?.name || activeCampaign?.prize_details || 'Exciting Reward!'
 
     const winProb = activeCampaign?.winning_probability ?? 0.1
     const winNumsStr = activeCampaign?.winning_numbers?.trim()
@@ -339,6 +373,7 @@ function ScanContent() {
       if (isWinner) {
         setScratchResult('win')
         setPrizeWon(wonPrize)
+        setPrizeGift(activeCampaign?.gift || null)
 
         await supabase
           .from('qr_scans')
@@ -347,6 +382,7 @@ function ScanContent() {
       } else {
         setScratchResult('lose')
         setPrizeWon(null)
+        setPrizeGift(null)
 
         await supabase
           .from('qr_scans')
@@ -638,8 +674,24 @@ function ScanContent() {
                     </motion.div>
                     <h2 className="text-2xl font-bold text-[#0B0F19]">Congratulations, {name}! 🎉</h2>
                     <p className="mt-2 text-sm text-slate-500">You won a special reward from {merchantName}:</p>
+
+                    {/* Gift photo, pulled from the gifts table via campaigns.gift_id */}
+                    {prizeGift?.image_url && (
+                      <motion.img
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.15 }}
+                        src={prizeGift.image_url}
+                        alt={prizeGift.name}
+                        className="mt-4 h-32 w-32 rounded-xl object-cover shadow-lg ring-1 ring-black/5"
+                      />
+                    )}
+
                     <div className="mt-4 px-6 py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
-                      <span className="text-lg font-bold text-[#3E7A1C]">{prizeWon}</span>
+                      <span className="block text-lg font-bold text-[#3E7A1C]">{prizeWon}</span>
+                      {prizeGift?.description && (
+                        <span className="block mt-1 text-xs text-slate-500">{prizeGift.description}</span>
+                      )}
                     </div>
                   </>
                 ) : (

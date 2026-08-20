@@ -261,7 +261,7 @@ export default function ContactPage() {
                         <input
                           required
                           type="tel"
-                          placeholder="+91 98765 43210"
+                          placeholder="+91 90088 83444"
                           className="w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] placeholder:text-[#0B2E7A]/30 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/20"
                         />
                       </div>

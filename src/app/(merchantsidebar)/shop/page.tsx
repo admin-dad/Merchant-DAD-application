@@ -22,6 +22,8 @@ import {
   XCircle,
   ChevronDown,
   Filter,
+  Tag,
+  BadgePercent,
 } from 'lucide-react'
 import jsPDF from 'jspdf'
 
@@ -54,7 +56,23 @@ interface Order {
   status: string
   created_at: string
   shipping_address?: string
+  coupon_code?: string | null
+  discount_amount?: number | string | null
   order_items: OrderItem[]
+}
+
+interface Coupon {
+  id: string
+  code: string
+  description: string | null
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  min_order_points: number
+  max_redemptions: number | null
+  redemption_count: number
+  valid_from: string | null
+  valid_until: string | null
+  is_active: boolean
 }
 
 export default function MerchantShopPage() {
@@ -81,6 +99,12 @@ export default function MerchantShopPage() {
   // Cart State
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartLoaded, setCartLoaded] = useState(false)
+
+  // Coupon State
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
   
   // Checkout State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
@@ -187,6 +211,93 @@ export default function MerchantShopPage() {
   const removeFromCart = (id: string) => setCart(prev => prev.filter(item => item.id !== id))
 
   const cartTotalPoints = cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0)
+
+  // ── Coupon Logic ────────────────────────────────────────────────────
+  const discountAmount = useMemo(() => {
+    if (!appliedCoupon) return 0
+    let discount = 0
+    if (appliedCoupon.discount_type === 'percentage') {
+      discount = Math.round((cartTotalPoints * Number(appliedCoupon.discount_value)) / 100)
+    } else {
+      discount = Number(appliedCoupon.discount_value)
+    }
+    // Never let discount exceed the cart total
+    return Math.min(discount, cartTotalPoints)
+  }, [appliedCoupon, cartTotalPoints])
+
+  const finalTotalPoints = Math.max(0, cartTotalPoints - discountAmount)
+
+  // If cart contents change such that the applied coupon's minimum no longer holds, drop it
+  useEffect(() => {
+    if (appliedCoupon && cartTotalPoints < appliedCoupon.min_order_points) {
+      setAppliedCoupon(null)
+      setCouponError(`Coupon requires a minimum of ${appliedCoupon.min_order_points} Pts`)
+    }
+  }, [cartTotalPoints, appliedCoupon])
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase()
+    if (!code) return
+    setCouponError('')
+    setCouponLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .ilike('code', code)
+        .single()
+
+      if (error || !data) {
+        setCouponError('Invalid coupon code.')
+        setAppliedCoupon(null)
+        return
+      }
+
+      const coupon = data as Coupon
+      const now = new Date()
+
+      if (!coupon.is_active) {
+        setCouponError('This coupon is no longer active.')
+        setAppliedCoupon(null)
+        return
+      }
+      if (coupon.valid_from && new Date(coupon.valid_from) > now) {
+        setCouponError('This coupon is not yet valid.')
+        setAppliedCoupon(null)
+        return
+      }
+      if (coupon.valid_until && new Date(coupon.valid_until) < now) {
+        setCouponError('This coupon has expired.')
+        setAppliedCoupon(null)
+        return
+      }
+      if (coupon.max_redemptions !== null && coupon.redemption_count >= coupon.max_redemptions) {
+        setCouponError('This coupon has reached its redemption limit.')
+        setAppliedCoupon(null)
+        return
+      }
+      if (cartTotalPoints < coupon.min_order_points) {
+        setCouponError(`Minimum order of ${coupon.min_order_points} Pts required for this coupon.`)
+        setAppliedCoupon(null)
+        return
+      }
+
+      setAppliedCoupon(coupon)
+      setCouponError('')
+    } catch (err) {
+      console.error(err)
+      setCouponError('Could not validate coupon. Please try again.')
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponError('')
+  }
   
   // ── Checkout Logic (Points-Only & Schema-Correct) ─────────────────────
   const handleCheckout = async () => {
@@ -197,7 +308,7 @@ export default function MerchantShopPage() {
       return
     }
 
-    if (wallet.points < cartTotalPoints) {
+    if (wallet.points < finalTotalPoints) {
       alert("You do not have enough points to complete this redemption.")
       return
     }
@@ -211,10 +322,12 @@ export default function MerchantShopPage() {
       const { data: orderData, error: orderError } = await supabase.from('orders').insert([
         {
           merchant_id: merchant.id,
-          total_amount: cartTotalPoints,
-          points_used: cartTotalPoints,
+          total_amount: finalTotalPoints,
+          points_used: finalTotalPoints,
           status: 'completed',
-          shipping_address: formattedAddress
+          shipping_address: formattedAddress,
+          coupon_code: appliedCoupon?.code ?? null,
+          discount_amount: discountAmount
         }
       ]).select().single()
 
@@ -235,18 +348,27 @@ export default function MerchantShopPage() {
         merchant_id: merchant.id,
         wallet_type: 'points',
         transaction_type: 'debit',
-        amount: cartTotalPoints,
-        description: `Rewards Redemption Order #${orderData.id.substring(0, 8)}`
+        amount: finalTotalPoints,
+        description: `Rewards Redemption Order #${orderData.id.substring(0, 8)}${appliedCoupon ? ` (Coupon: ${appliedCoupon.code})` : ''}`
       }])
 
-      // 4. Update UI State & Clear Cart Storage
-      setWallet(prev => ({ ...prev, points: prev.points - cartTotalPoints }))
+      // 4. Bump coupon redemption count, if one was used
+      if (appliedCoupon) {
+        await supabase
+          .from('coupons')
+          .update({ redemption_count: appliedCoupon.redemption_count + 1 })
+          .eq('id', appliedCoupon.id)
+      }
+
+      // 5. Update UI State & Clear Cart Storage
+      setWallet(prev => ({ ...prev, points: prev.points - finalTotalPoints }))
       
       setOrders(prev => [{ ...orderData, order_items: orderItems, shipping_address: formattedAddress }, ...prev])
       setCart([])
       localStorage.removeItem(`rakvih_cart_${merchant.id}`)
       
       setAddressForm({ fullName: '', phone: '', street: '', city: '', state: '', pincode: '' })
+      removeCoupon()
       setIsCheckoutOpen(false)
       setActiveTab('orders')
       
@@ -316,6 +438,16 @@ export default function MerchantShopPage() {
     pdf.setDrawColor(200)
     pdf.line(14, y, 196, y)
     y += 7
+
+    const discount = Number(order.discount_amount) || 0
+    if (discount > 0) {
+      pdf.setFontSize(10)
+      pdf.setTextColor(100)
+      pdf.text(`Coupon Applied: ${order.coupon_code ?? ''}`, 14, y)
+      pdf.text(`- ${discount} Pts`, 150, y)
+      y += 7
+      pdf.setTextColor(0)
+    }
     
     pdf.setFontSize(14)
     pdf.setFont("helvetica", "bold")
@@ -347,8 +479,7 @@ export default function MerchantShopPage() {
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><Loader2 size={28} className="animate-spin text-[#1857D6]" /></div>
 
   return (
-    <div className="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-8 bg-white" style={{ fontFamily: 'var(--font-display)' }}>
-      {/* Header Banner */}
+ <div className="min-h-full w-full bg-white px-4 py-8 sm:px-6 lg:px-8" style={{ fontFamily: 'var(--font-display)' }}>   {/* Header Banner */}
       <div className="relative mb-6 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/15 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
@@ -561,10 +692,70 @@ export default function MerchantShopPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Coupon Input */}
+                  <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Tag size={13} /> Have a coupon?
+                    </label>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3.5 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <BadgePercent size={16} className="text-emerald-600" />
+                          <div>
+                            <p className="text-sm font-bold text-emerald-700">{appliedCoupon.code}</p>
+                            <p className="text-xs text-emerald-600">
+                              {appliedCoupon.discount_type === 'percentage'
+                                ? `${appliedCoupon.discount_value}% off`
+                                : `${appliedCoupon.discount_value} Pts off`}
+                            </p>
+                          </div>
+                        </div>
+                        <button onClick={removeCoupon} className="text-emerald-700 hover:text-emerald-900 p-1 cursor-pointer">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter coupon code"
+                          value={couponInput}
+                          onChange={(e) => { setCouponInput(e.target.value); setCouponError('') }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon() }}
+                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 uppercase focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
+                        />
+                        <button
+                          onClick={applyCoupon}
+                          disabled={couponLoading || !couponInput.trim()}
+                          className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                          {couponLoading ? <Loader2 size={14} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
+                    )}
+                    {couponError && (
+                      <p className="mt-2 text-xs text-rose-600 flex items-center gap-1">
+                        <AlertCircle size={12} /> {couponError}
+                      </p>
+                    )}
+                  </div>
                   
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-                    <span className="text-sm font-semibold text-slate-500">Total Points Required</span>
-                    <span className="text-xl font-bold text-[#1857D6]">{cartTotalPoints} Pts</span>
+                  <div className="border-t border-slate-100 pt-6 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-500">Subtotal</span>
+                      <span className="text-sm font-semibold text-slate-700">{cartTotalPoints} Pts</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-emerald-600">Coupon Discount ({appliedCoupon?.code})</span>
+                        <span className="text-sm font-semibold text-emerald-600">- {discountAmount} Pts</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <span className="text-sm font-semibold text-slate-500">Total Points Required</span>
+                      <span className="text-xl font-bold text-[#1857D6]">{finalTotalPoints} Pts</span>
+                    </div>
                   </div>
 
                   <button onClick={() => setIsCheckoutOpen(true)} className="mt-6 w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-7 py-3.5 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:translate-y-[-1px] hover:shadow-lg cursor-pointer transition-all">
@@ -602,6 +793,11 @@ export default function MerchantShopPage() {
                       </div>
                       {o.shipping_address && (
                         <p className="text-xs text-slate-500 mb-3"><strong>Shipping To:</strong> {o.shipping_address}</p>
+                      )}
+                      {o.coupon_code && Number(o.discount_amount) > 0 && (
+                        <p className="text-xs text-emerald-600 mb-3 flex items-center gap-1">
+                          <Tag size={12} /> Coupon <strong>{o.coupon_code}</strong> applied &minus; {Number(o.discount_amount)} Pts saved
+                        </p>
                       )}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-200 pt-4 gap-4">
                         <div>
@@ -708,19 +904,63 @@ export default function MerchantShopPage() {
                     </div>
                   </div>
 
+                  {/* Coupon Input (also editable from checkout) */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-1.5">
+                      <Tag size={13} /> Coupon
+                    </label>
+                    {appliedCoupon ? (
+                      <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+                        <span className="text-sm font-bold text-emerald-700">{appliedCoupon.code} applied</span>
+                        <button onClick={removeCoupon} className="text-emerald-700 hover:text-emerald-900 p-1 cursor-pointer">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter coupon code"
+                          value={couponInput}
+                          onChange={(e) => { setCouponInput(e.target.value); setCouponError('') }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon() }}
+                          className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 uppercase focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
+                        />
+                        <button
+                          onClick={applyCoupon}
+                          disabled={couponLoading || !couponInput.trim()}
+                          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                          {couponLoading ? <Loader2 size={14} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
+                    )}
+                    {couponError && <p className="mt-2 text-xs text-rose-600">{couponError}</p>}
+                  </div>
+
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 mt-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Summary</p>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-600 font-medium">Cart Total</span>
+                      <span className="text-slate-600 font-medium">Cart Subtotal</span>
                       <span className="font-bold text-slate-900">{cartTotalPoints} Pts</span>
                     </div>
+                    {discountAmount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-emerald-600 font-medium">Discount ({appliedCoupon?.code})</span>
+                        <span className="font-bold text-emerald-600">- {discountAmount} Pts</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm border-t border-slate-200 pt-2">
+                      <span className="text-slate-600 font-medium">Total Due</span>
+                      <span className="font-bold text-[#1857D6]">{finalTotalPoints} Pts</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-600 font-medium">Your Balance</span>
-                      <span className="font-bold text-[#1857D6]">{wallet.points} Pts</span>
+                      <span className="font-bold text-slate-900">{wallet.points} Pts</span>
                     </div>
                   </div>
 
-                  {wallet.points < cartTotalPoints && (
+                  {wallet.points < finalTotalPoints && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-600 font-medium">
                       ⚠️ You do not have enough points to complete this order.
                     </div>
@@ -728,7 +968,7 @@ export default function MerchantShopPage() {
 
                   <button 
                     onClick={handleCheckout} 
-                    disabled={placingOrder || wallet.points < cartTotalPoints} 
+                    disabled={placingOrder || wallet.points < finalTotalPoints} 
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 hover:translate-y-[-1px] hover:shadow-lg disabled:opacity-50 cursor-pointer transition-all mt-4"
                   >
                     {placingOrder ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />} Complete Redemption
