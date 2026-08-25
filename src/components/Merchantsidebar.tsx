@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
-  Store,
+  Store,Tag,
   LayoutDashboard,History,
   QrCode,
   Share2,
@@ -28,7 +28,7 @@ import {
   LogOut,
   ChevronRight,
 } from 'lucide-react'
-
+import MerchantScratchCard from '@/components/MerchantScratchCard'
 // ─────────────────────────────────────────────────────────────────────────
 // Nav Items
 // ─────────────────────────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/payment-history', label: 'Payment History', icon: History }, // Added Payment History link
   { href: '/engagement', label: 'Customer Engagement', icon: Users },
   { href: '/videos', label: 'Video Feed', icon: Video },
+    { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag },
   //{ href: '/scratch-cards', label: 'Scratch Card Participation', icon: Ticket },
   //{ href: '/billing', label: 'Merchant Billing Summary', icon: Receipt },
   { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard },
@@ -161,6 +162,18 @@ export default function Merchantsidebar({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating scratch-card trigger + popup — MerchantScratchCard checks
+          for a pending card and shows a small icon button (bottom right of
+          the screen) instead of auto-opening. Clicking the icon opens the
+          popup, which has its own close (X) button.
+
+          Rendered once here (in the sidebar, which lives inside the shared
+          merchant layout) rather than on each individual page, so the icon
+          persists across every merchant-portal route without needing to be
+          re-added per page. Uses the `merchantId` prop this component
+          already receives — there's no `merchant` object in scope here. */}
+      {merchantId && <MerchantScratchCard merchantId={merchantId} />}
     </>
   )
 }

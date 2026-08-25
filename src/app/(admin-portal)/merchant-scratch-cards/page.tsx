@@ -14,7 +14,12 @@ import {
   Activity,
   X,
   ArrowLeft,
-  List
+  Settings,
+  Save,
+  CheckCircle2,
+  ImageOff,
+  Percent,
+  Layers,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -38,18 +43,56 @@ interface RewardHistory {
   winning_probability: number
   status: string
   created_at: string
+  campaign_id: string | null
+}
+
+interface GiftRow {
+  id: string
+  name: string
+  description: string | null
+  image_url: string | null
+}
+
+interface CampaignRow {
+  id: string
+  name: string
+  prize_details: string | null
+  winning_probability: number
+  start_date: string | null
+  end_date: string | null
+  status: string
+  total_cards: number
+  issued_cards: number
+  gift_id: string | null
+}
+
+const EMPTY_CAMPAIGN_FORM = {
+  name: 'Merchant Scratch Card Campaign',
+  prize_details: '',
+  winning_probability: '0.1',
+  total_cards: '1000',
+  gift_id: '',
+  status: 'active' as 'active' | 'paused',
 }
 
 export default function AdminMerchantScratchCardsPage() {
   const supabase = createClient()
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'send' | 'history'>('send')
+  const [activeTab, setActiveTab] = useState<'send' | 'history' | 'campaign'>('send')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [merchants, setMerchants] = useState<Merchant[]>([])
   const [rewardsHistory, setRewardsHistory] = useState<RewardHistory[]>([])
+
+  // Active merchant campaign (there is at most one, enforced by the
+  // partial unique index on campaigns(type) where status='active')
+  const [campaign, setCampaign] = useState<CampaignRow | null>(null)
+  const [gifts, setGifts] = useState<GiftRow[]>([])
+  const [campaignForm, setCampaignForm] = useState(EMPTY_CAMPAIGN_FORM)
+  const [savingCampaign, setSavingCampaign] = useState(false)
+  const [campaignSaved, setCampaignSaved] = useState(false)
 
   // Bulk Selection State
   const [selectedMerchantIds, setSelectedMerchantIds] = useState<string[]>([])
@@ -58,10 +101,10 @@ export default function AdminMerchantScratchCardsPage() {
   // Send Scratch Card Modal State
   const [isScratchModalOpen, setIsScratchModalOpen] = useState(false)
   const [scratchTargets, setScratchTargets] = useState<Merchant[]>([])
-  const [scratchForm, setScratchForm] = useState({ prize_type: 'points', prize_amount: '50', winning_probability: '1.0' })
+  const [scratchForm, setScratchForm] = useState({ prize_type: 'points', prize_amount: '50' })
   const [sendingCard, setSendingCard] = useState(false)
 
-  // ── Fetch Merchants & Rewards History ────────────────────────────────
+  // ── Fetch Merchants, Rewards History, Active Campaign & Gifts ────────
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
@@ -86,6 +129,34 @@ export default function AdminMerchantScratchCardsPage() {
       if (!rewardsError && rewardsData) {
         setRewardsHistory(rewardsData as RewardHistory[])
       }
+
+      // Active merchant campaign — source of truth for odds/prize shown to
+      // merchants on their dashboard.
+      const { data: campaignData } = await supabase
+        .from('campaigns')
+        .select('id, name, prize_details, winning_probability, start_date, end_date, status, total_cards, issued_cards, gift_id')
+        .eq('type', 'merchant')
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (campaignData) {
+        setCampaign(campaignData as CampaignRow)
+        setCampaignForm({
+          name: campaignData.name,
+          prize_details: campaignData.prize_details || '',
+          winning_probability: String(campaignData.winning_probability ?? 0.1),
+          total_cards: String(campaignData.total_cards ?? 1000),
+          gift_id: campaignData.gift_id || '',
+          status: campaignData.status === 'active' ? 'active' : 'paused',
+        })
+      }
+
+      const { data: giftsData } = await supabase
+        .from('gifts')
+        .select('id, name, description, image_url')
+        .order('name', { ascending: true })
+
+      if (giftsData) setGifts(giftsData as GiftRow[])
 
       setLoading(false)
     }
@@ -119,17 +190,24 @@ export default function AdminMerchantScratchCardsPage() {
   }
 
   // ── Handle Send Scratch Card (Single or Bulk) ────────────────────────
+  // Points amount is still per-send (admin picks how many points this
+  // batch is worth), but the win probability is no longer typed in here —
+  // it's inherited from the active merchant campaign, so odds stay
+  // consistent everywhere a merchant might get a card from.
   const handleSendScratchCard = async (e: React.FormEvent) => {
     e.preventDefault()
     if (scratchTargets.length === 0) return
     setSendingCard(true)
 
+    const effectiveProbability = campaign?.winning_probability ?? 1.0
+
     const payloads = scratchTargets.map(target => ({
       merchant_id: target.id,
       prize_type: 'points',
       prize_amount: parseFloat(scratchForm.prize_amount) || 0,
-      winning_probability: parseFloat(scratchForm.winning_probability) || 1.0,
-      status: 'pending'
+      winning_probability: effectiveProbability,
+      status: 'pending',
+      campaign_id: campaign?.id ?? null,
     }))
 
     const { data, error } = await supabase
@@ -153,6 +231,64 @@ export default function AdminMerchantScratchCardsPage() {
     setSendingCard(false)
   }
 
+  // ── Save / update the active merchant campaign ───────────────────────
+  const handleSaveCampaign = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingCampaign(true)
+    setCampaignSaved(false)
+
+    const payload = {
+      name: campaignForm.name.trim() || 'Merchant Scratch Card Campaign',
+      prize_details: campaignForm.prize_details.trim() || null,
+      winning_probability: parseFloat(campaignForm.winning_probability) || 0,
+      total_cards: parseInt(campaignForm.total_cards, 10) || 0,
+      gift_id: campaignForm.gift_id || null,
+      status: campaignForm.status,
+      type: 'merchant' as const,
+    }
+
+    if (campaign) {
+      // Updating the existing active campaign in place
+      const { data, error } = await supabase
+        .from('campaigns')
+        .update(payload)
+        .eq('id', campaign.id)
+        .select()
+        .maybeSingle()
+
+      if (!error && data) {
+        setCampaign(data as CampaignRow)
+        setCampaignSaved(true)
+      } else {
+        alert('Could not save campaign settings.')
+      }
+    } else {
+      // No active merchant campaign exists yet — create one. The partial
+      // unique index on campaigns(type) where status='active' guarantees
+      // only one can ever be active at a time, so this is safe to insert
+      // as long as status is 'active'.
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert([{ ...payload, issued_cards: 0 }])
+        .select()
+        .maybeSingle()
+
+      if (!error && data) {
+        setCampaign(data as CampaignRow)
+        setCampaignSaved(true)
+      } else {
+        alert(
+          error?.message?.includes('duplicate')
+            ? 'An active merchant campaign already exists — refresh the page.'
+            : 'Could not create campaign.'
+        )
+      }
+    }
+
+    setSavingCampaign(false)
+    setTimeout(() => setCampaignSaved(false), 2500)
+  }
+
   const formatDate = (isoDate: string) => {
     return new Date(isoDate).toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -160,6 +296,8 @@ export default function AdminMerchantScratchCardsPage() {
       year: 'numeric'
     })
   }
+
+  const selectedGift = gifts.find(g => g.id === campaignForm.gift_id) || null
 
   if (loading) {
     return (
@@ -212,6 +350,38 @@ export default function AdminMerchantScratchCardsPage() {
         </div>
       </div>
 
+      {/* Active campaign summary strip — quick glance from anywhere on the page */}
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-purple-100 bg-purple-50/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-purple-600 shadow-sm">
+            <Layers size={16} />
+          </div>
+          {campaign ? (
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Active campaign: <span className="text-purple-700">{campaign.name}</span>
+              </p>
+              <p className="text-xs text-slate-500">
+                {(campaign.winning_probability * 100).toFixed(0)}% win chance · {campaign.issued_cards} / {campaign.total_cards} cards issued
+                {campaign.prize_details ? ` · ${campaign.prize_details}` : ''}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm font-semibold text-amber-700">No active merchant campaign configured yet</p>
+              <p className="text-xs text-amber-600">Sent cards will default to a 100% win probability until one is set.</p>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setActiveTab('campaign')}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-white px-4 py-2 text-xs font-semibold text-purple-700 shadow-sm hover:bg-purple-50 transition-colors cursor-pointer"
+        >
+          <Settings size={14} />
+          {campaign ? 'Edit Campaign' : 'Set Up Campaign'}
+        </button>
+      </div>
+
       {/* Tabs Navigation */}
       <div className="mb-6 inline-flex w-full sm:w-auto rounded-2xl bg-white p-1.5 shadow-sm border border-slate-200">
         <button
@@ -235,6 +405,17 @@ export default function AdminMerchantScratchCardsPage() {
         >
           <Activity size={16} />
           Activity History
+        </button>
+        <button
+          onClick={() => setActiveTab('campaign')}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all ${
+            activeTab === 'campaign'
+              ? 'bg-purple-50 text-purple-700'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <Settings size={16} />
+          Campaign Settings
         </button>
       </div>
 
@@ -383,7 +564,7 @@ export default function AdminMerchantScratchCardsPage() {
               </div>
             </div>
           </motion.div>
-        ) : (
+        ) : activeTab === 'history' ? (
           <motion.div
             key="history-tab"
             initial={{ opacity: 0, y: 10 }}
@@ -426,13 +607,14 @@ export default function AdminMerchantScratchCardsPage() {
                       <th className="py-3 px-4 font-medium">Merchant</th>
                       <th className="py-3 px-4 font-medium">Reward Prize</th>
                       <th className="py-3 px-4 font-medium">Win Probability</th>
+                      <th className="py-3 px-4 font-medium">Campaign</th>
                       <th className="py-3 px-4 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rewardsHistory.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-12 text-slate-400">
+                        <td colSpan={6} className="text-center py-12 text-slate-400">
                           No scratch cards have been sent yet.
                         </td>
                       </tr>
@@ -459,6 +641,13 @@ export default function AdminMerchantScratchCardsPage() {
                             <td className="py-4 px-4 text-slate-600">
                               {(reward.winning_probability * 100).toFixed(0)}% Chance
                             </td>
+                            <td className="py-4 px-4 text-slate-500 text-xs">
+                              {reward.campaign_id
+                                ? reward.campaign_id === campaign?.id
+                                  ? campaign?.name
+                                  : 'Past campaign'
+                                : '—'}
+                            </td>
                             <td className="py-4 px-4">
                               <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${reward.status === 'won' || reward.status === 'claimed'
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -476,6 +665,185 @@ export default function AdminMerchantScratchCardsPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="campaign-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Merchant Campaign Settings</h2>
+                  <p className="text-xs text-slate-500">
+                    Controls the odds and prize shown to every merchant when they scratch a card — only one merchant campaign can be active at a time.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveCampaign} className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_1fr]">
+                {/* Left column — form fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Campaign Name</label>
+                    <input
+                      type="text"
+                      value={campaignForm.name}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
+                      required
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Prize Details</label>
+                    <textarea
+                      value={campaignForm.prize_details}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, prize_details: e.target.value })}
+                      placeholder="e.g. 50 bonus points + free delivery kit"
+                      rows={3}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6] resize-none"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">Shown to merchants on the win screen alongside the points they receive.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 flex items-center gap-1.5">
+                        <Percent size={12} /> Win Probability (0–1)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.05"
+                        min="0"
+                        max="1"
+                        value={campaignForm.winning_probability}
+                        onChange={(e) => setCampaignForm({ ...campaignForm, winning_probability: e.target.value })}
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Total Cards Allowed</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={campaignForm.total_cards}
+                        onChange={(e) => setCampaignForm({ ...campaignForm, total_cards: e.target.value })}
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Linked Gift (optional)</label>
+                    <select
+                      value={campaignForm.gift_id}
+                      onChange={(e) => setCampaignForm({ ...campaignForm, gift_id: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                    >
+                      <option value="">No gift — points only</option>
+                      {gifts.map((g) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Status</label>
+                    <div className="flex gap-3">
+                      {(['active', 'paused'] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setCampaignForm({ ...campaignForm, status: s })}
+                          className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold capitalize transition-colors cursor-pointer ${
+                            campaignForm.status === s
+                              ? 'border-purple-300 bg-purple-50 text-purple-700'
+                              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Only one <span className="font-semibold">active</span> merchant campaign can exist at a time — activating this one will deactivate any other.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={savingCampaign}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#9333EA] to-[#7BC142] px-7 py-3 text-sm font-semibold text-white shadow-md hover:translate-y-[-1px] disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingCampaign ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : campaignSaved ? (
+                      <CheckCircle2 size={16} />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    {campaignSaved ? 'Saved!' : campaign ? 'Save Campaign' : 'Create Campaign'}
+                  </button>
+                </div>
+
+                {/* Right column — live preview + stats */}
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5">
+                    <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Merchant-Facing Preview</p>
+                    <div className="rounded-xl border border-purple-100 bg-white p-4 text-center shadow-sm">
+                      {selectedGift?.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={selectedGift.image_url}
+                          alt={selectedGift.name}
+                          className="mx-auto mb-3 h-16 w-16 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-300">
+                          <ImageOff size={22} />
+                        </div>
+                      )}
+                      <p className="text-sm font-semibold text-slate-800">
+                        {selectedGift?.name || 'Reward Points'}
+                      </p>
+                      {campaignForm.prize_details && (
+                        <p className="mt-1 text-xs text-slate-500">{campaignForm.prize_details}</p>
+                      )}
+                      <p className="mt-2 text-xs font-semibold text-purple-600">
+                        {(parseFloat(campaignForm.winning_probability || '0') * 100).toFixed(0)}% chance to win
+                      </p>
+                    </div>
+                  </div>
+
+                  {campaign && (
+                    <div className="rounded-2xl border border-slate-200/80 p-5">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Campaign Usage</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Cards issued</span>
+                        <span className="font-semibold text-slate-900">{campaign.issued_cards} / {campaign.total_cards}</span>
+                      </div>
+                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#9333EA] to-[#7BC142]"
+                          style={{
+                            width: `${Math.min(100, (campaign.issued_cards / Math.max(1, campaign.total_cards)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
             </div>
           </motion.div>
         )}
@@ -499,6 +867,30 @@ export default function AdminMerchantScratchCardsPage() {
                     {scratchTargets.length === 1 ? 'The merchant will see this on their dashboard.' : 'Each selected merchant will receive this reward on their dashboard.'}
                   </p>
                 </div>
+
+                {campaign ? (
+                  <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-purple-100 bg-purple-50/60 px-3.5 py-2.5 text-xs text-purple-700">
+                    <Layers size={14} className="mt-0.5 shrink-0" />
+                    <span>
+                      Odds are controlled by the active campaign{' '}
+                      <span className="font-semibold">&ldquo;{campaign.name}&rdquo;</span> —{' '}
+                      {(campaign.winning_probability * 100).toFixed(0)}% win chance. Change this in{' '}
+                      <button
+                        type="button"
+                        onClick={() => { setIsScratchModalOpen(false); setActiveTab('campaign') }}
+                        className="font-semibold underline underline-offset-2 cursor-pointer"
+                      >
+                        Campaign Settings
+                      </button>.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <span>No active campaign — cards will send with a 100% win chance. Set one up in Campaign Settings for real odds.</span>
+                  </div>
+                )}
+
                 <form onSubmit={handleSendScratchCard} className="space-y-4">
                   <div>
                     <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Prize Type</label>
@@ -511,31 +903,16 @@ export default function AdminMerchantScratchCardsPage() {
                       <option value="points">Reward Points</option>
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Points Amount</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={scratchForm.prize_amount}
-                        onChange={(e) => setScratchForm({ ...scratchForm, prize_amount: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Win Probability (0-1)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="1"
-                        value={scratchForm.winning_probability}
-                        onChange={(e) => setScratchForm({ ...scratchForm, winning_probability: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Points Amount</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={scratchForm.prize_amount}
+                      onChange={(e) => setScratchForm({ ...scratchForm, prize_amount: e.target.value })}
+                      required
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                    />
                   </div>
                   <button type="submit" disabled={sendingCard} className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#9333EA] to-[#7BC142] px-7 py-3 text-sm font-semibold text-white shadow-md hover:translate-y-[-1px] disabled:opacity-50 cursor-pointer mt-2">
                     {sendingCard ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send {scratchTargets.length > 1 ? 'Rewards' : 'Reward'}

@@ -11,7 +11,8 @@ import {
   Link as LinkIcon,
   PlayCircle,
   Calendar,
-  X
+  X,
+  ArrowUpRight,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -41,6 +42,36 @@ interface VideoRecord {
   url: string
   platform: 'youtube' | 'instagram' | 'other'
   created_at: string
+}
+
+// Platform design tokens — each platform gets its own accent so the top
+// strip / badge / meta chip on a card always tells you what it is before
+// you even read the title.
+const PLATFORM_STYLES: Record<
+  'youtube' | 'instagram' | 'other',
+  { accent: string; badgeBg: string; chipText: string; chipBg: string; label: string }
+> = {
+  youtube: {
+    accent: 'bg-red-500',
+    badgeBg: 'bg-red-500',
+    chipText: 'text-red-600',
+    chipBg: 'bg-red-50',
+    label: 'YouTube',
+  },
+  instagram: {
+    accent: 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-amber-400',
+    badgeBg: 'bg-pink-600',
+    chipText: 'text-pink-600',
+    chipBg: 'bg-pink-50',
+    label: 'Instagram',
+  },
+  other: {
+    accent: 'bg-gradient-to-r from-[#1857D6] to-[#0B2E7A]',
+    badgeBg: 'bg-[#1857D6]',
+    chipText: 'text-[#1857D6]',
+    chipBg: 'bg-blue-50',
+    label: 'Resource',
+  },
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -77,20 +108,26 @@ function extractYouTubeId(url: string): string | null {
 // ─────────────────────────────────────────────────────────────────────────
 // Sub-Component: Individual Video Card
 // ─────────────────────────────────────────────────────────────────────────
-const VideoCard = ({ 
-  video, 
-  playingId, 
-  setPlayingId 
-}: { 
-  video: VideoRecord, 
-  playingId: string | null, 
-  setPlayingId: (id: string | null) => void 
+const VideoCard = ({
+  video,
+  playingId,
+  setPlayingId,
+}: {
+  video: VideoRecord
+  playingId: string | null
+  setPlayingId: (id: string | null) => void
 }) => {
   const [igThumb, setIgThumb] = useState<string | null>(null)
   const isPlaying = playingId === video.id
 
   const ytId = extractYouTubeId(video.url)
   const isYouTube = video.platform === 'youtube' || Boolean(ytId)
+  const resolvedPlatform: 'youtube' | 'instagram' | 'other' = isYouTube
+    ? 'youtube'
+    : video.platform === 'instagram'
+    ? 'instagram'
+    : 'other'
+  const styles = PLATFORM_STYLES[resolvedPlatform]
 
   // Fetch Instagram Thumbnail dynamically
   useEffect(() => {
@@ -113,16 +150,10 @@ const VideoCard = ({
     })
   }
 
-  const getPlatformIcon = (platform: string, size = 18) => {
-    if (isYouTube || platform === 'youtube') return <Youtube size={size} className="text-white" />
-    if (platform === 'instagram') return <Instagram size={size} className="text-white" />
+  const getPlatformIcon = (size = 15) => {
+    if (resolvedPlatform === 'youtube') return <Youtube size={size} className="text-white" />
+    if (resolvedPlatform === 'instagram') return <Instagram size={size} className="text-white" />
     return <LinkIcon size={size} className="text-white" />
-  }
-
-  const getPlatformColor = (platform: string) => {
-    if (isYouTube || platform === 'youtube') return 'bg-red-500'
-    if (platform === 'instagram') return 'bg-pink-600'
-    return 'bg-[#1857D6]'
   }
 
   const finalThumbnail = ytId
@@ -144,13 +175,18 @@ const VideoCard = ({
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group flex flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md text-left"
+      className="group flex flex-col overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-lg text-left"
     >
-      {/* ── Responsive Video Player Box (Auto-expands height for Instagram so 100% of reel is visible) ── */}
-      <div 
+      {/* Platform accent strip — tells you what this is before you even
+          reach the title, echoing the accent-bar motif used elsewhere
+          across the app (modals, cards). */}
+      <div className={`h-1.5 w-full shrink-0 ${styles.accent}`} />
+
+      {/* ── Video Player Box (Auto-expands height for Instagram so 100% of reel is visible) ── */}
+      <div
         className={`relative w-full flex-shrink-0 overflow-hidden bg-black transition-all duration-300 ${
-          isPlaying && video.platform === 'instagram' 
-            ? 'h-[580px] sm:h-[620px]' 
+          isPlaying && video.platform === 'instagram'
+            ? 'h-[580px] sm:h-[620px]'
             : 'aspect-video'
         }`}
       >
@@ -159,21 +195,21 @@ const VideoCard = ({
             <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-50">
               <LinkIcon size={34} className="mb-2 text-slate-400" />
               <p className="mb-3 text-sm text-slate-500">Cannot play this link inline.</p>
-              <a 
-                href={video.url} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="rounded-xl bg-[#1857D6] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#0B2E7A] transition-colors"
               >
                 Open Link
               </a>
             </div>
           ) : video.url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-            <video 
-              src={video.url} 
-              autoPlay 
-              controls 
-              className="absolute inset-0 h-full w-full object-contain bg-black" 
+            <video
+              src={video.url}
+              autoPlay
+              controls
+              className="absolute inset-0 h-full w-full object-contain bg-black"
             />
           ) : (
             <iframe
@@ -186,20 +222,20 @@ const VideoCard = ({
             />
           )
         ) : (
-          <button 
+          <button
             onClick={() => setPlayingId(video.id)}
-            className="absolute inset-0 w-full h-full text-left focus:outline-none"
+            className="absolute inset-0 w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6] focus-visible:ring-offset-2"
           >
             {finalThumbnail ? (
-              <img 
-                src={finalThumbnail} 
+              <img
+                src={finalThumbnail}
                 alt={video.title}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900" />
             )}
-            
+
             {/* Play Overlay */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 backdrop-blur-[2px] transition-opacity duration-300 group-hover:opacity-100">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1857D6] shadow-xl">
@@ -207,39 +243,45 @@ const VideoCard = ({
               </div>
             </div>
 
-            {/* Platform Tag */}
-            <div className={`absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-2xl shadow-sm ${getPlatformColor(video.platform)}`}>
-              {getPlatformIcon(video.platform, 18)}
+            {/* Platform Badge */}
+            <div className={`absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-2xl shadow-sm ${styles.badgeBg}`}>
+              {getPlatformIcon()}
             </div>
           </button>
         )}
       </div>
 
       {/* ── Content Details ── */}
-      <div className="flex flex-1 flex-col p-6 w-full bg-white">
-        <h3 className="mb-3 line-clamp-2 text-lg font-bold leading-snug text-slate-900 group-hover:text-[#1857D6] transition-colors">
+      <div className="flex flex-1 flex-col p-5 w-full bg-white">
+        <span className={`mb-2 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${styles.chipBg} ${styles.chipText}`}>
+          {getPlatformIcon(10)}
+          {styles.label}
+        </span>
+
+        <h3 className="mb-3 line-clamp-2 text-base font-bold leading-snug text-slate-900 group-hover:text-[#1857D6] transition-colors">
           {video.title}
         </h3>
-        
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100/80">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-            <Calendar size={14} />
+
+        <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100/80">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+            <Calendar size={13} />
             {formatDate(video.created_at)}
           </span>
-          
+
           {isPlaying ? (
-            <button 
+            <button
               onClick={() => setPlayingId(null)}
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors"
+              className="flex items-center gap-1.5 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
             >
-              <X size={15} /> Close Video
+              <X size={13} /> Close
             </button>
           ) : (
             <button
               onClick={() => setPlayingId(video.id)}
-              className="flex items-center gap-1.5 text-xs font-bold text-[#1857D6] hover:underline"
+              className="flex items-center gap-1 text-[11px] font-bold text-[#1857D6] hover:text-[#0B2E7A] transition-colors cursor-pointer"
             >
-              Play Video
+              Watch now
+              <ArrowUpRight size={12} />
             </button>
           )}
         </div>
@@ -253,11 +295,11 @@ const VideoCard = ({
 // ─────────────────────────────────────────────────────────────────────────
 export default function MerchantVideosPage() {
   const supabase = createClient()
-  
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videos, setVideos] = useState<VideoRecord[]>([])
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'youtube' | 'instagram' | 'other'>('all')
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -289,9 +331,13 @@ export default function MerchantVideosPage() {
     return matchesSearch && matchesFilter
   })
 
+  // Counts per platform for the filter pills — real numbers, not decoration.
+  const countFor = (filter: 'all' | 'youtube' | 'instagram' | 'other') =>
+    filter === 'all' ? videos.length : videos.filter(v => v.platform === filter).length
+
   if (loading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <Loader2 size={28} className="animate-spin text-[#1857D6]" />
       </div>
     )
@@ -299,7 +345,7 @@ export default function MerchantVideosPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="mx-auto min-h-screen max-w-2xl px-4 py-16 text-center bg-white" style={{ fontFamily: 'var(--font-display)' }}>
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 shadow-sm">
           <AlertCircle size={32} />
         </div>
@@ -310,8 +356,8 @@ export default function MerchantVideosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" style={{ fontFamily: 'var(--font-display)' }}>
-      
+    <div className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6 lg:px-8 bg-white" style={{ fontFamily: 'var(--font-display)' }}>
+
       {/* Header Banner */}
       <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/15 blur-2xl" />
@@ -321,13 +367,22 @@ export default function MerchantVideosPage() {
               <PlayCircle size={30} />
             </div>
             <div>
+              <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7BC142]/10 to-[#1857D6]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#3E7A1C]">
+                Merchant Academy
+              </div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 Training & Resources
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Watch guides, tutorials, and promotional materials to maximize your store's growth.
+                Watch guides, tutorials, and promotional materials to maximize your store&apos;s growth.
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-2.5 text-[#1857D6] shrink-0">
+            <Video size={16} />
+            <span className="text-sm font-bold">{videos.length}</span>
+            <span className="text-xs font-medium text-blue-500">video{videos.length === 1 ? '' : 's'} available</span>
           </div>
         </div>
       </div>
@@ -344,19 +399,24 @@ export default function MerchantVideosPage() {
             className="w-full rounded-2xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
           />
         </div>
-        
+
         <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
           {(['all', 'youtube', 'instagram', 'other'] as const).map((filter) => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-medium transition-all cursor-pointer ${
                 activeFilter === filter
                   ? 'bg-slate-900 text-white shadow-md'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
             >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                activeFilter === filter ? 'bg-white/20' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {countFor(filter)}
+              </span>
             </button>
           ))}
         </div>
@@ -370,13 +430,13 @@ export default function MerchantVideosPage() {
           <p className="mt-1 text-sm text-slate-500">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredVideos.map((video) => (
-            <VideoCard 
-              key={video.id} 
-              video={video} 
-              playingId={playingId} 
-              setPlayingId={setPlayingId} 
+            <VideoCard
+              key={video.id}
+              video={video}
+              playingId={playingId}
+              setPlayingId={setPlayingId}
             />
           ))}
         </div>

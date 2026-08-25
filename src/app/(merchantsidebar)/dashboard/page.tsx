@@ -587,7 +587,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Render B2B Scratch Card if exists */}
+      {/* Floating scratch-card trigger + popup — MerchantScratchCard now
+          checks for a pending card and shows a small icon button (bottom
+          right of the screen) instead of auto-opening. Clicking the icon
+          opens the popup, which has its own close (X) button. */}
       {merchant && <MerchantScratchCard merchantId={merchant.id} />}
 
     </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Gift, Loader2, CheckCircle2, Frown, Sparkles } from 'lucide-react'
+import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Interactive Canvas Scratch Card Component
@@ -147,64 +147,143 @@ interface ScratchCard {
   prize_type: string
   prize_amount: number
   winning_probability: number
+  campaign_id: string | null
+}
+
+interface MerchantCampaign {
+  id: string
+  name: string
+  prize_details: string | null
+  winning_probability: number
+  total_cards: number
+  issued_cards: number
+  gift: { id: string; name: string; description: string | null; image_url: string | null } | null
 }
 
 export default function MerchantScratchCard({ merchantId }: { merchantId: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [card, setCard] = useState<ScratchCard | null>(null)
+  const [campaign, setCampaign] = useState<MerchantCampaign | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const [isScratching, setIsScratching] = useState(false)
   const [result, setResult] = useState<'win' | 'lose' | null>(null)
+  const [wonAmount, setWonAmount] = useState<number>(0)
 
   useEffect(() => {
-    const fetchPendingCard = async () => {
-      const { data, error } = await supabase
-        .from('merchant_scratch_cards')
+    const fetchPendingCardAndCampaign = async () => {
+      // There is exactly one active campaign per type (enforced by the
+      // partial unique index on campaigns(type) where status='active'), so
+      // this is the single source of truth for merchant scratch-card odds
+      // and prize info — NOT the static prize_amount/winning_probability
+      // that may be sitting on the individual scratch_cards row.
+      const campaignPromise = supabase
+        .from('campaigns')
         .select(`
-    id,
-    prize_type,
-    prize_amount,
-    winning_probability,
-    campaign:campaigns!inner (
-      id, name, type,
-      gift:gifts ( id, name, description, image_url )
-    )
-  `)
-        .eq('merchant_id', merchantId)
-        .eq('status', 'pending')
-        .eq('campaign.type', 'merchant')
-        .order('created_at', { ascending: false })
-        .limit(1)
+          id, name, prize_details, winning_probability, total_cards, issued_cards,
+          gift:gifts ( id, name, description, image_url )
+        `)
+        .eq('type', 'merchant')
+        .eq('status', 'active')
         .maybeSingle()
 
-      console.log('scratch card fetch →', { data, error, merchantId })
+      // NOTE: campaign_id is null on most legacy cards, so this MUST be a
+      // LEFT join (`campaigns`, not `campaigns!inner`) — an inner join
+      // drops any row whose foreign key doesn't resolve, and null never
+      // resolves. We fetch all pending cards and pick the first eligible
+      // one in JS instead of filtering campaign type in the query.
+      const cardPromise = supabase
+        .from('merchant_scratch_cards')
+        .select(`
+          id, prize_type, prize_amount, winning_probability, campaign_id,
+          campaign:campaigns ( id, name, type )
+        `)
+        .eq('merchant_id', merchantId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
 
-      if (data) setCard(data as ScratchCard)
+      const [{ data: campaignData, error: campaignError }, { data: cardData, error: cardError }] =
+        await Promise.all([campaignPromise, cardPromise])
+
+      console.log('active merchant campaign →', { campaignData, campaignError })
+      console.log('scratch card fetch →', { cardData, cardError, merchantId })
+
+      if (campaignData) {
+        const giftJoin = Array.isArray(campaignData.gift) ? campaignData.gift[0] : campaignData.gift
+        setCampaign({
+          id: campaignData.id,
+          name: campaignData.name,
+          prize_details: campaignData.prize_details,
+          winning_probability: campaignData.winning_probability,
+          total_cards: campaignData.total_cards,
+          issued_cards: campaignData.issued_cards,
+          gift: giftJoin ?? null,
+        })
+      }
+
+      if (!cardError && cardData) {
+        type Row = ScratchCard & { campaign: { id: string; type: string } | null }
+        const eligible = (cardData as unknown as Row[]).find(
+          (row) => !row.campaign_id || row.campaign?.type === 'merchant'
+        )
+        if (eligible) setCard(eligible as ScratchCard)
+      }
+
       setLoading(false)
     }
-    fetchPendingCard()
+    fetchPendingCardAndCampaign()
   }, [merchantId, supabase])
 
   const handleScratch = async () => {
     if (!card || isScratching) return
     setIsScratching(true) // Triggers GPay particle animation
 
-    const isWinner = Math.random() < card.winning_probability
+    // The active campaign is the source of truth for odds — fall back to
+    // whatever is on the card itself only if no active campaign exists.
+    const effectiveProbability = campaign?.winning_probability ?? card.winning_probability
+    const isWinner = Math.random() < effectiveProbability
     const newStatus = isWinner ? 'won' : 'lost'
 
-    // 1. Update Scratch Card Status
-    await supabase.from('merchant_scratch_cards').update({ status: newStatus }).eq('id', card.id)
+    // The points amount still lives on the scratch card row (campaigns
+    // doesn't carry a numeric prize amount, only prize_details/gift text),
+    // so that stays as-is — we just record which campaign this card was
+    // played against.
+    const linkedCampaignId = campaign?.id ?? card.campaign_id ?? null
+
+    // 1. Update Scratch Card Status + link the campaign it was played under
+    await supabase
+      .from('merchant_scratch_cards')
+      .update({ status: newStatus, campaign_id: linkedCampaignId })
+      .eq('id', card.id)
 
     // 2. If won, credit wallet ledger so it reflects immediately in the Dashboard
     if (isWinner) {
+      const rewardLabel = campaign?.gift?.name
+        ? campaign.gift.name
+        : campaign?.prize_details
+        ? campaign.prize_details
+        : 'B2B Scratch Card Reward'
+
       await supabase.from('merchant_transactions').insert([{
         merchant_id: merchantId,
         wallet_type: 'points', // STRICTLY POINTS
         transaction_type: 'credit',
         amount: card.prize_amount,
-        description: 'Won B2B Scratch Card Reward!',
+        description: `Won ${rewardLabel}!`,
         category: 'reward'
       }])
+
+      setWonAmount(card.prize_amount)
+
+      // 3. Track redemption against the campaign's card count. Best-effort:
+      // read-then-write since Supabase's client API has no atomic
+      // increment without an RPC function.
+      if (campaign) {
+        await supabase
+          .from('campaigns')
+          .update({ issued_cards: campaign.issued_cards + 1 })
+          .eq('id', campaign.id)
+      }
     }
 
     // Wait 1.5s for the scratching experience before showing result
@@ -214,36 +293,87 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
     }, 1500)
   }
 
-  const handleClose = () => {
+  // Called after a win/lose result — the ledger has changed, so reload to
+  // pull fresh point totals into the rest of the dashboard.
+  const handleDone = () => {
+    setIsOpen(false)
     setCard(null)
     setResult(null)
-    // Reload page to show updated points balance
     window.location.reload()
   }
 
-  if (loading || !card) return null
+  // Called from the X button (or backdrop) — if the user already has a
+  // result, treat it the same as "Done" so the dashboard refreshes.
+  // If they close before scratching, just hide the modal; the floating
+  // icon stays so they can come back and scratch later.
+  const handleCloseModal = () => {
+    if (result) {
+      handleDone()
+    } else {
+      setIsOpen(false)
+    }
+  }
+
+  if (loading) return null
 
   return (
-    <AnimatePresence>
-      {card && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm"
-            onClick={result ? handleClose : undefined}
+    <>
+      {/* Floating trigger icon — shown whenever the merchant has a pending
+          scratch card. Click opens the popup on demand instead of it
+          forcing itself open. */}
+      {card && !isOpen && (
+        <motion.button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.96 }}
+          aria-label="Open your scratch card reward"
+          className="fixed bottom-6 right-6 z-[90] flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#9333EA] via-[#1857D6] to-[#9333EA] text-white shadow-[0_10px_30px_rgba(147,51,234,0.45)] cursor-pointer"
+        >
+          <motion.span
+            className="absolute inset-0 rounded-full bg-[#9333EA]/50"
+            animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           />
+          <Gift size={26} className="relative z-10" />
+          <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-[#0B0F19] ring-2 ring-white">
+            1
+          </span>
+        </motion.button>
+      )}
 
-          {/* Modal Container */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.97 }}
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-8 text-center"
-          >
-            {!result ? (
+      <AnimatePresence>
+        {card && isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm"
+              onClick={handleCloseModal}
+            />
+
+            {/* Modal Container */}
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-8 text-center"
+            >
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                aria-label="Close"
+                className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+
+              {!result ? (
               // ── STEP 1: The Interactive Scratch Card ──
               <div className="flex flex-col items-center">
                 <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-600">
@@ -365,11 +495,28 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                     </motion.div>
                     <h2 className="text-2xl font-bold text-[#0B0F19]">Congratulations! 🎉</h2>
                     <p className="mt-2 text-sm text-slate-500">You won a special B2B reward:</p>
+
+                    {campaign?.gift?.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={campaign.gift.image_url}
+                        alt={campaign.gift.name}
+                        className="mt-4 h-20 w-20 rounded-xl object-cover shadow-sm"
+                      />
+                    )}
+
                     <div className="mt-4 px-6 py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
                       <span className="text-lg font-bold text-[#3E7A1C]">
-                        {card.prize_amount} Reward Points
+                        {wonAmount} Reward Points
                       </span>
                     </div>
+
+                    {(campaign?.gift?.name || campaign?.prize_details) && (
+                      <p className="mt-3 max-w-xs text-xs text-slate-500">
+                        {campaign?.gift?.name ?? campaign?.prize_details}
+                        {campaign?.gift?.description ? ` — ${campaign.gift.description}` : ''}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <>
@@ -381,16 +528,17 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                   </>
                 )}
                 <button
-                  onClick={handleClose}
+                  onClick={handleDone}
                   className="mt-6 w-full rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 py-3 text-sm font-semibold cursor-pointer transition-colors"
                 >
                   Done
                 </button>
               </div>
             )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

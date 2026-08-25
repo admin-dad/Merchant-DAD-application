@@ -541,6 +541,17 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                             />
                           </Field>
 
+                          {/* Email — placed directly below Mobile Number in Register mode */}
+                          <Field label="Email Address" icon={<Mail size={16} />} error={errors.email}>
+                            <input
+                              type="email"
+                              value={form.email}
+                              onChange={(e) => update('email', e.target.value)}
+                              placeholder="you@business.com"
+                              className={inputClass(!!errors.email)}
+                            />
+                          </Field>
+
                           {/* Referral Code */}
                           <Field label="Referral Code (optional)" icon={<Gift size={16} />}>
                             <input
@@ -556,16 +567,18 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                       )}
                     </AnimatePresence>
 
-                    {/* Email — shown in both modes */}
-                    <Field label="Email Address" icon={<Mail size={16} />} error={errors.email}>
-                      <input
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => update('email', e.target.value)}
-                        placeholder="you@business.com"
-                        className={inputClass(!!errors.email)}
-                      />
-                    </Field>
+                    {/* Email — Login mode only (Register mode has its own copy above, under Mobile Number) */}
+                    {mode === 'login' && (
+                      <Field label="Email Address" icon={<Mail size={16} />} error={errors.email}>
+                        <input
+                          type="email"
+                          value={form.email}
+                          onChange={(e) => update('email', e.target.value)}
+                          placeholder="you@business.com"
+                          className={inputClass(!!errors.email)}
+                        />
+                      </Field>
+                    )}
 
                     {/* Password — shown in both modes */}
                     <Field label="Password" icon={<Lock size={16} />} error={errors.password}>
