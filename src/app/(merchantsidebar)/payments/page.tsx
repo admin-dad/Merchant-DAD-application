@@ -241,17 +241,19 @@ export default function MerchantScanPaymentPage() {
       }
       setScans((scanData as QRScan[]) || [])
 
-      const { data: payData, error: payError } = await supabase
-        .from('merchant_payments')
-        .select(isMonthlyMerchant ? 'id, amount, status, created_at, billing_month' : 'id, amount, status, created_at')
-        .eq('merchant_id', merchData.id)
-        .order('created_at', { ascending: false })
+const { data: payData, error: payError } = await supabase
+  .from('merchant_payments')
+  .select('id, amount, status, created_at, billing_month')
+  .eq('merchant_id', merchData.id)
+  .order('created_at', { ascending: false })
 
-      if (payError) {
-        console.error('Error fetching merchant_payments:', payError)
-      } else if (payData) {
-        setPayments(payData as PaymentRecord[])
-      }
+if (payError) {
+  console.error('Error fetching merchant_payments:', payError)
+} else if (payData) {
+  setPayments(
+    (payData as unknown as PaymentRecord[])
+  )
+}
     } catch (err: unknown) {
       console.error('Full fetchData Exception:', err)
       setError(err instanceof Error ? err.message : 'Failed to load records.')
