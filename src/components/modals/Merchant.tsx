@@ -197,7 +197,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
     return Object.keys(next).length === 0
   }
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setServerError(null)
     setBlockedStatus(null)
@@ -279,6 +279,11 @@ const handleSubmit = async (e: React.FormEvent) => {
       // uniqueness is enforced by the DB trigger and its error message
       // often gets swallowed into a generic "Database error saving new
       // user" before it ever reaches the client).
+      type DuplicateCheckResult = {
+        email_exists: boolean
+        mobile_exists: boolean
+      }
+
       const { data: dupCheck, error: dupError } = await supabase
         .rpc('check_merchant_duplicate', {
           p_email: trimmedEmail,
@@ -291,14 +296,21 @@ const handleSubmit = async (e: React.FormEvent) => {
         return
       }
 
-      if (dupCheck?.email_exists || dupCheck?.mobile_exists) {
+      const duplicate = dupCheck as DuplicateCheckResult | null
+
+      if (duplicate?.email_exists || duplicate?.mobile_exists) {
         const nextErrors: FormErrors = {}
-        if (dupCheck.email_exists) {
-          nextErrors.email = 'An account already exists for this email. Try logging in instead.'
+
+        if (duplicate.email_exists) {
+          nextErrors.email =
+            'An account already exists for this email. Try logging in instead.'
         }
-        if (dupCheck.mobile_exists) {
-          nextErrors.mobile = 'This mobile number is already registered.'
+
+        if (duplicate.mobile_exists) {
+          nextErrors.mobile =
+            'This mobile number is already registered.'
         }
+
         setErrors((prev) => ({ ...prev, ...nextErrors }))
         return
       }
@@ -461,9 +473,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="merchant-modal-title"
-            className={`relative z-10 w-full ${
-              newMerchant ? 'max-w-2xl' : 'max-w-lg'
-            } max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200`}
+            className={`relative z-10 w-full ${newMerchant ? 'max-w-2xl' : 'max-w-lg'
+              } max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200`}
             style={{ fontFamily: 'var(--font-display)' }}
           >
             {/* Top accent bar */}
@@ -505,18 +516,16 @@ const handleSubmit = async (e: React.FormEvent) => {
                     <button
                       type="button"
                       onClick={() => switchMode('register')}
-                      className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-medium transition-colors cursor-pointer ${
-                        mode === 'register' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                      }`}
+                      className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-medium transition-colors cursor-pointer ${mode === 'register' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                        }`}
                     >
                       Register
                     </button>
                     <button
                       type="button"
                       onClick={() => switchMode('login')}
-                      className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-medium transition-colors cursor-pointer ${
-                        mode === 'login' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
-                      }`}
+                      className={`relative z-10 flex-1 rounded-xl py-2 text-sm font-medium transition-colors cursor-pointer ${mode === 'login' ? 'text-white' : 'text-slate-500 hover:text-slate-700'
+                        }`}
                     >
                       Login
                     </button>
