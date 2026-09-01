@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search,
@@ -44,9 +44,6 @@ interface VideoRecord {
   created_at: string
 }
 
-// Platform design tokens — each platform gets its own accent so the top
-// strip / badge / meta chip on a card always tells you what it is before
-// you even read the title.
 const PLATFORM_STYLES: Record<
   'youtube' | 'instagram' | 'other',
   { accent: string; badgeBg: string; chipText: string; chipBg: string; label: string }
@@ -75,7 +72,7 @@ const PLATFORM_STYLES: Record<
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// YouTube ID Extractor
+// Helpers
 // ─────────────────────────────────────────────────────────────────────────
 function extractYouTubeId(url: string): string | null {
   if (!url) return null
@@ -105,33 +102,43 @@ function extractYouTubeId(url: string): string | null {
   return null
 }
 
+function resolvePlatform(video: VideoRecord, ytId: string | null): 'youtube' | 'instagram' | 'other' {
+  const isYouTube = video.platform === 'youtube' || Boolean(ytId)
+  if (isYouTube) return 'youtube'
+  if (video.platform === 'instagram' || video.url.includes('instagram.com')) return 'instagram'
+  return 'other'
+}
+
+function getEmbedUrl(video: VideoRecord, ytId: string | null) {
+  if (ytId) {
+    return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=0&enablejsapi=1&rel=0`
+  }
+  if (video.platform === 'instagram' || video.url.includes('instagram.com')) {
+    // Append /embed/ with hidecaption parameter to make it clean and compact
+    const cleanUrl = video.url.split('?')[0].replace(/\/+$/, '')
+    return `${cleanUrl}/embed/?hidecaption=true`
+  }
+  return video.url
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Sub-Component: Individual Video Card
 // ─────────────────────────────────────────────────────────────────────────
 const VideoCard = ({
   video,
-  playingId,
-  setPlayingId,
+  onPlay,
 }: {
   video: VideoRecord
-  playingId: string | null
-  setPlayingId: (id: string | null) => void
+  onPlay: (video: VideoRecord) => void
 }) => {
   const [igThumb, setIgThumb] = useState<string | null>(null)
-  const isPlaying = playingId === video.id
 
   const ytId = extractYouTubeId(video.url)
-  const isYouTube = video.platform === 'youtube' || Boolean(ytId)
-  const resolvedPlatform: 'youtube' | 'instagram' | 'other' = isYouTube
-    ? 'youtube'
-    : video.platform === 'instagram'
-    ? 'instagram'
-    : 'other'
+  const resolvedPlatform = resolvePlatform(video, ytId)
   const styles = PLATFORM_STYLES[resolvedPlatform]
 
-  // Fetch Instagram Thumbnail dynamically
   useEffect(() => {
-    if (video.platform === 'instagram' && !isYouTube) {
+    if (resolvedPlatform === 'instagram') {
       const cleanUrl = video.url.split('?')[0]
       fetch(`https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}`)
         .then(res => res.json())
@@ -142,7 +149,8 @@ const VideoCard = ({
         })
         .catch(() => {})
     }
-  }, [video.url, video.platform, isYouTube])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video.url, resolvedPlatform])
 
   const formatDate = (isoDate: string) => {
     return new Date(isoDate).toLocaleDateString('en-IN', {
@@ -160,98 +168,43 @@ const VideoCard = ({
     ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
     : igThumb
 
-  const getEmbedUrl = () => {
-    if (ytId) {
-      return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&enablejsapi=1&rel=0`
-    }
-    if (video.platform === 'instagram') {
-      let cleanUrl = video.url.split('?')[0].replace(/\/+$/, '')
-      return `${cleanUrl}/embed/`
-    }
-    return video.url
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       className="group flex flex-col overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-lg text-left"
     >
-      {/* Platform accent strip — tells you what this is before you even
-          reach the title, echoing the accent-bar motif used elsewhere
-          across the app (modals, cards). */}
       <div className={`h-1.5 w-full shrink-0 ${styles.accent}`} />
 
-      {/* ── Video Player Box (Auto-expands height for Instagram so 100% of reel is visible) ── */}
-      <div
-        className={`relative w-full flex-shrink-0 overflow-hidden bg-black transition-all duration-300 ${
-          isPlaying && video.platform === 'instagram'
-            ? 'h-[580px] sm:h-[620px]'
-            : 'aspect-video'
-        }`}
-      >
-        {isPlaying ? (
-          video.platform === 'other' && !video.url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-50">
-              <LinkIcon size={34} className="mb-2 text-slate-400" />
-              <p className="mb-3 text-sm text-slate-500">Cannot play this link inline.</p>
-              <a
-                href={video.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl bg-[#1857D6] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#0B2E7A] transition-colors"
-              >
-                Open Link
-              </a>
-            </div>
-          ) : video.url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-            <video
-              src={video.url}
-              autoPlay
-              controls
-              className="absolute inset-0 h-full w-full object-contain bg-black"
+      <div className="relative w-full flex-shrink-0 aspect-video overflow-hidden bg-black">
+        <button
+          onClick={() => onPlay(video)}
+          className="absolute inset-0 w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6] focus-visible:ring-offset-2"
+        >
+          {finalThumbnail ? (
+            <img
+              src={finalThumbnail}
+              alt={video.title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <iframe
-              src={getEmbedUrl()}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              scrolling="no"
-              className="absolute inset-0 h-full w-full border-0 bg-white"
-            />
-          )
-        ) : (
-          <button
-            onClick={() => setPlayingId(video.id)}
-            className="absolute inset-0 w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6] focus-visible:ring-offset-2"
-          >
-            {finalThumbnail ? (
-              <img
-                src={finalThumbnail}
-                alt={video.title}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900" />
-            )}
-
-            {/* Play Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 backdrop-blur-[2px] transition-opacity duration-300 group-hover:opacity-100">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1857D6] shadow-xl">
-                <PlayCircle size={32} className="text-white ml-1" />
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+              <Instagram size={36} className="text-white/40" />
             </div>
+          )}
 
-            {/* Platform Badge */}
-            <div className={`absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-2xl shadow-sm ${styles.badgeBg}`}>
-              {getPlatformIcon()}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 backdrop-blur-[2px] transition-opacity duration-300 group-hover:opacity-100">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1857D6] shadow-xl">
+              <PlayCircle size={32} className="text-white ml-1" />
             </div>
-          </button>
-        )}
+          </div>
+
+          <div className={`absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-2xl shadow-sm ${styles.badgeBg}`}>
+            {getPlatformIcon()}
+          </div>
+        </button>
       </div>
 
-      {/* ── Content Details ── */}
       <div className="flex flex-1 flex-col p-5 w-full bg-white">
         <span className={`mb-2 inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${styles.chipBg} ${styles.chipText}`}>
           {getPlatformIcon(10)}
@@ -268,25 +221,155 @@ const VideoCard = ({
             {formatDate(video.created_at)}
           </span>
 
-          {isPlaying ? (
-            <button
-              onClick={() => setPlayingId(null)}
-              className="flex items-center gap-1.5 text-[11px] font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
-            >
-              <X size={13} /> Close
-            </button>
-          ) : (
-            <button
-              onClick={() => setPlayingId(video.id)}
-              className="flex items-center gap-1 text-[11px] font-bold text-[#1857D6] hover:text-[#0B2E7A] transition-colors cursor-pointer"
-            >
-              Watch now
-              <ArrowUpRight size={12} />
-            </button>
-          )}
+          <button
+            onClick={() => onPlay(video)}
+            className="flex items-center gap-1 text-[11px] font-bold text-[#1857D6] hover:text-[#0B2E7A] transition-colors cursor-pointer"
+          >
+            Watch now
+            <ArrowUpRight size={12} />
+          </button>
         </div>
       </div>
     </motion.div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sub-Component: Compact Video Player Popup
+// ─────────────────────────────────────────────────────────────────────────
+function VideoPlayerModal({
+  video,
+  onClose,
+}: {
+  video: VideoRecord | null
+  onClose: () => void
+}) {
+  const isOpen = Boolean(video)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    if (isOpen) window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [isOpen, onClose])
+
+  if (!video) return null
+
+  const ytId = extractYouTubeId(video.url)
+  const resolvedPlatform = resolvePlatform(video, ytId)
+  const styles = PLATFORM_STYLES[resolvedPlatform]
+  const isDirectFile = video.url.match(/\.(mp4|webm|ogg|mov)$/i)
+  const canEmbed = ytId || resolvedPlatform === 'instagram' || isDirectFile
+  const isInstagram = resolvedPlatform === 'instagram'
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          {/* Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-[#090D16]/85 backdrop-blur-sm"
+          />
+
+          {/* Compact Modal Box */}
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={video.title}
+            className={`relative z-10 w-full ${isInstagram ? 'max-w-[340px] sm:max-w-[380px]' : 'max-w-3xl'} overflow-hidden rounded-2xl bg-black shadow-[0_24px_70px_rgba(0,0,0,0.5)] my-auto`}
+          >
+            {/* Top accent strip */}
+            <div className={`h-1.5 w-full ${styles.accent}`} />
+
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-3 top-5 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors cursor-pointer shadow-md"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Player Container */}
+            <div className={`relative w-full ${isInstagram ? 'aspect-[9/16] max-h-[580px]' : 'aspect-video'} bg-black flex items-center justify-center`}>
+              {isDirectFile ? (
+                <video
+                  src={video.url}
+                  autoPlay
+                  controls
+                  className="absolute inset-0 h-full w-full object-contain bg-black"
+                />
+              ) : canEmbed ? (
+                <iframe
+                  src={getEmbedUrl(video, ytId)}
+                  title={video.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  scrolling="no"
+                  className="absolute inset-0 h-full w-full border-0 bg-black"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900">
+                  <LinkIcon size={34} className="mb-2 text-slate-400" />
+                  <p className="mb-3 text-sm text-slate-300">Cannot play this link inline.</p>
+                  <a
+                    href={video.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-[#1857D6] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#0B2E7A] transition-colors"
+                  >
+                    Open Link
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Compact Title / Footer bar */}
+            <div className="flex items-center justify-between gap-3 bg-[#0B0F19] px-4 py-3">
+              <div className="min-w-0">
+                <span className={`mb-0.5 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${styles.chipBg} ${styles.chipText}`}>
+                  {styles.label}
+                </span>
+                <h3 className="truncate text-xs font-semibold text-white sm:text-sm">
+                  {video.title}
+                </h3>
+              </div>
+              
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-300 hover:text-white transition-colors"
+              >
+                Original
+                <ArrowUpRight size={11} />
+              </a>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -302,7 +385,8 @@ export default function MerchantVideosPage() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'youtube' | 'instagram' | 'other'>('all')
-  const [playingId, setPlayingId] = useState<string | null>(null)
+
+  const [playingVideo, setPlayingVideo] = useState<VideoRecord | null>(null)
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -331,7 +415,6 @@ export default function MerchantVideosPage() {
     return matchesSearch && matchesFilter
   })
 
-  // Counts per platform for the filter pills — real numbers, not decoration.
   const countFor = (filter: 'all' | 'youtube' | 'instagram' | 'other') =>
     filter === 'all' ? videos.length : videos.filter(v => v.platform === filter).length
 
@@ -426,7 +509,7 @@ export default function MerchantVideosPage() {
       {filteredVideos.length === 0 ? (
         <div className="rounded-3xl border border-slate-200/80 bg-white py-16 text-center shadow-sm">
           <Video size={40} className="mx-auto mb-4 text-slate-300" />
-          <h3 className="text-lg font-medium text-slate-900">No videos found</h3>
+          <h3 className="text-lg font-medium text-slate-950">No videos found</h3>
           <p className="mt-1 text-sm text-slate-500">Try adjusting your search or filters.</p>
         </div>
       ) : (
@@ -435,12 +518,14 @@ export default function MerchantVideosPage() {
             <VideoCard
               key={video.id}
               video={video}
-              playingId={playingId}
-              setPlayingId={setPlayingId}
+              onPlay={setPlayingVideo}
             />
           ))}
         </div>
       )}
+
+      {/* Popup player */}
+      <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
     </div>
   )
 }

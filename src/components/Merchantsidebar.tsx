@@ -40,8 +40,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/profile', label: 'My Profile', icon: User },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/profile', label: 'My Profile', icon: User },
   //{ href: '/shop-details', label: 'Business / Shop Details', icon: Store },
   { href: '/qr-code', label: 'QR Code Management', icon: QrCode },
   { href: '/referrals', label: 'Referral Program', icon: Share2 },

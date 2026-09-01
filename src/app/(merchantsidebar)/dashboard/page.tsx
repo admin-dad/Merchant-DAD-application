@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import MerchantScratchCard from '@/components/MerchantScratchCard'
+
 import {
   Gift,
   Users,
@@ -30,6 +31,9 @@ import {
   Store,
   Lock,
   Building2,
+  History,
+  Video,
+  Tag,
 } from 'lucide-react'
 import { AreaChart, Area, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis } from 'recharts'
 
@@ -82,6 +86,7 @@ export default function DashboardPage() {
   // Stats State
   const [points, setPoints] = useState(0)
   const [b2bRewards, setB2bRewards] = useState(0) // Replaced cash/wallet with B2B Points tracking
+  const [referralPoints, setReferralPoints] = useState(0) // Points earned specifically from referral bonuses
   const [totalReferrals, setTotalReferrals] = useState(0)
   const [successfulReferrals, setSuccessfulReferrals] = useState(0)
   const [todayScans, setTodayScans] = useState(0)
@@ -202,6 +207,7 @@ export default function DashboardPage() {
       if (txData) {
         let pts = 0
         let b2bWon = 0
+        let referralWon = 0
 
         txData.forEach(tx => {
           if (tx.wallet_type === 'points') {
@@ -212,22 +218,34 @@ export default function DashboardPage() {
             if (tx.transaction_type === 'credit' && (tx.category === 'reward' || tx.description?.toLowerCase().includes('scratch card'))) {
               b2bWon += tx.amount
             }
+
+            // Calculate points specifically earned from successful referrals
+            // (credited by the mark_referral_completed trigger with this description)
+            if (tx.transaction_type === 'credit' && tx.description?.toLowerCase().includes('referral bonus')) {
+              referralWon += tx.amount
+            }
           }
         })
 
         setPoints(pts)
         setB2bRewards(b2bWon)
+        setReferralPoints(referralWon)
       }
 
       // 5. Fetch Referrals
+      // NOTE: the real table is "referrals" (not "merchant_referrals"), and its
+      // status column only ever contains 'pending' | 'completed' | 'rewarded' —
+      // never 'approved' — per the referrals_status_check constraint.
       const { data: refData } = await supabase
-        .from('merchant_referrals')
+        .from('referrals')
         .select('status')
         .eq('referrer_id', merchData.id)
 
       if (refData) {
         setTotalReferrals(refData.length)
-        setSuccessfulReferrals(refData.filter(r => r.status === 'approved').length)
+        setSuccessfulReferrals(
+          refData.filter((r) => r.status === 'completed' || r.status === 'rewarded').length
+        )
       }
 
       // 6. Fetch Payments & Calculate Billing (in Points)
@@ -277,18 +295,21 @@ export default function DashboardPage() {
     )
   }
 
-  const QUICK_ACTIONS = [
-    { href: '/profile', label: 'Update Profile', icon: UserPlus },
-    { href: '/qr-code', label: 'Download QR', icon: Download },
-    { href: '/referral', label: 'Share Referral', icon: Share2 },
-    { href: '/billing', label: 'View Billing', icon: Receipt },
-    { href: '/payment', label: 'Make Payment', icon: CreditCard },
-    { href: '/wallet', label: 'Redeem Points', icon: Gift },
-    { href: '/shop', label: 'E-Commerce', icon: ShoppingBag },
-    { href: '/benefits', label: 'Benefits', icon: Award },
-    { href: '/reports', label: 'Reports', icon: FileBarChart2 },
-    { href: '/support', label: 'Support', icon: LifeBuoy },
-  ]
+const QUICK_ACTIONS = [
+  { href: '/profile', label: 'Update Profile', icon: UserPlus },
+  { href: '/qr-code', label: 'Download QR', icon: Download },
+  { href: '/referrals', label: 'Share Referral', icon: Share2 },
+  { href: '/wallet', label: 'Redeem Points', icon: Gift },
+  { href: '/payment-history', label: 'Payment History', icon: History },
+  { href: '/engagement', label: 'Customer Engagement', icon: Users },
+  { href: '/videos', label: 'Video Feed', icon: Video },
+  { href: '/Managementcoupons', label: 'Coupons', icon: Tag },
+  { href: '/payments', label: 'Make Payment', icon: CreditCard },
+  { href: '/benefits', label: 'Benefits', icon: Award },
+  { href: '/shop', label: 'E-Commerce', icon: ShoppingBag },
+  { href: '/reports', label: 'Reports', icon: FileBarChart2 },
+  { href: '/quick-actions', label: 'Support', icon: LifeBuoy },
+]
 
   // Chart Data Parsers
   const scanPieData = [
@@ -409,7 +430,7 @@ export default function DashboardPage() {
           icon={<Users size={18} />}
           label="Total Referrals"
           value={totalReferrals}
-          sub={`${successfulReferrals} successful`}
+          sub={`${successfulReferrals} successful • ${referralPoints.toLocaleString()} pts earned`}
           accent="blue"
         />
         <StatCard

@@ -90,24 +90,49 @@ export default function AdminMerchantsPage() {
     fetchData()
   }, [supabase])
 
-  // ── Handle Approve / Reject / Suspend ────────────────────────────────
+  // ── Handle Approve / Reject / Suspend (Updates Merchants & Reference Table) ──
+  // ── Handle Approve / Reject / Suspend (Updates Merchants & Referrals) ──
   const handleUpdateStatus = async (merchantId: string, newStatus: string) => {
     setUpdatingId(merchantId)
 
-    const { error } = await supabase
+    const merchant = merchants.find((m) => m.id === merchantId)
+
+    // 1. Update the main 'merchants' table
+    const { error: merchantError } = await supabase
       .from('merchants')
       .update({ status: newStatus })
       .eq('id', merchantId)
 
-    if (!error) {
-      setMerchants(prev =>
-        prev.map(m => m.id === merchantId ? { ...m, status: newStatus } : m)
-      )
-      if (selectedMerchant?.id === merchantId) {
-        setSelectedMerchant(prev => prev ? { ...prev, status: newStatus } : prev)
-      }
-    } else {
+    if (merchantError) {
       alert('Failed to update status.')
+      setUpdatingId(null)
+      return
+    }
+
+    setMerchants((prev) =>
+      prev.map((m) => (m.id === merchantId ? { ...m, status: newStatus } : m))
+    )
+    if (selectedMerchant?.id === merchantId) {
+      setSelectedMerchant((prev) => (prev ? { ...prev, status: newStatus } : prev))
+    }
+
+    // 2. On approval, find the matching referral by business name and mark it completed.
+    // We match on referred_business_name (set when the referral was created, before this
+    // merchant row existed) and also backfill referred_merchant_id now that we have it.
+    // neq('status', 'rewarded') avoids downgrading a referral that's already been paid out.
+    if (newStatus === 'approved' && merchant) {
+      const { error: referralError } = await supabase
+        .from('referrals')
+        .update({
+          status: 'completed',
+          referred_merchant_id: merchantId,
+        })
+        .ilike('referred_business_name', merchant.business_name)
+        .neq('status', 'rewarded')
+
+      if (referralError) {
+        console.warn('Could not sync referral completion:', referralError.message)
+      }
     }
 
     setUpdatingId(null)

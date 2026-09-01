@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   Share2,
@@ -12,6 +13,7 @@ import {
   Loader2,
   QrCode,
   Coins,
+  History,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -27,6 +29,7 @@ interface ReferralItem {
 }
 
 export default function ReferralsPage() {
+  const router = useRouter()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
@@ -186,14 +189,23 @@ export default function ReferralsPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleShare}
-            disabled={!referralLink}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Share2 size={16} />
-            <span>Share Referral Link</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/referrals/history')} // ⚠️ adjust to match your actual route
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 sm:w-auto cursor-pointer"
+            >
+              <History size={16} />
+              <span>Referral History</span>
+            </button>
+            <button
+              onClick={handleShare}
+              disabled={!referralLink}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Share2 size={16} />
+              <span>Share Referral Link</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -387,9 +399,7 @@ export default function ReferralsPage() {
                         {earned ? (
                           <div className="flex flex-col items-end">
                             <span className="font-semibold text-amber-600">+{pointsPerReferral} Pts</span>
-                            <span className="text-[11px] font-mono text-slate-400">
-                              {pointsPerReferral} × ₹{valuePerPoint} = ₹{(pointsPerReferral * valuePerPoint).toFixed(2)}
-                            </span>
+                            
                           </div>
                         ) : (
                           <span className="text-slate-300">—</span>

@@ -31,7 +31,7 @@ interface MerchantData {
 
 interface Transaction {
   id: string
-  wallet_type: string 
+  wallet_type: string
   transaction_type: string
   amount: number
   description: string | null
@@ -141,16 +141,16 @@ export default function DigitalWalletPage() {
     if (!txRes.error && txRes.data) {
       const txs = txRes.data as Transaction[]
       setTransactions(txs)
-      
+
       // Dynamically calculate points won strictly from B2B Scratch Cards
       const wonPoints = txs
-        .filter(tx => 
-          tx.transaction_type === 'credit' && 
-          tx.wallet_type === 'points' && 
+        .filter(tx =>
+          tx.transaction_type === 'credit' &&
+          tx.wallet_type === 'points' &&
           tx.description?.toLowerCase().includes('scratch card')
         )
         .reduce((sum, tx) => sum + tx.amount, 0)
-        
+
       setScratchCardPoints(wonPoints)
     }
 
@@ -367,14 +367,23 @@ export default function DigitalWalletPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowBuyModal(true)}
-            disabled={!merchant}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg sm:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus size={16} />
-            <span>Buy Points</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/wallet/history')} // ⚠️ adjust to match your actual route
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 sm:w-auto cursor-pointer"
+            >
+              <History size={16} />
+              <span>Wallet History</span>
+            </button>
+            <button
+              onClick={() => setShowBuyModal(true)}
+              disabled={!merchant}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg sm:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={16} />
+              <span>Buy Points</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -394,76 +403,64 @@ export default function DigitalWalletPage() {
         )}
       </AnimatePresence>
 
-      {/* Primary Balance Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Total Available Points Card */}
-        <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6] transition-transform group-hover:scale-105">
-            <Wallet size={20} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-800">Available Balance</p>
-            <p className="text-2xl font-bold text-[#0B0F19]">
-              {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
-            </p>
-          </div>
-          <button
-            onClick={() => setShowBuyModal(true)}
-            className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
-          >
-            <Plus size={12} /> Buy
-          </button>
-        </div>
+     {/* Primary Balance Cards */}
+<div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {/* Total Available Points Card */}
+  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6] transition-transform group-hover:scale-105">
+      <Wallet size={20} />
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-semibold text-slate-800">Available Balance</p>
+      <p className="text-2xl font-bold text-[#0B0F19]">
+        {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+      </p>
+    </div>
+    <button
+      onClick={() => setShowBuyModal(true)}
+      className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
+    >
+      <Plus size={12} /> Buy
+    </button>
+  </div>
 
-        {/* Free Points Earned summary */}
-        <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#3E7A1C] transition-transform group-hover:scale-105">
-            <Gift size={20} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-slate-800">Points Earned Free</p>
-            <p className="text-2xl font-bold text-[#0B0F19]">
-              {freePointsEarned.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
-            </p>
-            <p className="text-xs font-medium text-slate-400 mt-0.5">Bonus, referrals & rewards</p>
-          </div>
-        </div>
-      </div>
+  {/* Free Points Earned Summary */}
+  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#3E7A1C] transition-transform group-hover:scale-105">
+      <Gift size={20} />
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-semibold text-slate-800">Points Earned Free</p>
+      <p className="text-2xl font-bold text-[#0B0F19]">
+        {freePointsEarned.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+      </p>
+      <p className="text-xs font-medium text-slate-400 mt-0.5">Bonus, referrals & rewards</p>
+    </div>
+  </div>
+
+  {/* Purchased Points */}
+  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-105">
+      <ShoppingBag size={20} />
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-semibold text-slate-800">Purchased Points</p>
+      <p className="text-2xl font-bold text-[#0B0F19]">
+        {(summary?.purchased_points ?? 0).toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+      </p>
+      <p className="text-xs font-medium text-slate-400 mt-0.5">Bought via payments</p>
+    </div>
+  </div>
+</div>
 
       {/* Points Breakdown (Now 4 Cards to include B2B Scratch Card Rewards) */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Joining Bonus */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-blue-200 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Joining Bonus</span>
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Sparkles size={16} className="text-[#1857D6]" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">
-            {summary.joining_bonus_points} <span className="text-sm text-slate-400">Points</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">One-time registration reward</p>
-        </div>
 
-        {/* Referral Rewards */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-amber-200 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Referral Rewards</span>
-            <div className="p-2 bg-amber-50 rounded-lg">
-              <Users size={16} className="text-amber-600" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">
-            {summary.referral_points_earned} <span className="text-sm text-slate-400">Points</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">From approved referrals</p>
-        </div>
 
         {/* Scratch Card Wins (B2B Rewards) */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-purple-200 transition-colors">
+     {/*   <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-purple-200 transition-colors">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">B2B Rewards</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scratch Card Wins </span>
             <div className="p-2 bg-purple-50 rounded-lg">
               <Trophy size={16} className="text-purple-600" />
             </div>
@@ -472,100 +469,19 @@ export default function DigitalWalletPage() {
             {scratchCardPoints} <span className="text-sm text-slate-400">Points</span>
           </h3>
           <p className="text-xs text-slate-400 mt-1">Won from Scratch Cards</p>
-        </div>
+        </div> */}
 
-        {/* Purchased Points */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-emerald-200 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Purchased Points</span>
-            <div className="p-2 bg-emerald-50 rounded-lg">
-              <ShoppingBag size={16} className="text-emerald-600" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">
-            {summary.purchased_points} <span className="text-sm text-slate-400">Points</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">Bought via payments</p>
-        </div>
+
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Ledger Column */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-7 sm:p-8"
-        >
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                <History size={18} />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Points Ledger</h2>
-                <p className="text-xs text-slate-500">History of all point transactions.</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex-1 space-y-3 max-h-[500px] overflow-y-auto pr-2">
-            {transactions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 shadow-sm">
-                  <Wallet size={32} />
-                </div>
-                <p className="text-sm font-semibold text-slate-800">No transactions found</p>
-                <p className="mt-1 text-xs text-slate-500 max-w-xs">Buy points or win rewards to build your history.</p>
-              </div>
-            ) : (
-              transactions
-                .filter(tx => tx.wallet_type === 'points') // Failsafe ensure only points render
-                .map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                        tx.transaction_type === 'credit' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                      }`}
-                    >
-                      {tx.transaction_type === 'credit' ? <ArrowDownCircle size={18} /> : <ArrowUpCircle size={18} />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{tx.description || 'Points Transaction'}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-600">
-                          POINTS
-                        </span>
-                        {formatDate(tx.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div
-                      className={`text-sm font-bold ${
-                        tx.transaction_type === 'credit' ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
-                      {tx.transaction_type === 'credit' ? '+' : '-'}{tx.amount} Points
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </motion.div>
-
-        {/* Quick Purchase Card */}
+      {/* Buy Points Packages */}
+      <div className="grid grid-cols-1 gap-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-5 sm:p-8"
+          className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8"
         >
           <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
@@ -577,8 +493,8 @@ export default function DigitalWalletPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {[100, 500, 1000, 2500,3000,3500,4000].map((pts) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[100, 500, 1000, 2500, 3000, 3500, 4000, 4500].map((pts) => (
               <div
                 key={pts}
                 className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all"
@@ -600,11 +516,12 @@ export default function DigitalWalletPage() {
         </motion.div>
       </div>
 
+
       {/* Buy Points Modal */}
       <AnimatePresence>
         {showBuyModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}

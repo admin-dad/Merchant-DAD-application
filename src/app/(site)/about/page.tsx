@@ -241,7 +241,7 @@ export default function AboutPage() {
             className="mb-5 inline-flex items-center gap-2.5 rounded-full bg-[#1857D6]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#1857D6] border border-[#1857D6]/20 shadow-sm"
           >
             <QrCode size={15} strokeWidth={2} className="animate-pulse" />
-            <span>RAKVIH SOLUTIONS · MERCHANT ECOSYSTEM</span>
+            <span>MERCHANT ECOSYSTEM</span>
           </motion.div>
 
           <motion.h1

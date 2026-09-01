@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X } from 'lucide-react'
+import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X, History as HistoryIcon, Trophy } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Interactive Canvas Scratch Card Component
@@ -160,6 +160,16 @@ interface MerchantCampaign {
   gift: { id: string; name: string; description: string | null; image_url: string | null } | null
 }
 
+// A past scratch card (won or lost), used to render the Rewards History list.
+interface HistoryCard {
+  id: string
+  status: string // 'won' / 'lost' / other non-pending values
+  prize_amount: number
+  created_at: string
+  gift_name: string | null
+  gift_image_url: string | null
+}
+
 export default function MerchantScratchCard({ merchantId }: { merchantId: string }) {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -169,6 +179,12 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
   const [isScratching, setIsScratching] = useState(false)
   const [result, setResult] = useState<'win' | 'lose' | null>(null)
   const [wonAmount, setWonAmount] = useState<number>(0)
+
+  // Rewards history (past won/lost cards) — shown when the merchant opens
+  // the popup and has no pending card to scratch right now.
+  const [history, setHistory] = useState<HistoryCard[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
   useEffect(() => {
     const fetchPendingCardAndCampaign = async () => {
@@ -233,6 +249,85 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
     }
     fetchPendingCardAndCampaign()
   }, [merchantId, supabase])
+
+  // Loads past won/lost scratch cards for the Rewards History view.
+  // Lazy: only fetched the first time the merchant opens the popup with no
+  // pending card, so we don't do this extra query on every dashboard load.
+  const fetchHistory = async () => {
+    setHistoryLoading(true)
+    // Deliberately NOT filtering on an exact status string here — cards
+    // created through other flows (e.g. an admin panel) may have written
+    // 'Won'/'Redeemed'/etc instead of the lowercase 'won'/'lost' this
+    // component writes. We only exclude 'pending' (still-unscratched
+    // cards) and classify win vs. loss case-insensitively below instead.
+    //
+    // NOTE: not selecting `updated_at` here — no other query against
+    // merchant_scratch_cards in this app selects that column, so it may
+    // not exist on the table. We sort/display by created_at instead.
+    //
+    // LEFT join to campaigns→gifts (not `campaigns!inner`) for the same
+    // reason the pending-card fetch above uses a left join: campaign_id is
+    // null on most legacy cards, and an inner join would silently drop
+    // those rows. Legacy rows just render without a gift photo.
+    const { data, error } = await supabase
+      .from('merchant_scratch_cards')
+      .select(`
+        id, status, prize_amount, created_at,
+        campaign:campaigns ( gift:gifts ( name, image_url ) )
+      `)
+      .eq('merchant_id', merchantId)
+      .neq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (error) {
+      // Postgrest errors sometimes carry their useful fields as
+      // non-enumerable or the object otherwise doesn't stringify with a
+      // plain {message, details, hint, code} spread — dump every own
+      // property name so we can see what's actually there.
+      console.error(
+        'Error fetching scratch card history:',
+        JSON.stringify(error, Object.getOwnPropertyNames(error)),
+        error
+      )
+    } else if (data) {
+      type Row = {
+        id: string
+        status: string
+        prize_amount: number
+        created_at: string
+        campaign: { gift: { name: string; image_url: string | null } | { name: string; image_url: string | null }[] | null } | { gift: { name: string; image_url: string | null } | { name: string; image_url: string | null }[] | null }[] | null
+      }
+      const flattened: HistoryCard[] = (data as unknown as Row[]).map((row) => {
+        const campaignJoin = Array.isArray(row.campaign) ? row.campaign[0] : row.campaign
+        const giftJoin = campaignJoin?.gift
+          ? Array.isArray(campaignJoin.gift)
+            ? campaignJoin.gift[0]
+            : campaignJoin.gift
+          : null
+        return {
+          id: row.id,
+          status: row.status,
+          prize_amount: row.prize_amount,
+          created_at: row.created_at,
+          gift_name: giftJoin?.name ?? null,
+          gift_image_url: giftJoin?.image_url ?? null,
+        }
+      })
+      setHistory(flattened)
+    }
+    setHistoryLoaded(true)
+    setHistoryLoading(false)
+  }
+
+  const handleOpen = () => {
+    setIsOpen(true)
+    // If there's no pending card to scratch, this open is for viewing
+    // history instead — load it (once) on demand.
+    if (!card && !historyLoaded) {
+      fetchHistory()
+    }
+  }
 
   const handleScratch = async () => {
     if (!card || isScratching) return
@@ -302,10 +397,10 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
     window.location.reload()
   }
 
-  // Called from the X button (or backdrop) — if the user already has a
-  // result, treat it the same as "Done" so the dashboard refreshes.
-  // If they close before scratching, just hide the modal; the floating
-  // icon stays so they can come back and scratch later.
+  // Called from the X button (or backdrop). If there's a scratch result
+  // pending acknowledgement, treat it the same as "Done" so the dashboard
+  // refreshes. Otherwise (including when just browsing history) simply
+  // close the modal — the floating icon stays so they can reopen anytime.
   const handleCloseModal = () => {
     if (result) {
       handleDone()
@@ -314,38 +409,55 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
     }
   }
 
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+
   if (loading) return null
+
+  // Case-insensitive match so cards written as 'Won', 'WON', 'redeemed',
+  // etc. by other flows still count as wins here — only an explicit
+  // "lost"/"lose"-style status is treated as a non-win.
+  const isWin = (status: string) => {
+    const s = (status || '').toLowerCase()
+    return s !== 'lost' && s !== 'lose' && s !== 'pending'
+  }
+  const wins = history.filter((h) => isWin(h.status))
+  const totalWonPoints = wins.reduce((sum, h) => sum + (h.prize_amount || 0), 0)
 
   return (
     <>
-      {/* Floating trigger icon — shown whenever the merchant has a pending
-          scratch card. Click opens the popup on demand instead of it
-          forcing itself open. */}
-      {card && !isOpen && (
+      {/* Floating trigger icon — always visible so merchants can check their
+          rewards history even when there's no pending card. Shows a badge
+          only when a card is actually waiting to be scratched. */}
+      {!isOpen && (
         <motion.button
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpen}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.96 }}
-          aria-label="Open your scratch card reward"
+          aria-label={card ? 'Open your scratch card reward' : 'View your rewards history'}
           className="fixed bottom-6 right-6 z-[90] flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#9333EA] via-[#1857D6] to-[#9333EA] text-white shadow-[0_10px_30px_rgba(147,51,234,0.45)] cursor-pointer"
         >
-          <motion.span
-            className="absolute inset-0 rounded-full bg-[#9333EA]/50"
-            animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          />
+          {card && (
+            <motion.span
+              className="absolute inset-0 rounded-full bg-[#9333EA]/50"
+              animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          )}
           <Gift size={26} className="relative z-10" />
-          <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-[#0B0F19] ring-2 ring-white">
-            1
-          </span>
+          {card && (
+            <span className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-[#0B0F19] ring-2 ring-white">
+              1
+            </span>
+          )}
         </motion.button>
       )}
 
       <AnimatePresence>
-        {card && isOpen && (
+        {isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
             {/* Backdrop */}
             <motion.div
@@ -361,7 +473,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
               initial={{ opacity: 0, y: 24, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 16, scale: 0.97 }}
-              className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-8 text-center"
+              className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-8 text-center max-h-[85vh] overflow-y-auto"
             >
               {/* Close button */}
               <button
@@ -373,168 +485,255 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                 <X size={20} />
               </button>
 
-              {!result ? (
-              // ── STEP 1: The Interactive Scratch Card ──
-              <div className="flex flex-col items-center">
-                <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-600">
-                  <Sparkles size={13} /> B2B Reward Received!
-                </div>
-                <h2 className="text-2xl font-bold text-[#0B0F19] mb-2">You got a Scratch Card!</h2>
-                <p className="text-sm text-slate-500 mb-6">
-                  {isScratching ? 'Hold on, revealing your reward...' : 'Rub the card below to scratch and reveal!'}
-                </p>
+              {card ? (
+                !result ? (
+                  // ── STEP 1: The Interactive Scratch Card ──
+                  <div className="flex flex-col items-center">
+                    <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-600">
+                      <Sparkles size={13} /> B2B Reward Received!
+                    </div>
+                    <h2 className="text-2xl font-bold text-[#0B0F19] mb-2">You got a Scratch Card!</h2>
+                    <p className="text-sm text-slate-500 mb-6">
+                      {isScratching ? 'Hold on, revealing your reward...' : 'Rub the card below to scratch and reveal!'}
+                    </p>
 
-                {/* Card wrapper */}
-                <div className="relative w-64 h-40 select-none">
-                  {/* Ambient pulsing glow behind the card (Purple theme) */}
-                  <motion.div
-                    className="absolute -inset-3 rounded-[1.75rem] bg-gradient-to-r from-[#9333EA] via-[#1857D6] to-[#9333EA] blur-xl"
-                    animate={
-                      isScratching
-                        ? { opacity: [0.35, 0.85, 0.35], scale: [1, 1.04, 1] }
-                        : { opacity: [0.2, 0.4, 0.2], scale: 1 }
-                    }
-                    transition={{
-                      duration: isScratching ? 0.7 : 3,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                    }}
-                  />
-
-                  <motion.div
-                    whileHover={!isScratching ? { scale: 1.02 } : {}}
-                    className="relative w-64 h-40 rounded-2xl overflow-hidden shadow-xl ring-1 ring-black/5 bg-white"
-                  >
-                    {/* Base Layer (Sits underneath foil, Revealed upon scratching) */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#3b0764] to-[#0f172a] flex flex-col items-center justify-center text-white p-4">
-                      {/* Animated Magic Rings */}
+                    {/* Card wrapper */}
+                    <div className="relative w-64 h-40 select-none">
+                      {/* Ambient pulsing glow behind the card (Purple theme) */}
                       <motion.div
-                        className="absolute inset-0 border-[40px] border-[#a855f7]/20 rounded-full blur-2xl"
-                        animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.3, 0.6, 0.3] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute -inset-3 rounded-[1.75rem] bg-gradient-to-r from-[#9333EA] via-[#1857D6] to-[#9333EA] blur-xl"
+                        animate={
+                          isScratching
+                            ? { opacity: [0.35, 0.85, 0.35], scale: [1, 1.04, 1] }
+                            : { opacity: [0.2, 0.4, 0.2], scale: 1 }
+                        }
+                        transition={{
+                          duration: isScratching ? 0.7 : 3,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
                       />
 
                       <motion.div
-                        animate={
-                          isScratching
-                            ? { scale: [0.95, 1.1, 1], rotate: [0, -3, 3, 0] }
-                            : { scale: 1, rotate: 0 }
-                        }
-                        transition={{
-                          duration: 0.6,
-                          repeat: isScratching ? Infinity : 0,
-                          ease: 'easeInOut',
-                        }}
-                        className="z-0 flex flex-col items-center"
+                        whileHover={!isScratching ? { scale: 1.02 } : {}}
+                        className="relative w-64 h-40 rounded-2xl overflow-hidden shadow-xl ring-1 ring-black/5 bg-white"
                       >
-                        <Gift
-                          size={36}
-                          className="mb-2 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]"
+                        {/* Base Layer (Sits underneath foil, Revealed upon scratching) */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a] via-[#3b0764] to-[#0f172a] flex flex-col items-center justify-center text-white p-4">
+                          {/* Animated Magic Rings */}
+                          <motion.div
+                            className="absolute inset-0 border-[40px] border-[#a855f7]/20 rounded-full blur-2xl"
+                            animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                          />
+
+                          <motion.div
+                            animate={
+                              isScratching
+                                ? { scale: [0.95, 1.1, 1], rotate: [0, -3, 3, 0] }
+                                : { scale: 1, rotate: 0 }
+                            }
+                            transition={{
+                              duration: 0.6,
+                              repeat: isScratching ? Infinity : 0,
+                              ease: 'easeInOut',
+                            }}
+                            className="z-0 flex flex-col items-center"
+                          >
+                            <Gift
+                              size={36}
+                              className="mb-2 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]"
+                            />
+                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-sm">
+                              Unlocking...
+                            </span>
+                          </motion.div>
+                        </div>
+
+                        {/* Interactive HTML5 Canvas Foil (Sits on top) */}
+                        <ScratchCardCanvas
+                          onScratch={() => {
+                            if (!isScratching) handleScratch()
+                          }}
                         />
-                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-sm">
-                          Unlocking...
-                        </span>
+
+                        {/* GPay style particle burst over top of the canvas when scratched */}
+                        {isScratching && (
+                          <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center overflow-hidden">
+                            {Array.from({ length: 24 }).map((_, i) => {
+                              const angle = (i / 24) * Math.PI * 2
+                              const velocity = 50 + Math.random() * 70
+                              const size = 3 + Math.random() * 5
+                              const colors = ['#FDE047', '#A855F7', '#34D399', '#60A5FA', '#F472B6']
+                              const color = colors[i % colors.length]
+
+                              return (
+                                <motion.div
+                                  key={`sparkle-${i}`}
+                                  className="absolute rounded-full"
+                                  style={{
+                                    backgroundColor: color,
+                                    width: size,
+                                    height: size,
+                                    boxShadow: `0 0 8px ${color}`,
+                                  }}
+                                  initial={{ x: 0, y: 0, opacity: 1, scale: 0 }}
+                                  animate={{
+                                    x: Math.cos(angle) * velocity,
+                                    y: Math.sin(angle) * velocity,
+                                    opacity: [1, 1, 0],
+                                    scale: [0, 1.2, 0.5],
+                                  }}
+                                  transition={{
+                                    duration: 0.6 + Math.random() * 0.4,
+                                    repeat: Infinity,
+                                    ease: 'easeOut',
+                                    delay: Math.random() * 0.2,
+                                  }}
+                                />
+                              )
+                            })}
+                          </div>
+                        )}
                       </motion.div>
                     </div>
+                  </div>
+                ) : (
+                  // ── STEP 2: The Result Screen ──
+                  <div className="flex flex-col items-center pt-6">
+                    {result === 'win' ? (
+                      <>
+                        <motion.div initial={{ rotate: -10, scale: 0 }} animate={{ rotate: 0, scale: 1 }} transition={{ delay: 0.1, type: 'spring' }} className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+                          <CheckCircle2 size={32} className="text-[#3E7A1C]" />
+                        </motion.div>
+                        <h2 className="text-2xl font-bold text-[#0B0F19]">Congratulations! 🎉</h2>
+                        <p className="mt-2 text-sm text-slate-500">You won a special B2B reward:</p>
 
-                    {/* Interactive HTML5 Canvas Foil (Sits on top) */}
-                    <ScratchCardCanvas
-                      onScratch={() => {
-                        if (!isScratching) handleScratch()
-                      }}
-                    />
+                        {campaign?.gift?.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={campaign.gift.image_url}
+                            alt={campaign.gift.name}
+                            className="mt-4 h-20 w-20 rounded-xl object-cover shadow-sm"
+                          />
+                        )}
 
-                    {/* GPay style particle burst over top of the canvas when scratched */}
-                    {isScratching && (
-                      <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center overflow-hidden">
-                        {Array.from({ length: 24 }).map((_, i) => {
-                          const angle = (i / 24) * Math.PI * 2
-                          const velocity = 50 + Math.random() * 70
-                          const size = 3 + Math.random() * 5
-                          const colors = ['#FDE047', '#A855F7', '#34D399', '#60A5FA', '#F472B6']
-                          const color = colors[i % colors.length]
+                        <div className="mt-4 px-6 py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
+                          <span className="text-lg font-bold text-[#3E7A1C]">
+                            {wonAmount} Reward Points
+                          </span>
+                        </div>
 
+                        {(campaign?.gift?.name || campaign?.prize_details) && (
+                          <p className="mt-3 max-w-xs text-xs text-slate-500">
+                            {campaign?.gift?.name ?? campaign?.prize_details}
+                            {campaign?.gift?.description ? ` — ${campaign.gift.description}` : ''}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                          <Frown size={32} className="text-red-500" />
+                        </motion.div>
+                        <h2 className="text-2xl font-bold text-[#0B0F19]">Better Luck Next Time!</h2>
+                        <p className="mt-2 text-sm text-slate-500">Keep engaging customers to earn more rewards!</p>
+                      </>
+                    )}
+                    <button
+                      onClick={handleDone}
+                      className="mt-6 w-full rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 py-3 text-sm font-semibold cursor-pointer transition-colors"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )
+              ) : (
+                // ── NO PENDING CARD: Rewards History View ──
+                <div className="flex flex-col items-center text-left w-full">
+                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-600 self-center">
+                    <HistoryIcon size={13} /> Rewards History
+                  </div>
+                  <h2 className="text-2xl font-bold text-[#0B0F19] mb-1 self-center">Your Scratch Card Wins</h2>
+                  <p className="text-sm text-slate-500 mb-6 self-center text-center">
+                    No new card right now — here&apos;s what you&apos;ve won so far.
+                  </p>
+
+                  {historyLoading ? (
+                    <div className="flex w-full items-center justify-center py-10">
+                      <Loader2 size={24} className="animate-spin text-[#9333EA]" />
+                    </div>
+                  ) : history.length === 0 ? (
+                    <div className="flex w-full flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-10 px-6">
+                      <Gift size={28} className="mb-2 text-slate-300" />
+                      <p className="text-sm font-medium text-slate-600">No scratch cards played yet</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Check back after your next reward — this is where your wins will show up.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="w-full">
+                      {/* Summary strip */}
+                      <div className="mb-4 flex items-center justify-between rounded-2xl border border-[#7BC142]/30 bg-[#7BC142]/10 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Trophy size={16} className="text-[#3E7A1C]" />
+                          <span className="text-xs font-semibold text-[#3E7A1C]">
+                            {wins.length} win{wins.length === 1 ? '' : 's'} total
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-[#3E7A1C]">
+                          {totalWonPoints.toLocaleString()} Points
+                        </span>
+                      </div>
+
+                      {/* List */}
+                      <div className="max-h-96 overflow-y-auto rounded-2xl border border-slate-200/80 divide-y divide-slate-100">
+                        {history.map((h) => {
+                          const won = isWin(h.status)
                           return (
-                            <motion.div
-                              key={`sparkle-${i}`}
-                              className="absolute rounded-full"
-                              style={{
-                                backgroundColor: color,
-                                width: size,
-                                height: size,
-                                boxShadow: `0 0 8px ${color}`,
-                              }}
-                              initial={{ x: 0, y: 0, opacity: 1, scale: 0 }}
-                              animate={{
-                                x: Math.cos(angle) * velocity,
-                                y: Math.sin(angle) * velocity,
-                                opacity: [1, 1, 0],
-                                scale: [0, 1.2, 0.5],
-                              }}
-                              transition={{
-                                duration: 0.6 + Math.random() * 0.4,
-                                repeat: Infinity,
-                                ease: 'easeOut',
-                                delay: Math.random() * 0.2,
-                              }}
-                            />
+                            <div key={h.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {/* Prize photo when we have one (won cards
+                                    linked to a campaign with a gift image),
+                                    otherwise fall back to the status icon. */}
+                                {won && h.gift_image_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={h.gift_image_url}
+                                    alt={h.gift_name ?? 'Reward'}
+                                    className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-black/5"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                                      won ? 'bg-emerald-50 text-[#3E7A1C]' : 'bg-slate-100 text-slate-400'
+                                    }`}
+                                  >
+                                    {won ? <CheckCircle2 size={18} /> : <Frown size={18} />}
+                                  </span>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-800 truncate">
+                                    {won ? (h.gift_name || 'Reward Won') : 'No Reward'}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {formatDate(h.created_at)}
+                                  </p>
+                                </div>
+                              </div>
+                              {won && (
+                                <span className="text-sm font-bold text-[#3E7A1C] shrink-0">
+                                  +{h.prize_amount} pts
+                                </span>
+                              )}
+                            </div>
                           )
                         })}
                       </div>
-                    )}
-                  </motion.div>
-                </div>
-              </div>
-            ) : (
-              // ── STEP 2: The Result Screen ──
-              <div className="flex flex-col items-center pt-6">
-                {result === 'win' ? (
-                  <>
-                    <motion.div initial={{ rotate: -10, scale: 0 }} animate={{ rotate: 0, scale: 1 }} transition={{ delay: 0.1, type: 'spring' }} className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                      <CheckCircle2 size={32} className="text-[#3E7A1C]" />
-                    </motion.div>
-                    <h2 className="text-2xl font-bold text-[#0B0F19]">Congratulations! 🎉</h2>
-                    <p className="mt-2 text-sm text-slate-500">You won a special B2B reward:</p>
-
-                    {campaign?.gift?.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={campaign.gift.image_url}
-                        alt={campaign.gift.name}
-                        className="mt-4 h-20 w-20 rounded-xl object-cover shadow-sm"
-                      />
-                    )}
-
-                    <div className="mt-4 px-6 py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
-                      <span className="text-lg font-bold text-[#3E7A1C]">
-                        {wonAmount} Reward Points
-                      </span>
                     </div>
-
-                    {(campaign?.gift?.name || campaign?.prize_details) && (
-                      <p className="mt-3 max-w-xs text-xs text-slate-500">
-                        {campaign?.gift?.name ?? campaign?.prize_details}
-                        {campaign?.gift?.description ? ` — ${campaign.gift.description}` : ''}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
-                      <Frown size={32} className="text-red-500" />
-                    </motion.div>
-                    <h2 className="text-2xl font-bold text-[#0B0F19]">Better Luck Next Time!</h2>
-                    <p className="mt-2 text-sm text-slate-500">Keep engaging customers to earn more rewards!</p>
-                  </>
-                )}
-                <button
-                  onClick={handleDone}
-                  className="mt-6 w-full rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 py-3 text-sm font-semibold cursor-pointer transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-            )}
+                  )}
+                </div>
+              )}
             </motion.div>
           </div>
         )}

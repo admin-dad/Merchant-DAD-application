@@ -220,7 +220,7 @@ export default function AdminSettingsPage() {
               type="text"
               value={form.platform_name}
               onChange={(e) => update('platform_name', e.target.value)}
-              placeholder="RAKVIH Solutions"
+              placeholder="Merchant Compnay"
               className={inputClass}
             />
           </FieldRow>

@@ -7,8 +7,8 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard,Video ,
-  Store,ShieldCheck,Tag,Sparkles, 
+  LayoutDashboard, Video,
+  Store, ShieldCheck, Tag, Sparkles,
   Users,
   Truck,
   Package,
@@ -36,6 +36,7 @@ import {
   Plus,
   Boxes,
   IndianRupee,
+  Film,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -52,11 +53,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/merchants', label: 'Merchants', icon: Store },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/aproducts', label: 'Products Management', icon: Package },
-    // Added Coupons here
-  { href: '/coupons', label: 'Coupons Management', icon: Tag }, 
+  // Added Coupons here
+  { href: '/coupons', label: 'Coupons Management', icon: Tag },
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
-  { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard }, 
+  { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/campaigns', label: 'Campaigns & Scratch Cards', icon: Ticket },
   { href: '/merchant-scratch-cards', label: 'Merchant Scratch Cards', icon: Sparkles },
   { href: '/winners', label: 'Winners', icon: Trophy },
@@ -70,13 +71,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/aqr-codes', label: 'QR Code Tracking', icon: QrCode },
   // Added Video Feed here
   { href: '/admin-videos', label: 'Video Feed', icon: Video },
+  { href: '/admin-winnervideos', label: 'Winner Videos', icon: Film },
   { href: '/admin-reports', label: 'Reports & Analytics', icon: BarChart3 },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
 
 // Sub-links for Products Dropdown
 const PRODUCT_LINKS: NavItem[] = [
-    { href: '/aproducts/add', label: 'Add Product', icon: Plus },
+  { href: '/aproducts/add', label: 'Add Product', icon: Plus },
   { href: '/aproducts', label: 'All Products', icon: Package },
   { href: '/aproducts/inventory', label: 'Inventory', icon: Boxes },
   { href: '/aproducts/pricing', label: 'Products Points', icon: Coins },
@@ -109,11 +111,11 @@ export default function AdminSidebar({
       <div className="lg:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
         <Link href="/admin-dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
           <div className="relative h-8 w-24 overflow-hidden flex items-center justify-start">
-            <Image 
-              src="/logo.jpeg" 
-              alt="DAD Logo" 
-              fill 
-              className="object-contain object-left" 
+            <Image
+              src="/logo.jpeg"
+              alt="DAD Logo"
+              fill
+              className="object-contain object-left"
             />
           </div>
           <span className="text-sm font-medium text-slate-400">Admin Portal</span>
@@ -136,7 +138,7 @@ export default function AdminSidebar({
           adminName={adminName}
           adminEmail={adminEmail}
           isActive={isActive}
-          onNavigate={() => {}}
+          onNavigate={() => { }}
           onLogout={handleLogout}
           productsOpen={productsOpen}
           setProductsOpen={setProductsOpen}
@@ -215,11 +217,11 @@ function SidebarContent({
       {/* Logo & Header Title */}
       <Link href="/admin-dashboard" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
         <div className="relative h-9 w-20 overflow-hidden flex items-center justify-start shrink-0">
-          <Image 
-            src="/logo.jpeg" 
-            alt="DAD Logo" 
-            fill 
-            className="object-contain object-left" 
+          <Image
+            src="/logo.jpeg"
+            alt="DAD Logo"
+            fill
+            className="object-contain object-left"
           />
         </div>
         <div className="flex flex-col leading-tight border-l border-white/10 pl-3">
@@ -238,15 +240,14 @@ function SidebarContent({
 
           // Special handling for Products Dropdown
           if (item.href === '/aproducts') {
-            const isParentActive = active 
-            
+            const isParentActive = active
+
             return (
               <div key={item.href}>
                 <button
                   onClick={() => setProductsOpen(!productsOpen)}
-                  className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors w-full cursor-pointer ${
-                    isParentActive ? 'bg-gradient-to-r from-[#1857D6]/20 to-[#7BC142]/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                  }`}
+                  className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors w-full cursor-pointer ${isParentActive ? 'bg-gradient-to-r from-[#1857D6]/20 to-[#7BC142]/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                    }`}
                 >
                   {isParentActive && (
                     <motion.span
@@ -276,9 +277,8 @@ function SidebarContent({
                             key={subItem.href}
                             href={subItem.href}
                             onClick={onNavigate}
-                            className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition-colors ${
-                              subActive ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-white hover:bg-white/5'
-                            }`}
+                            className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-xs transition-colors ${subActive ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-white hover:bg-white/5'
+                              }`}
                           >
                             <SubIcon size={14} className={subActive ? 'text-[#4F8CFF]' : 'text-slate-600 group-hover:text-slate-400'} />
                             <span>{subItem.label}</span>
@@ -298,11 +298,10 @@ function SidebarContent({
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
-                active
+              className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${active
                   ? 'bg-gradient-to-r from-[#1857D6]/20 to-[#7BC142]/10 text-white'
                   : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
+                }`}
             >
               {active && (
                 <motion.span

@@ -197,7 +197,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setServerError(null)
     setBlockedStatus(null)
@@ -264,12 +264,45 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
         }
 
         resetAndClose()
-        router.push('/profile')
+        router.push('/dashboard')
         router.refresh()
         return
       }
 
       // ── mode === 'register' ─────────────────────────────────────────
+      const trimmedEmail = form.email.trim()
+      const trimmedMobile = form.mobile.trim()
+
+      // Pre-check for duplicate email / mobile so we can show a precise,
+      // field-level error instead of relying on parsing the signUp error
+      // string (which only reliably covers email, not mobile — mobile
+      // uniqueness is enforced by the DB trigger and its error message
+      // often gets swallowed into a generic "Database error saving new
+      // user" before it ever reaches the client).
+      const { data: dupCheck, error: dupError } = await supabase
+        .rpc('check_merchant_duplicate', {
+          p_email: trimmedEmail,
+          p_mobile: trimmedMobile,
+        })
+        .maybeSingle()
+
+      if (dupError) {
+        setServerError('Could not verify your details. Please try again.')
+        return
+      }
+
+      if (dupCheck?.email_exists || dupCheck?.mobile_exists) {
+        const nextErrors: FormErrors = {}
+        if (dupCheck.email_exists) {
+          nextErrors.email = 'An account already exists for this email. Try logging in instead.'
+        }
+        if (dupCheck.mobile_exists) {
+          nextErrors.mobile = 'This mobile number is already registered.'
+        }
+        setErrors((prev) => ({ ...prev, ...nextErrors }))
+        return
+      }
+
       // All business fields go into signUp metadata — a DB trigger reads
       // this metadata and creates the "merchants" row itself (running with
       // elevated privileges), so it works even before email confirmation,
@@ -278,13 +311,13 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       // subscription_plan_id column default (see subscription_plans
       // migration), so no client call is needed for that path.
       const { data, error } = await supabase.auth.signUp({
-        email: form.email.trim(),
+        email: trimmedEmail,
         password: form.password,
         options: {
           data: {
             business_name: form.businessName.trim(),
             owner_name: form.ownerName.trim(),
-            mobile: form.mobile.trim(),
+            mobile: trimmedMobile,
             referred_by: form.referralCode.trim() || null,
           },
         },
@@ -293,7 +326,10 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
       if (error) {
         const msg = error.message.toLowerCase()
         if (msg.includes('already registered')) {
-          setServerError('An account already exists for this email. Try logging in instead.')
+          setErrors((prev) => ({
+            ...prev,
+            email: 'An account already exists for this email. Try logging in instead.',
+          }))
         } else if (msg.includes('mobile_already_registered')) {
           setErrors((prev) => ({ ...prev, mobile: 'This mobile number is already registered.' }))
         } else if (msg.includes('database error saving new user')) {
@@ -344,8 +380,8 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
             user_id: data.user.id,
             business_name: form.businessName.trim(),
             owner_name: form.ownerName.trim(),
-            mobile: form.mobile.trim(),
-            email: form.email.trim(),
+            mobile: trimmedMobile,
+            email: trimmedEmail,
             referred_by: form.referralCode.trim() || null,
             ...(freePlan?.id ? { subscription_plan_id: freePlan.id } : {}),
           },

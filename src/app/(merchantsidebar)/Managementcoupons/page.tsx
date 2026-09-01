@@ -17,6 +17,8 @@ import {
   Copy as CopyIcon,
   Check as CheckIcon,
   ArrowUpRight as ArrowUpRightIcon,
+  FileText as FileTextIcon,
+  X as XIcon,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ interface CouponRow {
   id: string
   title: string
   description: string | null
+  terms_and_conditions: string | null
   company_name: string
   image_url: string | null
   code: string | null
@@ -82,7 +85,7 @@ function CodeChip({ code, full = false }: { code: string; full?: boolean }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // Clipboard API unavailable — fail silently, chip still shows the code.
+      // Clipboard API unavailable — fail silently
     }
   }
 
@@ -104,9 +107,7 @@ function CodeChip({ code, full = false }: { code: string; full?: boolean }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Coupon ticket card — the signature visual element of this page.
-// A dashed tear-line with punched notches separates the offer from its
-// redemption code, echoing a physical coupon stub.
+// Coupon ticket card
 // ─────────────────────────────────────────────────────────────────────────
 function CouponCard({ coupon, onOpen }: { coupon: CouponRow; onOpen: () => void }) {
   const status = statusInfo(coupon)
@@ -171,15 +172,12 @@ function CouponCard({ coupon, onOpen }: { coupon: CouponRow; onOpen: () => void 
           {coupon.expires_at ? formatDate(coupon.expires_at) : 'No expiry'}
         </span>
       </div>
-
-      {/* Hover affordance */}
-      <div className="pointer-events-none absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/0 text-transparent transition-all group-hover:bg-white group-hover:text-[#1857D6] group-hover:shadow-md" style={{ top: coupon.image_url || true ? undefined : undefined }} />
     </motion.div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Coupon detail modal (view-only)
+// Coupon detail modal with Terms & Conditions
 // ─────────────────────────────────────────────────────────────────────────
 function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: () => void }) {
   const status = coupon ? statusInfo(coupon) : null
@@ -191,7 +189,7 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8 overflow-y-auto"
           onClick={onClose}
         >
           <motion.div
@@ -200,9 +198,9 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.18 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl"
+            className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl my-auto max-h-[90vh] flex flex-col"
           >
-            <div className="relative h-40 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+            <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 shrink-0">
               {coupon.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-cover" />
@@ -216,7 +214,7 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
               </span>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">{coupon.title}</h2>
                 <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
@@ -255,14 +253,81 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
                   <CodeChip code={coupon.code} full />
                 </div>
               )}
+
+              {/* Terms & Conditions Section inside the Popup */}
+              <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-1.5">
+                  <FileTextIcon size={14} className="text-[#1857D6]" />
+                  Terms & Conditions
+                </div>
+                <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                  {coupon.terms_and_conditions || 
+                    "1. This coupon is valid for a single redemption per user unless specified otherwise.\n2. Cannot be clubbed with other running promotions or corporate discounts.\n3. Standard platform terms of service apply to all transactions."}
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center justify-end border-t border-slate-100 px-6 py-4">
+            <div className="flex items-center justify-end border-t border-slate-100 px-6 py-4 shrink-0 bg-white">
               <button
                 onClick={onClose}
                 className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Global Terms & Conditions Modal (triggered from the top header)
+// ─────────────────────────────────────────────────────────────────────────
+function GlobalTermsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl p-6 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]">
+                  <FileTextIcon size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Platform Terms & Conditions</h3>
+              </div>
+              <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto space-y-3 text-xs text-slate-600 leading-relaxed pr-2">
+              <p><strong>1. General Usage:</strong> All coupon codes and promotional offers listed on this portal are governed by partner merchant policies and platform guidelines.</p>
+              <p><strong>2. Validity & Expiry:</strong> Offers are strictly valid between the specified start and expiry dates. Expired codes will not be honored under any circumstances.</p>
+              <p><strong>3. Redemption Limits:</strong> Usage limits apply per merchant/user account. Any fraudulent attempts or automated abuse of coupon generation will result in suspension of merchant access privileges.</p>
+              <p><strong>4. Non-Transferable:</strong> Coupons hold no cash value, are non-transferable, and cannot be exchanged for cash or credit equivalents unless explicitly stated by the partner business.</p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={onClose}
+                className="rounded-xl bg-[#1857D6] px-5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 transition-all cursor-pointer"
+              >
+                I Understand
               </button>
             </div>
           </motion.div>
@@ -286,10 +351,11 @@ export default function MerchantCouponsPage() {
   const [coupons, setCoupons] = useState<CouponRow[]>([])
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  // ⚠️ Default filter is now 'active' so the page opens showing Active coupons only
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active')
   const [selectedCoupon, setSelectedCoupon] = useState<CouponRow | null>(null)
+  const [showGlobalTerms, setShowGlobalTerms] = useState(false)
 
-  // ── Fetch everything ────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -307,9 +373,6 @@ export default function MerchantCouponsPage() {
       }
       setIsAuthenticated(true)
 
-      // Read-only feed for merchants — served by /api/merchant/coupons,
-      // which selects from admin_coupons under RLS (no service role key,
-      // no write access). See /api/admin/coupons for the admin/write side.
       const res = await fetch('/api/merchant/coupons', { cache: 'no-store' })
       const json = await res.json()
 
@@ -330,7 +393,6 @@ export default function MerchantCouponsPage() {
     fetchData()
   }, [fetchData])
 
-  // ── Derived ──────────────────────────────────────────────────────────
   const sortedCoupons = useMemo(() => [...coupons].sort((a, b) => a.sort_order - b.sort_order), [coupons])
 
   const companyOptions = useMemo(() => {
@@ -367,7 +429,6 @@ export default function MerchantCouponsPage() {
     }
   }, [coupons])
 
-  // ── Auth gate ────────────────────────────────────────────────────────
   if (!loading && !isAuthenticated) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
@@ -399,19 +460,30 @@ export default function MerchantCouponsPage() {
               <TicketIcon size={30} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Coupons</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Coupons</h1>
+                <button
+                  onClick={() => setShowGlobalTerms(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
+                >
+                  <FileTextIcon size={11} />
+                  Terms & Conditions
+                </button>
+              </div>
               <p className="mt-0.5 text-sm text-slate-500">Browse every discount live across partner companies.</p>
             </div>
           </div>
 
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 cursor-pointer disabled:opacity-50 sm:self-auto"
-          >
-            <RefreshIcon size={16} className={loading ? 'animate-spin text-[#1857D6]' : ''} />
-            <span>Refresh</span>
-          </button>
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshIcon size={16} className={loading ? 'animate-spin text-[#1857D6]' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Slim stat strip */}
@@ -428,10 +500,7 @@ export default function MerchantCouponsPage() {
             <span className="text-sm font-bold text-slate-900">{stats.totalCompanies}</span>
             <span className="text-[11px] font-semibold text-slate-500">companies</span>
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-3.5 py-2">
-            <span className="text-sm font-bold text-[#1857D6]">{stats.totalRedemptions}</span>
-            <span className="text-[11px] font-semibold text-blue-500">redemptions</span>
-          </div>
+     
         </div>
       </div>
 
@@ -449,7 +518,6 @@ export default function MerchantCouponsPage() {
             [
               { key: 'all', label: 'All' },
               { key: 'active', label: 'Active' },
-              { key: 'expired', label: 'Expired' },
             ] as { key: StatusFilter; label: string }[]
           ).map((opt) => (
             <button
@@ -465,20 +533,7 @@ export default function MerchantCouponsPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {companyOptions.length > 0 && (
-            <select
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 focus:border-[#1857D6] focus:outline-none cursor-pointer"
-            >
-              <option value="all">All companies</option>
-              {companyOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          )}
+          
           <div className="relative sm:w-64">
             <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -506,7 +561,7 @@ export default function MerchantCouponsPage() {
       ) : (
         <>
           <p className="mb-3 text-xs font-medium text-slate-500">
-            {filteredCoupons.length} coupon{filteredCoupons.length === 1 ? '' : 's'} · tap a card for full details
+            {filteredCoupons.length} coupon{filteredCoupons.length === 1 ? '' : 's'} · tap a card for full details & terms
           </p>
           <motion.div layout className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence>
@@ -518,7 +573,9 @@ export default function MerchantCouponsPage() {
         </>
       )}
 
+      {/* Modals */}
       <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} />
+      <GlobalTermsModal isOpen={showGlobalTerms} onClose={() => setShowGlobalTerms(false)} />
     </div>
   )
 }

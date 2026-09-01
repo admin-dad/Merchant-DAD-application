@@ -27,7 +27,10 @@ import {
   Mail,
   ExternalLink,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  History,
+  Video,
+  Tag
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -75,22 +78,22 @@ export default function QuickActionsSupportPage() {
   }, [router, supabase])
 
   // All platform navigation shortcuts
-  const navigationShortcuts = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview of your performance and recent activities.' },
-    { href: '/profile', label: 'My Profile', icon: User, description: 'Manage your personal login and account credentials.' },
-    { href: '/shop-details', label: 'Business / Shop Details', icon: Store, description: 'Update store info, address, timings, and categories.' },
-    { href: '/qr-code', label: 'QR Code Management', icon: QrCode, description: 'Download or manage your store check-in and payment QR.' },
-    { href: '/referrals', label: 'Referral Program', icon: Share2, description: 'Invite peer merchants and earn rewarding bonus points.' },
-    { href: '/points-rewards', label: 'Points & Rewards Wallet', icon: Gift, description: 'Track your loyalty points balance and redemption history.' },
-    { href: '/wallet', label: 'Digital Wallet', icon: Wallet, description: 'Monitor digital cash transactions, balances, and payouts.' },
-    { href: '/engagement', label: 'Customer Engagement', icon: Users, description: 'Connect with your consumer base, run campaigns & offers.' },
-    { href: '/scratch-cards', label: 'Scratch Card Participation', icon: Ticket, description: 'View active scratch card reward campaigns and winnings.' },
-    { href: '/billing', label: 'Merchant Billing Summary', icon: Receipt, description: 'Review system subscriptions, usage quotas, and invoices.' },
-    { href: '/payments', label: 'Payment Processing', icon: CreditCard, description: 'Track payment gateways, payouts, and customer checkouts.' },
-    { href: '/benefits', label: 'Merchant Benefits', icon: Award, description: 'Explore special perks, discounts, and partner tier rewards.' },
-    { href: '/shop', label: 'E-Commerce (Shop & Orders)', icon: ShoppingBag, description: 'Browse B2B/B2C catalog and manage product orders.' },
-    { href: '/reports', label: 'Reports', icon: FileBarChart2, description: 'Deep-dive analytics, financial logs, and exportable charts.' },
-  ]
+const navigationShortcuts = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview of your performance and recent activities.' },
+  { href: '/profile', label: 'My Profile', icon: User, description: 'Manage your personal login and account credentials.' },
+  { href: '/qr-code', label: 'QR Code Management', icon: QrCode, description: 'Download or manage your store check-in and payment QR.' },
+  { href: '/referrals', label: 'Referral Program', icon: Share2, description: 'Invite peer merchants and earn rewarding bonus points.' },
+  { href: '/wallet', label: 'Digital Wallet', icon: Wallet, description: 'Monitor digital cash transactions, balances, and payouts.' },
+  { href: '/payment-history', label: 'Payment History', icon: History, description: 'Review your past transactions and payment receipts.' },
+  { href: '/engagement', label: 'Customer Engagement', icon: Users, description: 'Connect with your consumer base, run campaigns & offers.' },
+  { href: '/videos', label: 'Video Feed', icon: Video, description: 'Watch platform updates, tutorials, and promotional videos.' },
+  { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag, description: 'Create, edit, and track your discount coupon campaigns.' },
+  { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard, description: 'Track payment gateways, payouts, and customer checkouts.' },
+  { href: '/benefits', label: 'Merchant Benefits', icon: Award, description: 'Explore special perks, discounts, and partner tier rewards.' },
+  { href: '/shop', label: 'E-Commerce (Shop & Orders)', icon: ShoppingBag, description: 'Browse B2B/B2C catalog and manage product orders.' },
+  { href: '/reports', label: 'Reports', icon: FileBarChart2, description: 'Deep-dive analytics, financial logs, and exportable charts.' },
+  { href: '/quick-actions', label: 'Quick Actions / Support', icon: LifeBuoy, description: 'Instantly navigate the platform or reach our support desk.' },
+]
 
   // ── Loading State UI ────────────────────────────────────────────────
   if (loading) {

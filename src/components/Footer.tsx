@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import Image from 'next/image'
 
 // Same brand palette as the header:
 //   blue  #1857D6 -> #0B2E7A
@@ -11,11 +14,10 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: 'Platform',
     links: [
-      { href: '/shop', label: 'Shop All Products' },
-      { href: '/categories', label: 'Product Categories' },
-      { href: '/rewards', label: 'Rewards & Points' },
-      { href: '/referral-program', label: 'Referral Program' },
-      { href: '/faq', label: 'FAQ' },
+      { href: '/winnervideo', label: 'Winner Video' },
+      { href: '/how-it-works', label: 'How It Works' },
+      { href: '/merchant-benefits', label: 'Merchant Benefits' },
+      { href: '/about', label: 'About Us' },
     ],
   },
   {
@@ -26,14 +28,6 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: '/privacy', label: 'Privacy Policy' },
       { href: '/refund-policy', label: 'Refund Policy' },
       { href: '/merchant-agreement', label: 'Merchant Agreement' },
-    ],
-  },
-  {
-    title: 'Merchants',
-    links: [
-      { href: '/merchant-benefits', label: 'Merchant Benefits' },
-      { href: '/merchant-register', label: 'Partner Registration' },
-      { href: '/merchant-login', label: 'Merchant Dashboard Login' },
     ],
   },
 ]
@@ -55,22 +49,34 @@ export default function Footer() {
       />
 
       <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-4 md:gap-8">
+        {/* 3 Columns Layout */}
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
 
-          {/* Column 1: Brand */}
+          {/* Column 1: Brand & Logo */}
           <div className="space-y-4 md:pr-6">
-            <span
-              className="text-xl tracking-tight bg-gradient-to-r from-[#4F8CFF] to-[#7BC142] bg-clip-text text-transparent"
-              style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'normal' }}
-            >
-              MerchantApp
-            </span>
+            <Link href="/" className="group inline-flex items-center gap-3">
+              {/* Added a white/light container background & border so the dark logo stands out cleanly */}
+              <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-white p-1 border border-white/20 shadow-md transition-transform duration-300 group-hover:scale-105">
+                <Image
+                  src="/logomain.jpeg"
+                  alt="MerchantApp Logo"
+                  fill
+                  className="object-contain p-0.5"
+                />
+              </div>
+              <span
+                className="text-xl tracking-tight bg-gradient-to-r from-[#4F8CFF] to-[#7BC142] bg-clip-text text-transparent"
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontStyle: 'normal' }}
+              >
+                MerchantApp
+              </span>
+            </Link>
             <p className="text-sm leading-relaxed text-slate-400">
               Empowering local merchants and connecting customers with seamless shopping, rewards, and exclusive digital experiences.
             </p>
           </div>
 
-          {/* Columns 2-4: Links */}
+          {/* Columns 2 & 3: Platform & Support Navigation Links */}
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <h3
