@@ -31,13 +31,13 @@ export default function Header() {
               <motion.div
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className="relative h-12 w-12 overflow-hidden rounded-xl bg-black/40 flex items-center justify-center"
+                className="relative h-12 w-28 overflow-hidden flex items-center justify-center"
               >
                 <Image
-                  src="/logomain.jpeg"
-                  alt="MerchantApp Logo"
+                  src="/logopng.jpeg"
+                  alt="DAD Logo"
                   fill
-                  className="object-contain p-1"
+                  className="object-contain"
                   priority
                 />
               </motion.div>
@@ -49,7 +49,7 @@ export default function Header() {
                   fontStyle: 'normal',
                 }}
               >
-                MerchantApp
+                Merchant app
               </span>
             </Link>
 

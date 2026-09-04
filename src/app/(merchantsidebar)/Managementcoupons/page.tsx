@@ -19,6 +19,7 @@ import {
   ArrowUpRight as ArrowUpRightIcon,
   FileText as FileTextIcon,
   X as XIcon,
+  Maximize2 as ExpandIcon,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -105,7 +106,41 @@ function CodeChip({ code, full = false }: { code: string; full?: boolean }) {
     </button>
   )
 }
-
+// ─────────────────────────────────────────────────────────────────────────
+// Fullscreen image lightbox
+// ─────────────────────────────────────────────────────────────────────────
+function ImageLightbox({ src, alt, onClose }: { src: string | null; alt: string; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {src && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+          onClick={onClose}
+        >
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+          >
+            <XIcon size={20} />
+          </button>
+          <motion.img
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            src={src}
+            alt={alt}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
 // ─────────────────────────────────────────────────────────────────────────
 // Coupon ticket card
 // ─────────────────────────────────────────────────────────────────────────
@@ -181,107 +216,129 @@ function CouponCard({ coupon, onOpen }: { coupon: CouponRow; onOpen: () => void 
 // ─────────────────────────────────────────────────────────────────────────
 function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: () => void }) {
   const status = coupon ? statusInfo(coupon) : null
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
   return (
-    <AnimatePresence>
-      {coupon && status && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8 overflow-y-auto"
-          onClick={onClose}
-        >
+    <>
+      <AnimatePresence>
+        {coupon && status && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.18 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl my-auto max-h-[90vh] flex flex-col"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8 overflow-y-auto"
+            onClick={onClose}
           >
-            <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 shrink-0">
-              {coupon.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-300">
-                  <TicketIcon size={32} />
-                </div>
-              )}
-              <span className={`absolute right-3 top-3 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${status.classes}`}>
-                {status.label}
-              </span>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl my-auto max-h-[90vh] flex flex-col"
+            >
+              <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 shrink-0">
+                {coupon.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-slate-300">
+                    <TicketIcon size={32} />
+                  </div>
+                )}
 
-            <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">{coupon.title}</h2>
-                <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                  <BuildingIcon size={12} className="text-slate-400" />
-                  {coupon.company_name}
+                {/* Expand icon — only shown when there's an actual image to view fullscreen */}
+                {coupon.image_url && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setLightboxSrc(coupon.image_url)
+                    }}
+                    aria-label="View full image"
+                    title="View full image"
+                    className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm hover:bg-black/70 transition-colors cursor-pointer"
+                  >
+                    <ExpandIcon size={14} />
+                  </button>
+                )}
+
+                <span className={`absolute right-3 top-3 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${status.classes}`}>
+                  {status.label}
                 </span>
               </div>
 
-              {coupon.description && <p className="text-sm text-slate-600">{coupon.description}</p>}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-200 px-3.5 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Discount</p>
-                  <p className="mt-1 font-mono text-sm font-bold text-slate-900">{discountLabel(coupon)} off</p>
+              <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">{coupon.title}</h2>
+                  <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                    <BuildingIcon size={12} className="text-slate-400" />
+                    {coupon.company_name}
+                  </span>
                 </div>
-                <div className="rounded-xl border border-slate-200 px-3.5 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Redeemed</p>
-                  <p className="mt-1 font-mono text-sm font-bold text-slate-900">
-                    {coupon.usage_count}
-                    {coupon.usage_limit ? ` / ${coupon.usage_limit}` : ''}
+
+                {coupon.description && <p className="text-sm text-slate-600">{coupon.description}</p>}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-slate-200 px-3.5 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Discount</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-slate-900">{discountLabel(coupon)} off</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-3.5 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Redeemed</p>
+                    <p className="mt-1 font-mono text-sm font-bold text-slate-900">
+                      {coupon.usage_count}
+                      {coupon.usage_limit ? ` / ${coupon.usage_limit}` : ''}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-3.5 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Starts</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">{coupon.starts_at ? formatDate(coupon.starts_at) : 'Now'}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 px-3.5 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Expires</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">{coupon.expires_at ? formatDate(coupon.expires_at) : 'Never'}</p>
+                  </div>
+                </div>
+
+                {coupon.code && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-bold text-slate-600">Coupon code</p>
+                    <CodeChip code={coupon.code} full />
+                  </div>
+                )}
+
+                {/* Terms & Conditions Section inside the Popup */}
+                <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-1.5">
+                    <FileTextIcon size={14} className="text-[#1857D6]" />
+                    Terms & Conditions
+                  </div>
+                  <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                    {coupon.terms_and_conditions ||
+                      "1. This coupon is valid for a single redemption per user unless specified otherwise.\n2. Cannot be clubbed with other running promotions or corporate discounts.\n3. Standard platform terms of service apply to all transactions."}
                   </p>
                 </div>
-                <div className="rounded-xl border border-slate-200 px-3.5 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Starts</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-700">{coupon.starts_at ? formatDate(coupon.starts_at) : 'Now'}</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 px-3.5 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Expires</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-700">{coupon.expires_at ? formatDate(coupon.expires_at) : 'Never'}</p>
-                </div>
               </div>
 
-              {coupon.code && (
-                <div>
-                  <p className="mb-1.5 text-xs font-bold text-slate-600">Coupon code</p>
-                  <CodeChip code={coupon.code} full />
-                </div>
-              )}
-
-              {/* Terms & Conditions Section inside the Popup */}
-              <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-4">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-1.5">
-                  <FileTextIcon size={14} className="text-[#1857D6]" />
-                  Terms & Conditions
-                </div>
-                <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
-                  {coupon.terms_and_conditions || 
-                    "1. This coupon is valid for a single redemption per user unless specified otherwise.\n2. Cannot be clubbed with other running promotions or corporate discounts.\n3. Standard platform terms of service apply to all transactions."}
-                </p>
+              <div className="flex items-center justify-end border-t border-slate-100 px-6 py-4 shrink-0 bg-white">
+                <button
+                  onClick={onClose}
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-end border-t border-slate-100 px-6 py-4 shrink-0 bg-white">
-              <button
-                onClick={onClose}
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen lightbox for the coupon image */}
+      <ImageLightbox src={lightboxSrc} alt={coupon?.title || 'Coupon image'} onClose={() => setLightboxSrc(null)} />
+    </>
   )
 }
-
 // ─────────────────────────────────────────────────────────────────────────
 // Global Terms & Conditions Modal (triggered from the top header)
 // ─────────────────────────────────────────────────────────────────────────

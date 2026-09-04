@@ -24,8 +24,9 @@ import {
   CalendarClock as CalendarClockIcon,
   CalendarCheck as CalendarCheckIcon,
   AlertTriangle as AlertTriangleIcon,
+  History as HistoryIcon,
+  Hourglass as HourglassIcon,
 } from 'lucide-react'
-
 declare global {
   interface Window {
     Razorpay: any
@@ -64,38 +65,69 @@ interface PaymentRecord {
   amount: number
   status: string
   created_at: string
-  billing_month?: string | null // e.g. "2026-09" — matches a payment to a specific billing month
+  billing_month?: string | null // e.g. "2026-08" — matches a payment to the calendar month it was billed for
 }
 
-function getCurrentMonthBounds() {
+// ─────────────────────────────────────────────────────────────────────────
+// Billing cycle model
+// ─────────────────────────────────────────────────────────────────────────
+// A calendar month's charges (scans, or the flat monthly fee) close at the
+// end of that month, and the bill is DUE on the 1st of the following
+// month.
+//
+// IMPORTANT: the pay button is only clickable on the 1st of the month
+// (isFirstOfMonth). It is closed on every other day, even if the merchant
+// has an overdue balance sitting unpaid — there is no "stays open all
+// month" exception. If a merchant misses a 1st, their unpaid amount does
+// NOT disappear or reset: it simply carries forward and gets bundled in
+// automatically (shown as a separate line item) the next time the 1st
+// comes around, when the window reopens for one day.
+function getBillingBounds() {
   const now = new Date()
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  // Day 0 of "next month" = last calendar day of THIS month.
-  // JS resolves this correctly for 28/29/30/31 automatically — no lookup table needed.
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const daysInMonth = lastDay.getDate() // 28, 29, 30, or 31
-  const daysRemaining = Math.ceil((lastDay.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const today = now.getDate()
+
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+  const previousMonthKey = `${previousMonthStart.getFullYear()}-${String(previousMonthStart.getMonth() + 1).padStart(2, '0')}`
+  const previousMonthLabel = previousMonthStart.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+
+  // The due date for the just-closed (previous) month's bill is the 1st of
+  // THIS calendar month — but the payment WINDOW only opens on the 1st
+  // itself. Once that day has passed, the button stays locked until the
+  // *next* occurrence of the 1st. So "dueDate" here always means "the next
+  // date the pay button will actually be clickable" — never a date that
+  // has already gone by.
+  const nextDueDate = today === 1 ? currentMonthStart : nextMonthStart
+  const dueDate = nextDueDate
+  const dueDateLabel = dueDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+
+  // Days remaining until that next due date. 0 if today IS the 1st (the
+  // window is open right now).
+  const daysRemaining = today === 1 ? 0 : Math.ceil((nextDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  const currentMonthLabel = currentMonthStart.toLocaleString('en-IN', { month: 'long', year: 'numeric' })
 
   return {
     today: now,
     todayLabel: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-    startISO: start.toISOString(),
-    endISO: end.toISOString(),
-    monthKey: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-    monthLabel: start.toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
-    dueDate: lastDay,
-    dueDateLabel: lastDay.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-    daysInMonth,
-    daysRemaining, // positive = days left to pay, 0 = due today
+    currentMonthStart,
+    currentMonthStartISO: currentMonthStart.toISOString(),
+    currentMonthLabel,
+    previousMonthKey,
+    previousMonthLabel,
+    dueDate,
+    dueDateLabel,
+    daysRemaining, // 0 = due today (the 1st), >0 = days left until next 1st (display only)
   }
 }
 
-// Builds "YYYY-MM" keys for every month from `startDate` up to (and including) `now`.
-function buildMonthKeysBetween(startDate: Date, now: Date): { key: string; label: string; date: Date }[] {
+// Builds "YYYY-MM" keys for every month from `startDate` up to (and including) `endMonthDate`.
+function buildMonthKeysBetween(startDate: Date, endMonthDate: Date): { key: string; label: string; date: Date }[] {
   const months: { key: string; label: string; date: Date }[] = []
   const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
-  const end = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(endMonthDate.getFullYear(), endMonthDate.getMonth(), 1)
 
   let guard = 0
   while (cursor <= end && guard < 120) {
@@ -131,16 +163,39 @@ export default function MerchantScanPaymentPage() {
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string>('ALL')
   const [error, setError] = useState<string | null>(null)
 
+  // IMPORTANT: getBillingBounds() calls `new Date()`. Computing this in a
+  // useMemo means it runs during the very first render — which, for a
+  // 'use client' component, happens once on the SERVER and once on the
+  // CLIENT during hydration. If those two renders land on different
+  // calendar dates/timezones, React throws a hydration mismatch error
+  // pointing at whichever text node differs first (exactly what you saw
+  // at the header <p>). Fix: compute it in useEffect so it ONLY ever runs
+  // on the client, after mount — never during SSR.
+  const [billing, setBilling] = useState<ReturnType<typeof getBillingBounds> | null>(null)
+
+  useEffect(() => {
+    setBilling(getBillingBounds())
+  }, [])
+
   const {
     todayLabel,
-    startISO,
-    endISO,
-    monthKey,
-    monthLabel,
+    currentMonthStart,
+    currentMonthStartISO,
+    currentMonthLabel,
+    previousMonthKey,
+    previousMonthLabel,
     dueDateLabel,
-    daysInMonth,
     daysRemaining,
-  } = useMemo(() => getCurrentMonthBounds(), [])
+  } = billing ?? {
+    todayLabel: '',
+    currentMonthStart: new Date(0),
+    currentMonthStartISO: new Date(0).toISOString(),
+    currentMonthLabel: '',
+    previousMonthKey: '',
+    previousMonthLabel: '',
+    dueDateLabel: '',
+    daysRemaining: 0,
+  }
 
   useEffect(() => {
     const script = document.createElement('script')
@@ -241,26 +296,24 @@ export default function MerchantScanPaymentPage() {
       }
       setScans((scanData as QRScan[]) || [])
 
-const { data: payData, error: payError } = await supabase
-  .from('merchant_payments')
-  .select('id, amount, status, created_at, billing_month')
-  .eq('merchant_id', merchData.id)
-  .order('created_at', { ascending: false })
+      const { data: payData, error: payError } = await supabase
+        .from('merchant_payments')
+        .select('id, amount, status, created_at, billing_month')
+        .eq('merchant_id', merchData.id)
+        .order('created_at', { ascending: false })
 
-if (payError) {
-  console.error('Error fetching merchant_payments:', payError)
-} else if (payData) {
-  setPayments(
-    (payData as unknown as PaymentRecord[])
-  )
-}
+      if (payError) {
+        console.error('Error fetching merchant_payments:', payError)
+      } else if (payData) {
+        setPayments((payData as unknown as PaymentRecord[]))
+      }
     } catch (err: unknown) {
       console.error('Full fetchData Exception:', err)
       setError(err instanceof Error ? err.message : 'Failed to load records.')
     } finally {
       setLoading(false)
     }
-  }, [supabase, startISO, endISO])
+  }, [supabase])
 
   useEffect(() => {
     fetchData()
@@ -280,7 +333,10 @@ if (payError) {
 
   const monthlyFeeBase = merchant?.billing_rate && merchant.billing_rate > 0 ? merchant.billing_rate : 0
 
-  // ── Full month timeline + unpaid months (missed months carry forward and accumulate) ──
+  // ── Closed-month timeline (billable) + accruing current month ──
+  // "Closed" months = every month before the current one. Their bill
+  // becomes due on the 1st of the current month and stays payable every
+  // day after that (nothing here waits for "the next 1st").
   const { unpaidMonths, isOverdue, cumulativeBase, cumulativeGst, cumulativeTotal } = useMemo(() => {
     if (!isMonthlyMerchant || !merchant) {
       return {
@@ -292,9 +348,9 @@ if (payError) {
       }
     }
 
-    const now = new Date()
-    const accountStart = merchant.created_at ? new Date(merchant.created_at) : now
-    const allMonths = buildMonthKeysBetween(accountStart, now)
+    const accountStart = merchant.created_at ? new Date(merchant.created_at) : new Date()
+    const previousMonthDate = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1)
+    const closedMonths = buildMonthKeysBetween(accountStart, previousMonthDate)
 
     const paidMonthKeys = new Set(
       payments
@@ -303,45 +359,88 @@ if (payError) {
         .filter((m): m is string => !!m)
     )
 
-    const unpaid = allMonths.filter((m) => !paidMonthKeys.has(m.key))
-    const overdue = unpaid.some((m) => m.key !== monthKey) // an unpaid month before the current one
+    const unpaid = closedMonths.filter((m) => !paidMonthKeys.has(m.key))
+    // Overdue = there's an unpaid month older than the one that just
+    // became due — i.e. they missed a previous 1st. Used only to control
+    // banner styling now, not to gate payment.
+    const overdue = unpaid.some((m) => m.key !== previousMonthKey)
 
     const base = unpaid.length * monthlyFeeBase
     const gst = base * GST_RATE
     const total = base + gst
 
     return { unpaidMonths: unpaid, isOverdue: overdue, cumulativeBase: base, cumulativeGst: gst, cumulativeTotal: total }
-  }, [isMonthlyMerchant, merchant, payments, monthlyFeeBase, monthKey])
+  }, [isMonthlyMerchant, merchant, payments, monthlyFeeBase, currentMonthStart, previousMonthKey])
 
-  // NEW — add this line right after
   const isMonthlyPaid = isMonthlyMerchant && unpaidMonths.length === 0
-  // Pay button only opens on the due date itself (last day of month).
-  // If a previous month is overdue, payment stays open every day so they can reactivate.
-  // NEW — strictly due-date-only, no overdue exception
-  const canPayMonthlyNow = isMonthlyMerchant && daysRemaining === 0
+
+  // Payment is only accepted on the 1st of the month (today === 1), full
+  // stop — no "stays open if overdue" exception. If a merchant misses the
+  // 1st, their unpaid month(s) simply carry forward and get included
+  // automatically the next time the 1st comes around.
+  const isFirstOfMonth = daysRemaining === 0
+  const canPayMonthlyNow = isMonthlyMerchant && isFirstOfMonth && unpaidMonths.length > 0
+
   const currentMonthPayment = useMemo(() => {
     if (!isMonthlyMerchant) return null
     return (
       payments.find(
-        (p) => (p.status === 'approved' || p.status === 'completed') && p.billing_month === monthKey
+        (p) => (p.status === 'approved' || p.status === 'completed') && p.billing_month === previousMonthKey
       ) || null
     )
-  }, [isMonthlyMerchant, payments, monthKey])
+  }, [isMonthlyMerchant, payments, previousMonthKey])
 
-  // Per-scan branch — unchanged
+  // ── Per-scan branch ──────────────────────────────────────────────────
   const payableScans = useMemo(() => {
     if (isMonthlyMerchant) return []
-    return scans.filter((s) => !s.is_paid && s.payment_status !== 'paid')
-  }, [scans, isMonthlyMerchant])
+    return scans.filter(
+      (s) => !s.is_paid && s.payment_status !== 'paid' && new Date(s.created_at) < currentMonthStart
+    )
+  }, [scans, isMonthlyMerchant, currentMonthStart])
+
+  const accruingScans = useMemo(() => {
+    if (isMonthlyMerchant) return []
+    return scans.filter(
+      (s) => !s.is_paid && s.payment_status !== 'paid' && new Date(s.created_at) >= currentMonthStart
+    )
+  }, [scans, isMonthlyMerchant, currentMonthStart])
 
   const totalScansCount = scans.length
   const totalPayableScansCount = payableScans.length
+  const totalAccruingScansCount = accruingScans.length
   const totalBillingAmount = totalPayableScansCount * scanBillingRate
 
   const outstandingBase = totalBillingAmount
   const outstandingGst = outstandingBase * GST_RATE
   const outstandingTotalWithGst = outstandingBase + outstandingGst
   const hasOutstandingPayment = totalPayableScansCount > 0 && outstandingTotalWithGst > 0
+
+  // Same rule as the monthly branch: payment only opens on the 1st of the
+  // month. isScanOverdue is kept for banner/messaging only.
+  const isScanOverdue = payableScans.some((s) => new Date(s.created_at) < new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1))
+  const canPayScansNow = isFirstOfMonth && totalPayableScansCount > 0
+
+  // Breaks payable (unpaid, closed) scans down by the calendar month they
+  // were created in, so you can see "August: N scans, ₹X" and
+  // "July: N scans, ₹X" as separate rolled-forward line items instead of
+  // one lump sum.
+  const payableScansByMonth = useMemo(() => {
+    if (isMonthlyMerchant) return [] as { key: string; label: string; count: number; amount: number }[]
+    const map = new Map<string, { key: string; label: string; count: number; amount: number }>()
+    for (const s of payableScans) {
+      const d = new Date(s.created_at)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const label = new Date(d.getFullYear(), d.getMonth(), 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      const existing = map.get(key)
+      if (existing) {
+        existing.count += 1
+        existing.amount += scanBillingRate
+      } else {
+        map.set(key, { key, label, count: 1, amount: scanBillingRate })
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (a.key < b.key ? -1 : 1))
+  }, [payableScans, isMonthlyMerchant, scanBillingRate])
 
   const filteredScans = useMemo(() => {
     return scans.filter((scan) => {
@@ -359,8 +458,8 @@ if (payError) {
 
   const handlePayment = async () => {
     if (!merchant || !hasOutstandingPayment) return
-    if (daysRemaining !== 0) {
-      setError(`Payment opens on ${dueDateLabel} (last day of ${monthLabel}).`)
+    if (!canPayScansNow) {
+      setError(`Payment only opens on ${dueDateLabel} (1st of the month).`)
       return
     }
 
@@ -451,11 +550,12 @@ if (payError) {
     }
   }
 
-  // --- MONTHLY SUBSCRIPTION PAYMENT: always payable, any day. Pays off ALL unpaid months at once. ---
+  // --- MONTHLY SUBSCRIPTION PAYMENT: payable any day once a closed month
+  // is unpaid. Pays off ALL unpaid closed months at once. ---
   const handleMonthlyPayment = async () => {
     if (!merchant || cumulativeTotal <= 0 || unpaidMonths.length === 0) return
     if (!canPayMonthlyNow) {
-      setError(`Payment opens on ${dueDateLabel} (last day of ${monthLabel}).`)
+      setError(`Payment only opens on ${dueDateLabel} (1st of the month).`)
       return
     }
     if (typeof window === 'undefined' || !window.Razorpay) {
@@ -476,7 +576,7 @@ if (payError) {
         body: JSON.stringify({
           merchant_id: merchant.id,
           payment_mode: 'monthly',
-          billing_month: monthKey,
+          billing_month: previousMonthKey,
           billing_months: billingMonths,
         }),
       })
@@ -491,7 +591,7 @@ if (payError) {
       const monthsLabel =
         billingMonths.length > 1
           ? `${unpaidMonths[0].label} \u2013 ${unpaidMonths[unpaidMonths.length - 1].label}`
-          : monthLabel
+          : previousMonthLabel
 
       const options = {
         key: orderData.key_id,
@@ -516,7 +616,7 @@ if (payError) {
                 base_amount: orderData.base_amount,
                 gst_amount: orderData.gst_amount,
                 payment_mode: 'monthly',
-                billing_month: monthKey,
+                billing_month: previousMonthKey,
                 billing_months: billingMonths,
               }),
             })
@@ -566,6 +666,14 @@ if (payError) {
     })
   }
 
+  if (!billing) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <LoaderIcon size={32} className="animate-spin text-[#1857D6]" />
+      </div>
+    )
+  }
+
   if (!loading && !isAuthenticated) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
@@ -597,26 +705,34 @@ if (payError) {
               <CardIcon size={30} />
             </div>
             <div>
-         
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 {isMonthlyMerchant ? 'Monthly Subscription' : 'Scan Billing & Payments'}
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
                 {isMonthlyMerchant
-                  ? `Payment opens on ${dueDateLabel} (last day of ${monthLabel}). Missed months carry forward and must be paid together.`
-                  : `Payment opens on ${dueDateLabel} (last day of ${monthLabel}). Pay all outstanding scan charges together, plus 18% GST.`}
+                  ? `Payment only opens on ${dueDateLabel} (1st of the month) for ${previousMonthLabel}'s fee. Missed months carry forward and must be paid together next time the 1st comes around.`
+                  : `Payment only opens on ${dueDateLabel} (1st of the month) for ${previousMonthLabel}'s scans. Pay all outstanding scan charges together, plus 18% GST.`}
               </p>
             </div>
           </div>
 
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 cursor-pointer disabled:opacity-50"
-          >
-            <RefreshIcon size={16} className={loading ? 'animate-spin text-[#1857D6]' : ''} />
-            <span>Refresh</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/payments/history')} // ⚠️ adjust to match your actual route
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+            >
+              <HistoryIcon size={16} />
+              <span> Scan Payment History</span>
+            </button>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshIcon size={16} className={loading ? 'animate-spin text-[#1857D6]' : ''} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -637,12 +753,12 @@ if (payError) {
 
       {isMonthlyMerchant ? (
         <>
-          {/* Overdue banner */}
+          {/* Overdue banner — only appears when a month OLDER than last month is still unpaid */}
           {isOverdue && (
             <div className="mb-6 flex items-center gap-3 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-sm font-medium text-rose-800">
               <AlertTriangleIcon size={18} className="text-rose-600 shrink-0" />
               <span>
-                You missed the deadline for {unpaidMonths.length - (unpaidMonths.some((m) => m.key === monthKey) ? 1 : 0)} previous month(s).
+                You missed the 1st-of-the-month deadline for {unpaidMonths.length - (unpaidMonths.some((m) => m.key === previousMonthKey) ? 1 : 0)} earlier month(s).
                 All unpaid months must be paid together — you can pay right now to reactivate your QR code.
               </span>
             </div>
@@ -670,7 +786,7 @@ if (payError) {
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Pay-by Date
+                  Payment Status
                 </span>
                 <div
                   className={`p-2 rounded-xl ${isMonthlyPaid
@@ -692,25 +808,27 @@ if (payError) {
               <p className="text-xs text-slate-400 mt-1">
                 {isMonthlyPaid && currentMonthPayment
                   ? `Paid on ${formatDate(currentMonthPayment.created_at)}`
-                  : isOverdue
-                    ? 'Deadline already passed — pay now to reactivate'
-                    : daysRemaining > 0
-                      ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} left · ${monthLabel} has ${daysInMonth} days`
-                      : 'Due today — last day of the month'}
+                  : isFirstOfMonth
+                    ? 'Payment window is open today'
+                    : isOverdue
+                      ? `Deadline passed — payment reopens on ${dueDateLabel}`
+                      : daysRemaining > 0
+                        ? `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} until payment opens`
+                        : `Due today — 1st of ${currentMonthLabel}`}
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Scans This Month
+                  Accruing — {currentMonthLabel}
                 </span>
                 <div className="p-2 bg-slate-50 rounded-xl text-slate-500">
-                  <QrIcon size={18} />
+                  <HourglassIcon size={18} />
                 </div>
               </div>
               <h3 className="text-2xl font-bold text-slate-900">
-                {scans.filter((s) => new Date(s.created_at) >= new Date(startISO)).length}
+                {scans.filter((s) => new Date(s.created_at) >= new Date(currentMonthStartISO)).length}
               </h3>
               <p className="text-xs text-slate-400 mt-1">Not billed individually on this plan</p>
             </div>
@@ -731,7 +849,7 @@ if (payError) {
                 size={20}
               />
               <h2 className="text-lg font-bold text-slate-900">
-                {unpaidMonths.length > 1 ? `${unpaidMonths.length} Months Due` : `${monthLabel} Subscription`}
+                {unpaidMonths.length > 1 ? `${unpaidMonths.length} Months Due` : `${previousMonthLabel} Subscription`}
               </h2>
             </div>
 
@@ -739,41 +857,55 @@ if (payError) {
               <div className="flex items-center gap-3 rounded-2xl bg-white border border-emerald-200 p-4">
                 <CheckIcon size={20} className="text-emerald-600 shrink-0" />
                 <p className="text-sm font-medium text-slate-700">
-                  You're all set for {monthLabel}. Your QR code stays active and scans are unlimited.
+                  You're all set. Your QR code stays active and scans are unlimited.
                 </p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                {/* Explicitly clarify: you CAN pay right now, any day */}
                 {canPayMonthlyNow ? (
                   <div className="flex items-center gap-3 rounded-2xl bg-white border border-blue-200 p-4">
                     <CheckIcon size={20} className="text-[#1857D6] shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
                       {isOverdue
-                        ? 'A previous month is overdue — pay now to reactivate your QR code.'
-                        : `Today is your due date (${dueDateLabel}) — payment is open now.`}
+                        ? 'A previous month is overdue too — paying now settles everything and reactivates your QR code.'
+                        : `Today is the due date (${dueDateLabel}) — payment is open now.`}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4">
                     <CalendarClockIcon size={20} className="text-slate-500 shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
-                      Payment opens on <span className="font-bold">{dueDateLabel}</span> (last day of {monthLabel}).
+                      Payment only opens on <span className="font-bold">{dueDateLabel}</span> (1st of the month).
                       {daysRemaining > 0 && ` ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} to go.`}
+                      {isOverdue && ' Unpaid months will carry forward and be included then.'}
                     </p>
                   </div>
                 )}
 
-                {unpaidMonths.length > 1 && (
-                  <div className="rounded-2xl border border-slate-200/80 bg-white divide-y divide-slate-100">
-                    {unpaidMonths.map((m) => (
-                      <div key={m.key} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                        <span className="text-slate-600">{m.label}</span>
-                        <span className="font-semibold text-slate-900">₹{formatMoney(monthlyFeeBase)}</span>
-                      </div>
-                    ))}
+                {/* Month-by-month breakdown — always shown while anything is unpaid,
+                    so a rolled-forward month and the newly-closed month are both
+                    visible as separate lines, not just lumped into one total. */}
+                <div className="rounded-2xl border border-slate-200/80 bg-white divide-y divide-slate-100">
+                  {unpaidMonths.map((m) => (
+                    <div key={m.key} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                      <span className="text-slate-600">
+                        {m.label}
+                        {m.key !== previousMonthKey && (
+                          <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
+                            CARRIED FORWARD
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-semibold text-slate-900">₹{formatMoney(monthlyFeeBase)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50/60">
+                    <span className="text-slate-500">
+                      {currentMonthLabel} <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
+                    </span>
+                    <span className="font-semibold text-slate-400">₹{formatMoney(monthlyFeeBase)}</span>
                   </div>
-                )}
+                </div>
 
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
                   <div className="flex items-center justify-between text-sm text-slate-600">
@@ -789,7 +921,7 @@ if (payError) {
                     <span>₹{formatMoney(cumulativeGst)}</span>
                   </div>
                   <div className="flex items-center justify-between text-base font-bold text-slate-900 mt-2 pt-2 border-t border-slate-100">
-                    <span>Total Due</span>
+                    <span>Total Due Now</span>
                     <span>₹{formatMoney(cumulativeTotal)}</span>
                   </div>
                 </div>
@@ -800,12 +932,11 @@ if (payError) {
                     <span className="text-2xl font-black text-[#1857D6]">₹{formatMoney(cumulativeTotal)}</span>
                   </div>
 
-                  {/* Always clickable — payment is never date-gated */}
                   <button
                     onClick={handleMonthlyPayment}
                     disabled={isSubmitting || cumulativeTotal <= 0 || !canPayMonthlyNow}
                     aria-disabled={isSubmitting || cumulativeTotal <= 0 || !canPayMonthlyNow}
-                    className="..."
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 cursor-pointer"
                   >
                     {isSubmitting ? (
                       <>
@@ -861,7 +992,7 @@ if (payError) {
       ) : (
         <>
           {/* Overview Cards */}
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -889,11 +1020,24 @@ if (payError) {
                 </div>
               </div>
               <h3 className="text-2xl font-bold text-slate-900">
-                {totalPayableScansCount} <span className="text-xs font-normal text-slate-400">/ {totalScansCount} total</span>
+                {totalPayableScansCount + totalAccruingScansCount} <span className="text-xs font-normal text-slate-400">/ {totalScansCount} total</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Base ₹{formatMoney(totalBillingAmount)}
+                {totalPayableScansCount} payable now (₹{formatMoney(totalBillingAmount)}) · {totalAccruingScansCount} accruing
               </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Accruing — {currentMonthLabel}
+                </span>
+                <div className="p-2 bg-slate-50 rounded-xl text-slate-500">
+                  <HourglassIcon size={18} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">{totalAccruingScansCount}</h3>
+              <p className="text-xs text-slate-400 mt-1">Bills on {dueDateLabel.split(' ').slice(0, 2).join(' ') === dueDateLabel ? dueDateLabel : `1st of next month`}</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -919,32 +1063,66 @@ if (payError) {
               <h2 className="text-lg font-bold text-slate-900">Pay All Outstanding Scans</h2>
             </div>
 
-{!hasOutstandingPayment ? (
-  <div className="flex items-center gap-3 rounded-2xl bg-white border border-emerald-200 p-4">
-    <CheckIcon size={20} className="text-emerald-600 shrink-0" />
-    <p className="text-sm font-medium text-slate-700">
-      You're all caught up — there are no unpaid scans right now.
-    </p>
-  </div>
-) : (
-  <>
-    {daysRemaining === 0 ? (
-      <div className="flex items-center gap-3 rounded-2xl bg-white border border-blue-200 p-4 mb-4">
-        <CheckIcon size={20} className="text-[#1857D6] shrink-0" />
-        <p className="text-sm font-medium text-slate-700">
-          Today is your due date ({dueDateLabel}) — payment is open now.
-        </p>
-      </div>
-    ) : (
-      <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4 mb-4">
-        <CalendarClockIcon size={20} className="text-slate-500 shrink-0" />
-        <p className="text-sm font-medium text-slate-700">
-          Payment opens on <span className="font-bold">{dueDateLabel}</span> (last day of {monthLabel}).
-          {daysRemaining > 0 && ` ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} to go.`}
-        </p>
-      </div>
-    )}
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4">
+            {!hasOutstandingPayment ? (
+              <div className="flex items-center gap-3 rounded-2xl bg-white border border-emerald-200 p-4">
+                <CheckIcon size={20} className="text-emerald-600 shrink-0" />
+                <p className="text-sm font-medium text-slate-700">
+                  You're all caught up — there are no unpaid scans right now.
+                </p>
+              </div>
+            ) : (
+              <>
+                {canPayScansNow ? (
+                  <div className="flex items-center gap-3 rounded-2xl bg-white border border-blue-200 p-4 mb-4">
+                    <CheckIcon size={20} className="text-[#1857D6] shrink-0" />
+                    <p className="text-sm font-medium text-slate-700">
+                      Today is the due date ({dueDateLabel}) — payment is open now.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4 mb-4">
+                    <CalendarClockIcon size={20} className="text-slate-500 shrink-0" />
+                    <p className="text-sm font-medium text-slate-700">
+                      Payment only opens on <span className="font-bold">{dueDateLabel}</span> (1st of the month).
+                      {daysRemaining > 0 && ` ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} to go.`}
+                      {isScanOverdue && ' Charges from more than one closed month will be included then.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Month-by-month breakdown of unpaid scans, so a rolled-forward
+                    month (e.g. July) and the newly-closed month (e.g. August)
+                    both show as separate line items instead of one lump sum. */}
+                {payableScansByMonth.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200/80 bg-white divide-y divide-slate-100 mb-4">
+                    {payableScansByMonth.map((m) => (
+                      <div key={m.key} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                        <span className="text-slate-600">
+                          {m.label}
+                          {m.key !== previousMonthKey && (
+                            <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
+                              CARRIED FORWARD
+                            </span>
+                          )}
+                          <span className="ml-2 text-xs text-slate-400">({m.count} scans)</span>
+                        </span>
+                        <span className="font-semibold text-slate-900">₹{formatMoney(m.amount)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50/60">
+                      <span className="text-slate-500">
+                        {currentMonthLabel}{' '}
+                        <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
+                        <span className="ml-2 text-xs text-slate-400">({totalAccruingScansCount} scans)</span>
+                      </span>
+                      <span className="font-semibold text-slate-400">
+                        ₹{formatMoney(totalAccruingScansCount * scanBillingRate)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>{totalPayableScansCount} unpaid scans × ₹{formatMoney(scanBillingRate)}</span>
                     <span>₹{formatMoney(outstandingBase)}</span>
@@ -967,29 +1145,39 @@ if (payError) {
                     </span>
                   </div>
 
-<button
-  onClick={handlePayment}
-  disabled={isSubmitting || !hasOutstandingPayment || daysRemaining !== 0}
-  aria-disabled={isSubmitting || !hasOutstandingPayment || daysRemaining !== 0}
-  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 cursor-pointer"
->
-  {isSubmitting ? (
-    <>
-      <LoaderIcon size={18} className="animate-spin" />
-      <span>Opening Razorpay...</span>
-    </>
-  ) : daysRemaining !== 0 ? (
-    <span>Opens {dueDateLabel}</span>
-  ) : (
-    <>
-      <span>Pay ₹{formatMoney(outstandingTotalWithGst)} Now</span>
-      <ArrowRightIcon size={18} />
-    </>
-  )}
-</button>
+                  <button
+                    onClick={handlePayment}
+                    disabled={isSubmitting || !hasOutstandingPayment || !canPayScansNow}
+                    aria-disabled={isSubmitting || !hasOutstandingPayment || !canPayScansNow}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <LoaderIcon size={18} className="animate-spin" />
+                        <span>Opening Razorpay...</span>
+                      </>
+                    ) : !canPayScansNow ? (
+                      <span>Opens {dueDateLabel}</span>
+                    ) : (
+                      <>
+                        <span>Pay ₹{formatMoney(outstandingTotalWithGst)} Now</span>
+                        <ArrowRightIcon size={18} />
+                      </>
+                    )}
+                  </button>
                 </div>
               </>
             )}
+          </div>
+
+          {/* Month heading + scanned customers list */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarClockIcon size={18} className="text-[#1857D6]" />
+              <h2 className="text-lg font-bold text-slate-900">{currentMonthLabel}</h2>
+              <span className="text-xs font-semibold text-slate-400">Scanned customers</span>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">{totalScansCount} total scans</span>
           </div>
 
           {/* Search and Filters */}
@@ -1052,6 +1240,7 @@ if (payError) {
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                     {filteredScans.map((scan) => {
                       const isPaid = scan.is_paid === true || scan.payment_status === 'paid'
+                      const isAccruing = !isPaid && new Date(scan.created_at) >= currentMonthStart
 
                       return (
                         <tr key={scan.id} className={isPaid ? 'bg-slate-50/60 opacity-60' : 'hover:bg-slate-50/80'}>
@@ -1091,6 +1280,11 @@ if (payError) {
                                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-[#1857D6] border border-blue-200">
                                   <CheckIcon size={12} />
                                   Completed & Paid
+                                </span>
+                              ) : isAccruing ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                  <HourglassIcon size={12} />
+                                  Accruing (Not Yet Billable)
                                 </span>
                               ) : scan.fulfillment_status === 'Pending' ? (
                                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">

@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Truck,
-  Coins
+  Coins,
+  Zap,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [added, setAdded] = useState(false)
+  const [buyingNow, setBuyingNow] = useState(false)
 
   // ── Fetch Product Details ────────────────────────────────────────────
   useEffect(() => {
@@ -104,6 +106,21 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
       setTimeout(() => setAdded(false), 2000)
     }, 600)
   }
+
+  // ── Buy Now Logic ────────────────────────────────────────────────────
+  // Skips the cart entirely — stashes exactly this product+quantity in
+  // localStorage under a dedicated "buy now" key, then redirects to the
+  // shop page with a `buyNow=1` flag. The shop page picks that flag up on
+  // load, opens its checkout modal for just this item, and clears the key
+  // — the merchant's actual cart is never touched.
+  const handleBuyNow = () => {
+    if (!product || product.stock <= 0) return
+    setBuyingNow(true)
+
+    localStorage.setItem('rakvih_buynow_item', JSON.stringify({ ...product, quantity }))
+    router.push('/shop?buyNow=1')
+  }
+  
 
   // ── Loading State ───────────────────────────────────────────────────
   if (loading) {
@@ -221,7 +238,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
             </p>
           </div>
 
-          {/* Action Area (Quantity & Button) */}
+          {/* Action Area (Quantity & Buttons) */}
           <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-6">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-700">Quantity</span>
@@ -230,53 +247,72 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               </span>
             </div>
 
-            <div className="flex flex-col gap-4 sm:flex-row">
-              {/* Quantity Selector */}
-              <div className="flex h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-2 shadow-sm sm:w-40">
-                <button 
-                  onClick={decreaseQty}
-                  disabled={quantity <= 1 || product.stock <= 0}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="w-10 text-center font-bold text-slate-900">
-                  {quantity}
-                </span>
-                <button 
-                  onClick={increaseQty}
-                  disabled={quantity >= product.stock || product.stock <= 0}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+  {/* Quantity Selector */}
+  <div className="flex h-14 items-center justify-between rounded-xl border border-slate-200 bg-white px-2 shadow-sm sm:w-40 shrink-0">
+    <button 
+      onClick={decreaseQty}
+      disabled={quantity <= 1 || product.stock <= 0}
+      className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
+    >
+      <Minus size={18} />
+    </button>
+    <span className="w-10 text-center font-bold text-slate-900">
+      {quantity}
+    </span>
+    <button 
+      onClick={increaseQty}
+      disabled={quantity >= product.stock || product.stock <= 0}
+      className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer"
+    >
+      <Plus size={18} />
+    </button>
+  </div>
 
-              {/* Add to Cart Button */}
-              <button 
-                onClick={handleAddToCart}
-                disabled={product.stock <= 0 || addingToCart || added}
-                className={`relative flex h-14 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl px-8 text-sm font-bold text-white shadow-md transition-all cursor-pointer ${
-                  added 
-                    ? 'bg-emerald-500 shadow-emerald-500/25' 
-                    : 'bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] shadow-blue-500/25 hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none'
-                }`}
-              >
-                {addingToCart ? (
-                  <Loader2 size={20} className="animate-spin" />
-                ) : added ? (
-                  <>
-                    <CheckCircle2 size={20} />
-                    Added to Cart!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={20} />
-                    {product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
-                  </>
-                )}
-              </button>
-            </div>
+  {/* Action Buttons Container (Justified & Balanced) */}
+  <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+    {/* Add to Cart Button */}
+    <button 
+      onClick={handleAddToCart}
+      disabled={product.stock <= 0 || addingToCart || added || buyingNow}
+      className={`relative flex h-14 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl px-6 text-sm font-bold text-white shadow-md transition-all cursor-pointer ${
+        added 
+          ? 'bg-emerald-500 shadow-emerald-500/25' 
+          : 'bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] shadow-blue-500/25 hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none'
+      }`}
+    >
+      {addingToCart ? (
+        <Loader2 size={20} className="animate-spin" />
+      ) : added ? (
+        <>
+          <CheckCircle2 size={20} />
+          Added to Cart!
+        </>
+      ) : (
+        <>
+          <ShoppingCart size={20} />
+          {product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
+        </>
+      )}
+    </button>
+
+    {/* Buy Now Button */}
+    <button
+      onClick={handleBuyNow}
+      disabled={product.stock <= 0 || addingToCart || buyingNow}
+      className="relative flex h-14 flex-1 items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 text-sm font-bold text-white shadow-md shadow-emerald-500/25 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
+    >
+      {buyingNow ? (
+        <Loader2 size={20} className="animate-spin" />
+      ) : (
+        <>
+          <Zap size={20} />
+          {product.stock <= 0 ? 'Out of Stock' : 'Buy Now'}
+        </>
+      )}
+    </button>
+  </div>
+</div>
           </div>
 
           {/* Feature Highlights */}

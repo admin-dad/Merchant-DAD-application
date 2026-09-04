@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   title: "Merchant App",
   description: "Platform for merchants and customers",
   icons: {
-    icon: "/logo.jpeg", // Points directly to your logo in the public folder
+    icon: "/logopng.jpeg", // Points directly to your logo in the public folder
   },
 };
 

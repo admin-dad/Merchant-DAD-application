@@ -110,12 +110,13 @@ export default function AdminSidebar({
       {/* Mobile topbar */}
       <div className="lg:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
         <Link href="/admin-dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
-          <div className="relative h-8 w-24 overflow-hidden flex items-center justify-start">
+          <div className="relative h-8 w-28 overflow-hidden flex items-center justify-start">
             <Image
-              src="/logo.jpeg"
+              src="/logopng.jpeg"
               alt="DAD Logo"
               fill
               className="object-contain object-left"
+              priority
             />
           </div>
           <span className="text-sm font-medium text-slate-400">Admin Portal</span>
@@ -216,12 +217,13 @@ function SidebarContent({
     <div className="flex h-full flex-col">
       {/* Logo & Header Title */}
       <Link href="/admin-dashboard" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
-        <div className="relative h-9 w-20 overflow-hidden flex items-center justify-start shrink-0">
+        <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
           <Image
-            src="/logo.jpeg"
+            src="/logopng.jpeg"
             alt="DAD Logo"
             fill
             className="object-contain object-left"
+            priority
           />
         </div>
         <div className="flex flex-col leading-tight border-l border-white/10 pl-3">
@@ -299,8 +301,8 @@ function SidebarContent({
               href={item.href}
               onClick={onNavigate}
               className={`group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${active
-                  ? 'bg-gradient-to-r from-[#1857D6]/20 to-[#7BC142]/10 text-white'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                ? 'bg-gradient-to-r from-[#1857D6]/20 to-[#7BC142]/10 text-white'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
             >
               {active && (

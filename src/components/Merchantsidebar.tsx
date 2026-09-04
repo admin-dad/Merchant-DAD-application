@@ -8,8 +8,10 @@ import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
-  Store,Tag,
-  LayoutDashboard,History,
+  Store,
+  Tag,
+  LayoutDashboard,
+  History,
   QrCode,
   Share2,
   Gift,
@@ -22,13 +24,15 @@ import {
   ShoppingBag,
   Bell,
   FileBarChart2,
-  LifeBuoy,Video ,
+  LifeBuoy,
+  Video,
   Menu,
   X,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
 import MerchantScratchCard from '@/components/MerchantScratchCard'
+
 // ─────────────────────────────────────────────────────────────────────────
 // Nav Items
 // ─────────────────────────────────────────────────────────────────────────
@@ -41,18 +45,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/profile', label: 'My Profile', icon: User },
-  //{ href: '/shop-details', label: 'Business / Shop Details', icon: Store },
+  { href: '/profile', label: 'My Profile', icon: User },
   { href: '/qr-code', label: 'QR Code Management', icon: QrCode },
   { href: '/referrals', label: 'Referral Program', icon: Share2 },
-  //{ href: '/points-rewards', label: 'Points & Rewards Wallet', icon: Gift },
   { href: '/wallet', label: 'Digital Wallet', icon: Wallet },
-  { href: '/payment-history', label: 'Payment History', icon: History }, // Added Payment History link
+  { href: '/payment-history', label: 'Wallet History', icon: History },
   { href: '/engagement', label: 'Customer Engagement', icon: Users },
   { href: '/videos', label: 'Video Feed', icon: Video },
-    { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag },
-  //{ href: '/scratch-cards', label: 'Scratch Card Participation', icon: Ticket },
-  //{ href: '/billing', label: 'Merchant Billing Summary', icon: Receipt },
+  { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag },
   { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard },
   { href: '/benefits', label: 'Merchant Benefits', icon: Award },
   { href: '/shop', label: 'E-Commerce (Shop & Orders)', icon: ShoppingBag },
@@ -81,7 +81,7 @@ export default function Merchantsidebar({
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/') // Change to your merchant login route if different (e.g., '/merchant/login')
+    router.push('/')
   }
 
   return (
@@ -90,11 +90,12 @@ export default function Merchantsidebar({
       <div className="lg:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
         <Link href="" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
           <div className="relative h-8 w-24 overflow-hidden flex items-center justify-start">
-            <Image 
-              src="/logo.jpeg" 
-              alt="Logo" 
-              fill 
-              className="object-contain object-left" 
+            <Image
+              src="/logopng.jpeg"
+              alt="Logo"
+              fill
+              className="object-contain object-left"
+              priority
             />
           </div>
           <span className="text-sm font-medium text-slate-400">Merchant Dashboard</span>
@@ -163,16 +164,6 @@ export default function Merchantsidebar({
         )}
       </AnimatePresence>
 
-      {/* Floating scratch-card trigger + popup — MerchantScratchCard checks
-          for a pending card and shows a small icon button (bottom right of
-          the screen) instead of auto-opening. Clicking the icon opens the
-          popup, which has its own close (X) button.
-
-          Rendered once here (in the sidebar, which lives inside the shared
-          merchant layout) rather than on each individual page, so the icon
-          persists across every merchant-portal route without needing to be
-          re-added per page. Uses the `merchantId` prop this component
-          already receives — there's no `merchant` object in scope here. */}
       {merchantId && <MerchantScratchCard merchantId={merchantId} />}
     </>
   )
@@ -199,12 +190,13 @@ function SidebarContent({
     <div className="flex h-full flex-col">
       {/* Logo and Title Header */}
       <Link href="" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
-        <div className="relative h-9 w-20 overflow-hidden flex items-center justify-start shrink-0">
-          <Image 
-            src="/logo.jpeg" 
-            alt="Logo" 
-            fill 
-            className="object-contain object-left" 
+        <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
+          <Image
+            src="/logopng.jpeg"
+            alt="Logo"
+            fill
+            className="object-contain object-left"
+            priority
           />
         </div>
         <div className="flex flex-col leading-tight border-l border-white/10 pl-3">
@@ -216,7 +208,7 @@ function SidebarContent({
       <div className="h-px w-full bg-white/10" />
 
       {/* Nav items */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           const Icon = item.icon

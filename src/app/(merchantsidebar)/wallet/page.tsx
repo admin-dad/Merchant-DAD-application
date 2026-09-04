@@ -142,7 +142,15 @@ export default function DigitalWalletPage() {
       const txs = txRes.data as Transaction[]
       setTransactions(txs)
 
-      // Dynamically calculate points won strictly from B2B Scratch Cards
+      // Dynamically calculate points won strictly from B2B Scratch Cards.
+      // NOTE: this relies on the scratch-card win transaction's description
+      // containing the literal text "scratch card" (case-insensitive). If
+      // you update the scratch card component's reward label logic, make
+      // sure that tag stays in the description string, e.g.:
+      //   description: `Won ${rewardLabel}! (scratch card)`
+      // Otherwise wins with a custom gift name will fall through this
+      // filter and silently be excluded from this total (though they'll
+      // still count toward points_balance).
       const wonPoints = txs
         .filter(tx =>
           tx.transaction_type === 'credit' &&
@@ -373,7 +381,7 @@ export default function DigitalWalletPage() {
               className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 sm:w-auto cursor-pointer"
             >
               <History size={16} />
-              <span>Wallet History</span>
+              <span>Points History</span>
             </button>
             <button
               onClick={() => setShowBuyModal(true)}
@@ -403,76 +411,57 @@ export default function DigitalWalletPage() {
         )}
       </AnimatePresence>
 
-     {/* Primary Balance Cards */}
-<div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  {/* Total Available Points Card */}
-  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6] transition-transform group-hover:scale-105">
-      <Wallet size={20} />
-    </div>
-    <div className="flex-1">
-      <p className="text-sm font-semibold text-slate-800">Available Balance</p>
-      <p className="text-2xl font-bold text-[#0B0F19]">
-        {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
-      </p>
-    </div>
-    <button
-      onClick={() => setShowBuyModal(true)}
-      className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
-    >
-      <Plus size={12} /> Buy
-    </button>
-  </div>
-
-  {/* Free Points Earned Summary */}
-  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#3E7A1C] transition-transform group-hover:scale-105">
-      <Gift size={20} />
-    </div>
-    <div className="flex-1">
-      <p className="text-sm font-semibold text-slate-800">Points Earned Free</p>
-      <p className="text-2xl font-bold text-[#0B0F19]">
-        {freePointsEarned.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
-      </p>
-      <p className="text-xs font-medium text-slate-400 mt-0.5">Bonus, referrals & rewards</p>
-    </div>
-  </div>
-
-  {/* Purchased Points */}
-  <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-105">
-      <ShoppingBag size={20} />
-    </div>
-    <div className="flex-1">
-      <p className="text-sm font-semibold text-slate-800">Purchased Points</p>
-      <p className="text-2xl font-bold text-[#0B0F19]">
-        {(summary?.purchased_points ?? 0).toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
-      </p>
-      <p className="text-xs font-medium text-slate-400 mt-0.5">Bought via payments</p>
-    </div>
-  </div>
-</div>
-
-      {/* Points Breakdown (Now 4 Cards to include B2B Scratch Card Rewards) */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
+      {/* Primary Balance Cards */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Total Available Points Card */}
+        <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6] transition-transform group-hover:scale-105">
+            <Wallet size={20} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-800">Available Balance</p>
+            <p className="text-2xl font-bold text-[#0B0F19]">
+              {totalAvailablePoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+            </p>
+          </div>
+          <button
+            onClick={() => setShowBuyModal(true)}
+            className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
+          >
+            <Plus size={12} /> Buy
+          </button>
+        </div>
 
         {/* Scratch Card Wins (B2B Rewards) */}
-     {/*   <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm hover:border-purple-200 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scratch Card Wins </span>
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <Trophy size={16} className="text-purple-600" />
-            </div>
+        <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-purple-200 hover:shadow-md">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 transition-transform group-hover:scale-105">
+            <Trophy size={20} />
           </div>
-          <h3 className="text-2xl font-bold text-slate-900">
-            {scratchCardPoints} <span className="text-sm text-slate-400">Points</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-1">Won from Scratch Cards</p>
-        </div> */}
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-800">Scratch Card Wins</p>
+            <p className="text-2xl font-bold text-[#0B0F19]">
+              {scratchCardPoints.toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+            </p>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Won from Scratch Cards</p>
+          </div>
+        </div>
 
-
+        {/* Purchased Points */}
+        <div className="group relative flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-105">
+            <ShoppingBag size={20} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-slate-800">Purchased Points</p>
+            <p className="text-2xl font-bold text-[#0B0F19]">
+              {(summary?.purchased_points ?? 0).toLocaleString()} <span className="text-sm font-medium text-slate-400">Points</span>
+            </p>
+            <p className="text-xs font-medium text-slate-400 mt-0.5">Bought via payments</p>
+          </div>
+        </div>
       </div>
+
+
 
 
       {/* Buy Points Packages */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -87,7 +87,7 @@ interface Coupon {
 export default function MerchantShopPage() {
   const router = useRouter()
   const supabase = createClient()
-
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -131,7 +131,24 @@ export default function MerchantShopPage() {
     pincode: ''
   })
   const [placingOrder, setPlacingOrder] = useState(false)
-
+  // ── Pick up a "Buy Now" item redirected in from the product details page ──
+  useEffect(() => {
+    if (searchParams.get('buyNow') !== '1') return
+    const raw = localStorage.getItem('rakvih_buynow_item')
+    if (raw) {
+      try {
+        const item = JSON.parse(raw)
+        setBuyNowItem(item)
+        setIsCheckoutOpen(true)
+      } catch (e) {
+        console.error('Failed to parse buy-now item from local storage', e)
+      } finally {
+        localStorage.removeItem('rakvih_buynow_item')
+      }
+    }
+    // Clean the query param so a refresh doesn't reopen checkout
+    router.replace('/shop')
+  }, [searchParams, router])
   // ── Fetch Data & Merchant ────────────────────────────────────────────
   useEffect(() => {
     const fetchAll = async () => {
@@ -233,6 +250,18 @@ export default function MerchantShopPage() {
     if (product.stock === 0) return
     setBuyNowItem({ ...product, quantity: 1 })
     setIsCheckoutOpen(true)
+  }
+
+  // ── Update Quantity Inside Checkout Modal ────────────────────────────
+  // Works for the Buy Now item specifically (single-item checkout). Clamped
+  // between 1 and the item's available stock.
+  const updateCheckoutQty = (delta: number) => {
+    if (!buyNowItem) return
+    setBuyNowItem(prev => {
+      if (!prev) return prev
+      const newQty = Math.max(1, prev.quantity + delta)
+      return { ...prev, quantity: newQty > prev.stock ? prev.stock : newQty }
+    })
   }
 
   const openCartCheckout = () => {
@@ -903,9 +932,48 @@ export default function MerchantShopPage() {
                 </h2>
                 <p className="text-sm text-slate-500 mb-6">
                   {buyNowItem
-                    ? `Redeeming 1 x ${buyNowItem.name} for ${Number(buyNowItem.price)} Pts.`
+                    ? `Redeeming ${buyNowItem.name} for ${Number(buyNowItem.price)} Pts each.`
                     : `Redeeming ${checkoutItems.length} item${checkoutItems.length === 1 ? '' : 's'} from your cart.`}
                 </p>
+
+                {/* Quantity Stepper — only shown for the single-item Buy Now flow */}
+                {buyNowItem && (
+                  <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-11 w-11 shrink-0 rounded-lg bg-slate-100 overflow-hidden">
+                        {buyNowItem.image_url ? (
+                          <img src={buyNowItem.image_url} alt={buyNowItem.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <Package size={18} className="text-slate-300 m-auto mt-3" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{buyNowItem.name}</p>
+                        <p className="text-xs text-slate-500">{Number(buyNowItem.price)} Pts each</p>
+                      </div>
+                    </div>
+
+                    <div className="flex h-10 items-center justify-between rounded-xl border border-slate-200 bg-white px-1 shrink-0">
+                      <button
+                        onClick={() => updateCheckoutQty(-1)}
+                        disabled={buyNowItem.quantity <= 1}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold text-slate-900">
+                        {buyNowItem.quantity}
+                      </span>
+                      <button
+                        onClick={() => updateCheckoutQty(1)}
+                        disabled={buyNowItem.quantity >= buyNowItem.stock}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="space-y-4">
                   {/* Structured Professional Address Fields */}
@@ -1015,7 +1083,9 @@ export default function MerchantShopPage() {
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 mt-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Summary</p>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-600 font-medium">{buyNowItem ? 'Item' : 'Cart Subtotal'}</span>
+                      <span className="text-slate-600 font-medium">
+                        {buyNowItem ? `Item (x${buyNowItem.quantity})` : 'Cart Subtotal'}
+                      </span>
                       <span className="font-bold text-slate-900">{checkoutSubtotalPoints} Pts</span>
                     </div>
                     {SHOW_COUPONS && discountAmount > 0 && (

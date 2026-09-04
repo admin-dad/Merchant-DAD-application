@@ -55,13 +55,13 @@ export default function Footer() {
           {/* Column 1: Brand & Logo */}
           <div className="space-y-4 md:pr-6">
             <Link href="/" className="group inline-flex items-center gap-3">
-              {/* Added a white/light container background & border so the dark logo stands out cleanly */}
-              <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-white p-1 border border-white/20 shadow-md transition-transform duration-300 group-hover:scale-105">
+              <div className="relative h-10 w-28 overflow-hidden transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
                 <Image
-                  src="/logomain.jpeg"
+                  src="/logopng.jpeg"
                   alt="MerchantApp Logo"
                   fill
-                  className="object-contain p-0.5"
+                  className="object-contain"
+                  priority
                 />
               </div>
               <span

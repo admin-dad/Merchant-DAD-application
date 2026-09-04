@@ -85,14 +85,15 @@ export default function AdminLoginPage() {
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-[#4F8CFF]/20 blur-3xl" />
 
         <div className="relative z-10 flex items-center gap-3 text-white">
-          <div className="relative h-9 w-24 overflow-hidden flex items-center justify-start bg-white/10 rounded-lg p-1">
-  <Image 
-    src="/logo.jpeg" 
-    alt="DAD Logo" 
-    fill 
-    className="object-contain object-left mix-blend-multiply contrast-125" 
-  />
-</div>
+          <div className="relative h-10 w-28 overflow-hidden flex items-center justify-start">
+            <Image 
+              src="/logopng.jpeg" 
+              alt="DAD Logo" 
+              fill 
+              className="object-contain" 
+              priority
+            />
+          </div>
           <div>
             <p className="text-xs text-blue-200/80 font-semibold tracking-wider uppercase">Super Admin Portal</p>
           </div>
@@ -133,12 +134,13 @@ export default function AdminLoginPage() {
           
           {/* Mobile Logo (Visible on small screens) */}
           <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
-            <div className="relative h-12 w-32 overflow-hidden flex items-center justify-center bg-white border border-slate-200 rounded-xl px-2 shadow-sm">
+            <div className="relative h-12 w-32 overflow-hidden flex items-center justify-center">
               <Image 
-                src="/logo.jpeg" 
+                src="/logopng.jpeg" 
                 alt="DAD Logo" 
                 fill 
-                className="object-contain p-1" 
+                className="object-contain" 
+                priority
               />
             </div>
           </div>
