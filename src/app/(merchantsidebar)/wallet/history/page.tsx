@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
   Wallet,
+  Gift,
 } from 'lucide-react'
 
 interface MerchantData {
@@ -66,13 +67,19 @@ export default function WalletHistoryPage() {
 
       setMerchant(merchantData)
 
-      // Only fetch Purchased Points transactions
+      // Fetch Points wallet transactions from BOTH sources:
+      //  - 'purchase' → points bought via Razorpay
+      //  - 'reward'   → points won from scratch cards (see
+      //    MerchantScratchCard's handleScratch, which inserts with
+      //    category: 'reward' on a win)
+      // Using .in() instead of a single .eq() so both show up in one
+      // combined, chronologically sorted list.
       const { data: txData, error: txError } = await supabase
         .from('merchant_transactions')
         .select('*')
         .eq('merchant_id', merchantData.id)
         .eq('wallet_type', 'points')
-        .eq('category', 'purchase')
+        .in('category', ['purchase', 'reward'])
         .order('created_at', { ascending: false })
 
       if (!txError && txData) {
@@ -150,6 +157,11 @@ export default function WalletHistoryPage() {
     })
   }
 
+  // Small helper to render the correct source badge/icon per transaction.
+  // 'reward' = won from a scratch card, everything else falls back to the
+  // original 'purchase' treatment (covers legacy rows with no category too).
+  const isReward = (tx: Transaction) => tx.category === 'reward'
+
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -182,10 +194,10 @@ export default function WalletHistoryPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Purchased Points History
+                Points History
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                Record of all points bought via Razorpay.
+                Points purchased via Razorpay and points won from scratch cards.
               </p>
             </div>
           </div>
@@ -207,9 +219,9 @@ export default function WalletHistoryPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 shadow-sm">
             <Wallet size={32} />
           </div>
-          <p className="text-sm font-semibold text-slate-800">No purchases yet</p>
+          <p className="text-sm font-semibold text-slate-800">No points activity yet</p>
           <p className="mt-1 text-xs text-slate-500 max-w-xs">
-            Buy points to start building your purchase history.
+            Buy points or play a scratch card to start building your history.
           </p>
         </div>
       ) : (
@@ -232,47 +244,60 @@ export default function WalletHistoryPage() {
               </div>
 
               <div className="space-y-3">
-                {group.items.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50/50"
-                  >
-                    <div className="flex items-center gap-4">
+                {group.items.map((tx) => {
+                  const reward = isReward(tx)
+                  return (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50/50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                            reward
+                              ? 'bg-purple-50 text-purple-600'
+                              : tx.transaction_type === 'credit'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-rose-50 text-rose-600'
+                          }`}
+                        >
+                          {reward ? (
+                            <Gift size={18} />
+                          ) : tx.transaction_type === 'credit' ? (
+                            <ArrowDownCircle size={18} />
+                          ) : (
+                            <ArrowUpCircle size={18} />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {tx.description || (reward ? 'Scratch Card Reward' : 'Points Purchase')}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                                reward
+                                  ? 'bg-purple-50 text-purple-600'
+                                  : 'bg-blue-50 text-blue-600'
+                              }`}
+                            >
+                              {reward ? 'WON' : 'PURCHASED'}
+                            </span>
+                            {formatFullDate(tx.created_at)} · {formatTime(tx.created_at)}
+                          </p>
+                        </div>
+                      </div>
                       <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                          tx.transaction_type === 'credit'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-rose-50 text-rose-600'
+                        className={`text-sm font-bold ${
+                          tx.transaction_type === 'credit' ? 'text-emerald-600' : 'text-rose-600'
                         }`}
                       >
-                        {tx.transaction_type === 'credit' ? (
-                          <ArrowDownCircle size={18} />
-                        ) : (
-                          <ArrowUpCircle size={18} />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {tx.description || 'Points Purchase'}
-                        </p>
-                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-blue-600">
-                            PURCHASED
-                          </span>
-                          {formatFullDate(tx.created_at)} · {formatTime(tx.created_at)}
-                        </p>
+                        {tx.transaction_type === 'credit' ? '+' : '-'}
+                        {tx.amount} Points
                       </div>
                     </div>
-                    <div
-                      className={`text-sm font-bold ${
-                        tx.transaction_type === 'credit' ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
-                      {tx.transaction_type === 'credit' ? '+' : '-'}
-                      {tx.amount} Points
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </motion.div>
           ))}

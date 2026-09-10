@@ -706,7 +706,7 @@ export default function MerchantScanPaymentPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                {isMonthlyMerchant ? 'Monthly Subscription' : 'Scan Billing & Payments'}
+                {isMonthlyMerchant ? 'Monthly Subscription' : 'Monthly Bill'}
               </h1>
               <p className="mt-0.5 text-sm text-slate-500">
                 {isMonthlyMerchant
@@ -722,7 +722,7 @@ export default function MerchantScanPaymentPage() {
               className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
             >
               <HistoryIcon size={16} />
-              <span> Scan Payment History</span>
+              <span> Monthly Bill History</span>
             </button>
             <button
               onClick={fetchData}

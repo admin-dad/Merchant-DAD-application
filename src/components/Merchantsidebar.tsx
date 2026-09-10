@@ -53,7 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/engagement', label: 'Customer Engagement', icon: Users },
   { href: '/videos', label: 'Video Feed', icon: Video },
   { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag },
-  { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard },
+  { href: '/payments', label: 'Monthly Bill', icon: CreditCard },
   { href: '/benefits', label: 'Merchant Benefits', icon: Award },
   { href: '/shop', label: 'E-Commerce (Shop & Orders)', icon: ShoppingBag },
   { href: '/reports', label: 'Reports', icon: FileBarChart2 },

@@ -88,7 +88,7 @@ const navigationShortcuts = [
   { href: '/engagement', label: 'Customer Engagement', icon: Users, description: 'Connect with your consumer base, run campaigns & offers.' },
   { href: '/videos', label: 'Video Feed', icon: Video, description: 'Watch platform updates, tutorials, and promotional videos.' },
   { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag, description: 'Create, edit, and track your discount coupon campaigns.' },
-  { href: '/payments', label: 'Scan Payment Processing', icon: CreditCard, description: 'Track payment gateways, payouts, and customer checkouts.' },
+  { href: '/payments', label: 'Monthly Bill', icon: CreditCard, description: 'Track payment gateways, payouts, and customer checkouts.' },
   { href: '/benefits', label: 'Merchant Benefits', icon: Award, description: 'Explore special perks, discounts, and partner tier rewards.' },
   { href: '/shop', label: 'E-Commerce (Shop & Orders)', icon: ShoppingBag, description: 'Browse B2B/B2C catalog and manage product orders.' },
   { href: '/reports', label: 'Reports', icon: FileBarChart2, description: 'Deep-dive analytics, financial logs, and exportable charts.' },

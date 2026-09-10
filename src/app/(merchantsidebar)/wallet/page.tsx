@@ -143,19 +143,26 @@ export default function DigitalWalletPage() {
       setTransactions(txs)
 
       // Dynamically calculate points won strictly from B2B Scratch Cards.
-      // NOTE: this relies on the scratch-card win transaction's description
-      // containing the literal text "scratch card" (case-insensitive). If
-      // you update the scratch card component's reward label logic, make
-      // sure that tag stays in the description string, e.g.:
-      //   description: `Won ${rewardLabel}! (scratch card)`
-      // Otherwise wins with a custom gift name will fall through this
-      // filter and silently be excluded from this total (though they'll
-      // still count toward points_balance).
+      //
+      // FIX: this used to match on `description.includes('scratch card')`,
+      // but MerchantScratchCard's handleScratch only writes that literal
+      // text when there's no campaign gift/prize_details to fall back on
+      // (description: 'Won B2B Scratch Card Reward!'). The moment a win is
+      // tied to a real campaign gift, the description becomes e.g.
+      // "Won Amazon Voucher!" — no "scratch card" substring — so those
+      // wins were silently excluded from this total even though they were
+      // still credited to the points balance. That's why this card's
+      // number could read lower than what's actually shown under
+      // "Points History".
+      //
+      // The reliable source of truth is the `category` column, which
+      // handleScratch always sets to 'reward' on every win regardless of
+      // the gift name. Filter on that instead.
       const wonPoints = txs
         .filter(tx =>
           tx.transaction_type === 'credit' &&
           tx.wallet_type === 'points' &&
-          tx.description?.toLowerCase().includes('scratch card')
+          tx.category === 'reward'
         )
         .reduce((sum, tx) => sum + tx.amount, 0)
 
