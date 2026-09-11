@@ -247,10 +247,12 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               </span>
             </div>
 
-            {/* Responsive stack: quantity on its own line through tablet, row only on large screens */}
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            {/* Quantity always on its own line, buttons always in a full-width row below — 
+                never squeeze back into one row, since this column shares space with the 
+                sidebar and image column even on large screens */}
+            <div className="flex flex-col gap-3">
               {/* Quantity Selector */}
-              <div className="flex h-14 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-1 shadow-sm lg:w-32 lg:shrink-0">
+              <div className="flex h-14 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-1 shadow-sm">
                 <button
                   onClick={decreaseQty}
                   disabled={quantity <= 1 || product.stock <= 0}
@@ -271,12 +273,12 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
               </div>
 
               {/* Action Buttons: grid so they always share space equally and never overflow */}
-              <div className="grid grid-cols-2 gap-3 min-w-0 lg:flex-1">
+              <div className="grid grid-cols-2 gap-3 min-w-0">
                 {/* Add to Cart Button */}
                 <button
                   onClick={handleAddToCart}
                   disabled={product.stock <= 0 || addingToCart || added || buyingNow}
-                  className={`relative flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold text-white shadow-md transition-all cursor-pointer ${added
+                  className={`relative flex h-14 min-w-0 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-3 text-xs sm:text-sm font-bold text-white shadow-md transition-all cursor-pointer ${added
                     ? 'bg-emerald-500 shadow-emerald-500/25'
                     : 'bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] shadow-blue-500/25 hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none'
                     }`}
@@ -300,7 +302,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                 <button
                   onClick={handleBuyNow}
                   disabled={product.stock <= 0 || addingToCart || buyingNow}
-                  className="relative flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-3 text-sm font-bold text-white shadow-md shadow-emerald-500/25 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
+                  className="relative flex h-14 min-w-0 items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-2 sm:px-3 text-xs sm:text-sm font-bold text-white shadow-md shadow-emerald-500/25 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-lg disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
                 >
                   {buyingNow ? (
                     <Loader2 size={18} className="shrink-0 animate-spin" />
