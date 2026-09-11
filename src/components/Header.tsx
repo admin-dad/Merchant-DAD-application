@@ -34,7 +34,7 @@ export default function Header() {
                 className="relative h-12 w-28 overflow-hidden flex items-center justify-center"
               >
                 <Image
-                  src="/homelogo.jpeg"
+                  src="/homelg.png"
                   alt="DAD Logo"
                   fill
                   className="object-contain"

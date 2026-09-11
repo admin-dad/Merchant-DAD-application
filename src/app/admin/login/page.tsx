@@ -87,7 +87,7 @@ export default function AdminLoginPage() {
         <div className="relative z-10 flex items-center gap-3 text-white">
           <div className="relative h-10 w-28 overflow-hidden flex items-center justify-start">
             <Image 
-              src="/logopng.jpeg" 
+              src="/homelg.png" 
               alt="DAD Logo" 
               fill 
               className="object-contain" 

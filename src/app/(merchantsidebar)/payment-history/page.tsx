@@ -242,7 +242,7 @@ export default function PaymentHistoryPage() {
             <History size={30} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Payment History</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Point History</h1>
             <p className="mt-1 text-sm text-slate-500">
               Full record of every point credited to and debited from your wallet.
             </p>

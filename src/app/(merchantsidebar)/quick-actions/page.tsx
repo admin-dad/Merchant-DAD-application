@@ -84,7 +84,7 @@ const navigationShortcuts = [
   { href: '/qr-code', label: 'QR Code Management', icon: QrCode, description: 'Download or manage your store check-in and payment QR.' },
   { href: '/referrals', label: 'Referral Program', icon: Share2, description: 'Invite peer merchants and earn rewarding bonus points.' },
   { href: '/wallet', label: 'Digital Wallet', icon: Wallet, description: 'Monitor digital cash transactions, balances, and payouts.' },
-  { href: '/payment-history', label: 'Payment History', icon: History, description: 'Review your past transactions and payment receipts.' },
+  { href: '/payment-history', label: 'Point History', icon: History, description: 'Review your past transactions and payment receipts.' },
   { href: '/engagement', label: 'Customer Engagement', icon: Users, description: 'Connect with your consumer base, run campaigns & offers.' },
   { href: '/videos', label: 'Video Feed', icon: Video, description: 'Watch platform updates, tutorials, and promotional videos.' },
   { href: '/Managementcoupons', label: 'Coupons Management', icon: Tag, description: 'Create, edit, and track your discount coupon campaigns.' },

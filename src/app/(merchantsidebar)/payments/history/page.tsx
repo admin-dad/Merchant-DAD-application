@@ -189,7 +189,7 @@ export default function ScanPaymentHistoryPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Payment History
+                Point History
               </h1>
               <p className="mt-1 text-sm text-slate-500">
                 Record of all scan billing & subscription payments made via Razorpay.

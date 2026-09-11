@@ -300,7 +300,7 @@ const QUICK_ACTIONS = [
   { href: '/qr-code', label: 'Download QR', icon: Download },
   { href: '/referrals', label: 'Share Referral', icon: Share2 },
   { href: '/wallet', label: 'Redeem Points', icon: Gift },
-  { href: '/payment-history', label: 'Payment History', icon: History },
+  { href: '/payment-history', label: 'Point History', icon: History },
   { href: '/engagement', label: 'Customer Engagement', icon: Users },
   { href: '/videos', label: 'Video Feed', icon: Video },
   { href: '/Managementcoupons', label: 'Coupons', icon: Tag },

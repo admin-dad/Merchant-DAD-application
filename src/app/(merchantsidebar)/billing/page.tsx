@@ -261,7 +261,7 @@ export default function BillingPage() {
               <Clock size={18} />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900">Payment History</h2>
+              <h2 className="text-base font-semibold text-slate-900">Point History</h2>
               <p className="text-xs text-slate-500">Track your past payments and approval status.</p>
             </div>
           </div>
