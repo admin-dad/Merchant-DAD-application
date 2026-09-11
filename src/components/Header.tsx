@@ -27,7 +27,7 @@ export default function Header() {
           <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
             {/* Brand Logo & Name */}
-            <Link href="/" className="flex shrink-0 items-center gap-3.5 group py-2">
+            <Link href="/" className="flex shrink-0 items-center gap-0.5 group py-2">
               <motion.div
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
@@ -43,6 +43,7 @@ export default function Header() {
               </motion.div>
               <span
                 className="text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-[#4F8CFF] to-[#7BC142] bg-clip-text text-transparent"
+
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontWeight: 600,
