@@ -22,7 +22,8 @@ import {
   Trash2,
   ChevronDown,
   Store,
-  Users
+  Users,
+  Target
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ export default function AdminCampaignsPage() {
     type: 'customer' as CampaignType,
     gift_id: '',
     prize_details: '',
-    winning_probability: '0.1',
+    winning_probability: '10',
     total_cards: '1000',
     winning_numbers: '',
     start_date: '',
@@ -114,7 +115,7 @@ export default function AdminCampaignsPage() {
     type: 'customer' as CampaignType,
     gift_id: '',
     prize_details: '',
-    winning_probability: '0.1',
+    winning_probability: '10',
     total_cards: '1000',
     winning_numbers: '',
     start_date: '',
@@ -191,6 +192,13 @@ export default function AdminCampaignsPage() {
     return err?.message || 'Something went wrong. Please try again.'
   }
 
+  // ── Helper: target winner count for a campaign (quota target, not a live guarantee) ──
+  // Mirrors the rounding done server-side in determine_scan_outcome() so the number shown
+  // here always matches what the DB function is aiming for.
+  const getTargetWinners = (camp: Campaign) => {
+    return Math.round((camp.total_cards || 0) * (camp.winning_probability || 0))
+  }
+
   // ── Handle Create Campaign ───────────────────────────────────────────
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,7 +213,7 @@ export default function AdminCampaignsPage() {
           type: form.type,
           gift_id: form.gift_id || null,
           prize_details: form.prize_details || null,
-          winning_probability: parseFloat(form.winning_probability),
+          winning_probability: (parseFloat(form.winning_probability) || 0) / 100,
           total_cards: parseInt(form.total_cards) || 1000,
           winning_numbers: form.winning_numbers || null,
           start_date: form.start_date || null,
@@ -218,7 +226,7 @@ export default function AdminCampaignsPage() {
 
     if (!error && data) {
       setCampaigns(prev => [data as Campaign, ...prev])
-      setForm({ name: '', type: 'customer', gift_id: '', prize_details: '', winning_probability: '0.1', total_cards: '1000', winning_numbers: '', start_date: '', end_date: '' })
+      setForm({ name: '', type: 'customer', gift_id: '', prize_details: '', winning_probability: '10', total_cards: '1000', winning_numbers: '', start_date: '', end_date: '' })
       setIsModalOpen(false)
     } else {
       setFormError(describeCampaignError(error, form.type))
@@ -235,7 +243,7 @@ export default function AdminCampaignsPage() {
       type: camp.type || 'customer',
       gift_id: camp.gift_id || '',
       prize_details: camp.prize_details || '',
-      winning_probability: String(camp.winning_probability),
+      winning_probability: String(Math.round((camp.winning_probability || 0) * 100)),
       total_cards: String(camp.total_cards),
       winning_numbers: camp.winning_numbers || '',
       start_date: camp.start_date || '',
@@ -259,7 +267,7 @@ export default function AdminCampaignsPage() {
         type: editForm.type,
         gift_id: editForm.gift_id || null,
         prize_details: editForm.prize_details || null,
-        winning_probability: parseFloat(editForm.winning_probability),
+        winning_probability: (parseFloat(editForm.winning_probability) || 0) / 100,
         total_cards: parseInt(editForm.total_cards) || 1000,
         winning_numbers: editForm.winning_numbers || null,
         start_date: editForm.start_date || null,
@@ -417,6 +425,12 @@ export default function AdminCampaignsPage() {
             const openedPercentage = stats.issued > 0 ? (stats.opened / stats.issued) * 100 : 0
             const typeMeta = TYPE_META[camp.type] || TYPE_META.customer
             const TypeIcon = typeMeta.icon
+
+            // Quota target for this campaign (mirrors the DB function's rounding)
+            const targetWinners = getTargetWinners(camp)
+            const remainingCardsForQuota = Math.max(camp.total_cards - stats.opened, 0)
+            const remainingWinnersForQuota = Math.max(targetWinners - stats.winners, 0)
+            const quotaExhausted = remainingWinnersForQuota === 0 && targetWinners > 0
             
             return (
               <motion.div
@@ -496,8 +510,10 @@ export default function AdminCampaignsPage() {
 
                   <div className="grid grid-cols-2 gap-3 text-center mb-3 pb-3 border-b border-slate-200">
                     <div className="p-2 rounded-lg bg-emerald-50/50">
-                      <p className="text-[10px] font-bold uppercase text-emerald-600">Total Winners</p>
-                      <p className="text-base font-bold text-slate-900 mt-1">{stats.winners}</p>
+                      <p className="text-[10px] font-bold uppercase text-emerald-600">Winners (Live / Target)</p>
+                      <p className="text-base font-bold text-slate-900 mt-1">
+                        {stats.winners} <span className="text-slate-400 font-semibold">/ {targetWinners}</span>
+                      </p>
                     </div>
                     <div className="p-2 rounded-lg bg-rose-50/50">
                       <p className="text-[10px] font-bold uppercase text-rose-600">Non-Winners</p>
@@ -524,6 +540,18 @@ export default function AdminCampaignsPage() {
                       className="h-full bg-gradient-to-r from-[#1857D6] to-[#7BC142]"
                     />
                   </div>
+
+                  {/* Quota status line — driven by the same dynamic-allocation logic as the DB function */}
+                  <div className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
+                    <Target size={12} className={quotaExhausted ? 'text-slate-400' : 'text-[#1857D6]'} />
+                    {quotaExhausted ? (
+                      <span className="text-slate-500">Winner quota reached — remaining scans will all be non-winners.</span>
+                    ) : (
+                      <span className="text-slate-600">
+                        {remainingWinnersForQuota} of {remainingCardsForQuota} remaining unopened cards still need to win.
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Winning Logic Meta */}
@@ -534,7 +562,7 @@ export default function AdminCampaignsPage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Percent size={12} className="text-[#3E7A1C]" />
-                    <span>Prob: <span className="font-semibold text-slate-900">{(camp.winning_probability * 100).toFixed(0)}%</span></span>
+                    <span>Target Rate: <span className="font-semibold text-slate-900">{(camp.winning_probability * 100).toFixed(0)}%</span></span>
                   </div>
                   <div className="flex items-center gap-1.5 col-span-2">
                     <Calendar size={12} className="text-slate-400" />
@@ -690,21 +718,27 @@ export default function AdminCampaignsPage() {
                       />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Win Probability (0-1)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value={form.winning_probability}
-                        onChange={(e) => setForm({...form, winning_probability: e.target.value})}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
+                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Chance (%)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={form.winning_probability}
+                          onChange={(e) => setForm({...form, winning_probability: e.target.value})}
+                          required
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-9 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Roughly {Math.round((parseInt(form.total_cards) || 0) * ((parseFloat(form.winning_probability) || 0) / 100))} winners out of {form.total_cards || 0} cards
+                      </p>
                     </div>
                   </div>
 
-                  <div>
+                 {/* <div>
                     <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Numbers (Optional)</label>
                     <input
                       type="text"
@@ -713,7 +747,7 @@ export default function AdminCampaignsPage() {
                       placeholder="e.g. 11, 22, 33"
                       className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                     />
-                  </div>
+                  </div> */}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -873,21 +907,27 @@ export default function AdminCampaignsPage() {
                       />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Win Probability</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="1"
-                        value={editForm.winning_probability}
-                        onChange={(e) => setEditForm({...editForm, winning_probability: e.target.value})}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
+                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Chance (%)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={editForm.winning_probability}
+                          onChange={(e) => setEditForm({...editForm, winning_probability: e.target.value})}
+                          required
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-9 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Roughly {Math.round((parseInt(editForm.total_cards) || 0) * ((parseFloat(editForm.winning_probability) || 0) / 100))} winners out of {editForm.total_cards || 0} cards
+                      </p>
                     </div>
                   </div>
 
-                  <div>
+                {/* <div>
                     <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Numbers</label>
                     <input
                       type="text"
@@ -895,7 +935,7 @@ export default function AdminCampaignsPage() {
                       onChange={(e) => setEditForm({...editForm, winning_numbers: e.target.value})}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                     />
-                  </div>
+                  </div> */}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>

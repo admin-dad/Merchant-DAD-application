@@ -69,7 +69,7 @@ interface CampaignRow {
 const EMPTY_CAMPAIGN_FORM = {
   name: 'Merchant Scratch Card Campaign',
   prize_details: '',
-  winning_probability: '0.1',
+  winning_probability: '10',
   total_cards: '1000',
   gift_id: '',
   status: 'active' as 'active' | 'paused',
@@ -144,7 +144,7 @@ export default function AdminMerchantScratchCardsPage() {
         setCampaignForm({
           name: campaignData.name,
           prize_details: campaignData.prize_details || '',
-          winning_probability: String(campaignData.winning_probability ?? 0.1),
+          winning_probability: String(Math.round((campaignData.winning_probability ?? 0.1) * 100)),
           total_cards: String(campaignData.total_cards ?? 1000),
           gift_id: campaignData.gift_id || '',
           status: campaignData.status === 'active' ? 'active' : 'paused',
@@ -240,7 +240,7 @@ export default function AdminMerchantScratchCardsPage() {
     const payload = {
       name: campaignForm.name.trim() || 'Merchant Scratch Card Campaign',
       prize_details: campaignForm.prize_details.trim() || null,
-      winning_probability: parseFloat(campaignForm.winning_probability) || 0,
+      winning_probability: (parseFloat(campaignForm.winning_probability) || 0) / 100,
       total_cards: parseInt(campaignForm.total_cards, 10) || 0,
       gift_id: campaignForm.gift_id || null,
       status: campaignForm.status,
@@ -717,18 +717,24 @@ export default function AdminMerchantScratchCardsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 flex items-center gap-1.5">
-                        <Percent size={12} /> Win Probability (0–1)
+                        <Percent size={12} /> Winning Chance (%)
                       </label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        min="0"
-                        max="1"
-                        value={campaignForm.winning_probability}
-                        onChange={(e) => setCampaignForm({ ...campaignForm, winning_probability: e.target.value })}
-                        required
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          max="100"
+                          value={campaignForm.winning_probability}
+                          onChange={(e) => setCampaignForm({ ...campaignForm, winning_probability: e.target.value })}
+                          required
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-9 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Roughly {Math.round((parseInt(campaignForm.total_cards) || 0) * ((parseFloat(campaignForm.winning_probability) || 0) / 100))} winners out of {campaignForm.total_cards || 0} cards
+                      </p>
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Total Cards Allowed</label>
@@ -820,7 +826,7 @@ export default function AdminMerchantScratchCardsPage() {
                         <p className="mt-1 text-xs text-slate-500">{campaignForm.prize_details}</p>
                       )}
                       <p className="mt-2 text-xs font-semibold text-purple-600">
-                        {(parseFloat(campaignForm.winning_probability || '0') * 100).toFixed(0)}% chance to win
+                        {(parseFloat(campaignForm.winning_probability || '0')).toFixed(0)}% chance to win
                       </p>
                     </div>
                   </div>
