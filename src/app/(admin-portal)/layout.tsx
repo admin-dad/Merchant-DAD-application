@@ -46,12 +46,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex" style={{ fontFamily: 'var(--font-display)' }}>
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row" style={{ fontFamily: 'var(--font-display)' }}>
       {/* Render the Sidebar Component */}
       <AdminSidebar />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>

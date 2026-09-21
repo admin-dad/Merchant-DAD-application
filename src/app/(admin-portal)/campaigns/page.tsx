@@ -110,6 +110,7 @@ export default function AdminCampaignsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingCamp, setEditingCamp] = useState<Campaign | null>(null)
   const [editFormError, setEditFormError] = useState<string | null>(null)
+  const [activationCandidate, setActivationCandidate] = useState<{ id: string, type: CampaignType } | null>(null)
   const [editForm, setEditForm] = useState({
     name: '',
     type: 'customer' as CampaignType,
@@ -312,9 +313,18 @@ export default function AdminCampaignsPage() {
   }
 
   // ── Handle Pause/Activate Shortcut ───────────────────────────────────
-  const handleToggleStatus = async (campId: string, currentStatus: string, type: CampaignType) => {
+  const handleToggleStatus = (campId: string, currentStatus: string, type: CampaignType) => {
     const newStatus = currentStatus === 'active' ? 'paused' : 'active'
 
+    if (newStatus === 'active') {
+      setActivationCandidate({ id: campId, type })
+    } else {
+      executeToggleStatus(campId, 'paused', type)
+    }
+  }
+
+  const executeToggleStatus = async (campId: string, newStatus: string, type: CampaignType) => {
+    setSubmitting(true)
     const { error } = await supabase
       .from('campaigns')
       .update({ status: newStatus })
@@ -324,9 +334,11 @@ export default function AdminCampaignsPage() {
       setCampaigns(prev =>
         prev.map(c => c.id === campId ? { ...c, status: newStatus } : c)
       )
+      setActivationCandidate(null)
     } else {
       alert(describeCampaignError(error, type))
     }
+    setSubmitting(false)
   }
 
   // ── Format Date Helper ──────────────────────────────────────────────
@@ -1008,6 +1020,51 @@ export default function AdminCampaignsPage() {
                     {submitting ? 'Saving...' : 'Save Changes'}
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── ACTIVATION CONFIRMATION MODAL ── */}
+      <AnimatePresence>
+        {activationCandidate && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActivationCandidate(null)}
+              className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200 p-6 text-center"
+            >
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500 shadow-sm">
+                <Play size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Activate Campaign?</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                You can only have <strong className="text-slate-700">one active {TYPE_META[activationCandidate.type].label.toLowerCase()} campaign</strong> at a time. If another one is already active, this action will fail. Ensure you pause the current one first.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActivationCandidate(null)}
+                  disabled={submitting}
+                  className="flex-1 rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => executeToggleStatus(activationCandidate.id, 'active', activationCandidate.type)}
+                  disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 hover:shadow-lg transition-all"
+                >
+                  {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Activate'}
+                </button>
               </div>
             </motion.div>
           </div>

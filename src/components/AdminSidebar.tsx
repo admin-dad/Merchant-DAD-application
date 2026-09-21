@@ -108,7 +108,7 @@ export default function AdminSidebar({
   return (
     <>
       {/* Mobile topbar */}
-      <div className="lg:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
+      <div className="lg:hidden sticky top-0 z-40 flex w-full h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
         <Link href="/admin-dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
           <div className="relative h-8 w-28 overflow-hidden flex items-center justify-start">
             <Image
