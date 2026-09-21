@@ -22,12 +22,12 @@ export default async function MerchantLayout({
   // or found but not yet approved. Either way still let them into the shell;
   // individual pages can gate on `status` if they need to.
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col md:flex-row">
       <Merchantsidebar
         businessName={merchant?.business_name || user.email || 'Your Business'}
         merchantId={merchant?.id}
       />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 w-full">{children}</main>
     </div>
   )
 }

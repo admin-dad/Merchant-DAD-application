@@ -86,11 +86,11 @@ export default function AdminMerchantScratchCardsPage() {
   const [merchants, setMerchants] = useState<Merchant[]>([])
   const [rewardsHistory, setRewardsHistory] = useState<RewardHistory[]>([])
 
-  // Active merchant campaign (there is at most one, enforced by the
-  // partial unique index on campaigns(type) where status='active')
-  const [campaign, setCampaign] = useState<CampaignRow | null>(null)
+  const [allMerchantCampaigns, setAllMerchantCampaigns] = useState<CampaignRow[]>([])
+  const campaign = allMerchantCampaigns.find(c => c.status === 'active') || null
   const [gifts, setGifts] = useState<GiftRow[]>([])
   const [campaignForm, setCampaignForm] = useState(EMPTY_CAMPAIGN_FORM)
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
   const [savingCampaign, setSavingCampaign] = useState(false)
   const [campaignSaved, setCampaignSaved] = useState(false)
 
@@ -130,25 +130,27 @@ export default function AdminMerchantScratchCardsPage() {
         setRewardsHistory(rewardsData as RewardHistory[])
       }
 
-      // Active merchant campaign — source of truth for odds/prize shown to
-      // merchants on their dashboard.
+      // Fetch ALL merchant campaigns
       const { data: campaignData } = await supabase
         .from('campaigns')
         .select('id, name, prize_details, winning_probability, start_date, end_date, status, total_cards, issued_cards, gift_id')
         .eq('type', 'merchant')
-        .eq('status', 'active')
-        .maybeSingle()
+        .order('created_at', { ascending: false })
 
       if (campaignData) {
-        setCampaign(campaignData as CampaignRow)
-        setCampaignForm({
-          name: campaignData.name,
-          prize_details: campaignData.prize_details || '',
-          winning_probability: String(Math.round((campaignData.winning_probability ?? 0.1) * 100)),
-          total_cards: String(campaignData.total_cards ?? 1000),
-          gift_id: campaignData.gift_id || '',
-          status: campaignData.status === 'active' ? 'active' : 'paused',
-        })
+        setAllMerchantCampaigns(campaignData as CampaignRow[])
+        const activeCamp = campaignData.find(c => c.status === 'active') || campaignData[0]
+        if (activeCamp) {
+          setEditingCampaignId(activeCamp.id)
+          setCampaignForm({
+            name: activeCamp.name,
+            prize_details: activeCamp.prize_details || '',
+            winning_probability: String(Math.round((activeCamp.winning_probability ?? 0.1) * 100)),
+            total_cards: String(activeCamp.total_cards ?? 1000),
+            gift_id: activeCamp.gift_id || '',
+            status: activeCamp.status === 'active' ? 'active' : 'paused',
+          })
+        }
       }
 
       const { data: giftsData } = await supabase
@@ -247,26 +249,29 @@ export default function AdminMerchantScratchCardsPage() {
       type: 'merchant' as const,
     }
 
-    if (campaign) {
-      // Updating the existing active campaign in place
+    if (payload.status === 'active' && campaign && campaign.id !== editingCampaignId) {
+       // Pause the currently active campaign first to avoid unique constraint violations
+       await supabase.from('campaigns').update({ status: 'paused' }).eq('id', campaign.id)
+       setAllMerchantCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, status: 'paused' } : c))
+    }
+
+    if (editingCampaignId) {
+      // Updating the existing campaign in place
       const { data, error } = await supabase
         .from('campaigns')
         .update(payload)
-        .eq('id', campaign.id)
+        .eq('id', editingCampaignId)
         .select()
         .maybeSingle()
 
       if (!error && data) {
-        setCampaign(data as CampaignRow)
+        setAllMerchantCampaigns(prev => prev.map(c => c.id === editingCampaignId ? (data as CampaignRow) : c))
         setCampaignSaved(true)
       } else {
         alert('Could not save campaign settings.')
       }
     } else {
-      // No active merchant campaign exists yet — create one. The partial
-      // unique index on campaigns(type) where status='active' guarantees
-      // only one can ever be active at a time, so this is safe to insert
-      // as long as status is 'active'.
+      // Create new campaign
       const { data, error } = await supabase
         .from('campaigns')
         .insert([{ ...payload, issued_cards: 0 }])
@@ -274,12 +279,13 @@ export default function AdminMerchantScratchCardsPage() {
         .maybeSingle()
 
       if (!error && data) {
-        setCampaign(data as CampaignRow)
+        setAllMerchantCampaigns(prev => [data as CampaignRow, ...prev])
+        setEditingCampaignId(data.id)
         setCampaignSaved(true)
       } else {
         alert(
           error?.message?.includes('duplicate')
-            ? 'An active merchant campaign already exists — refresh the page.'
+            ? 'An active merchant campaign already exists — please pause it first.'
             : 'Could not create campaign.'
         )
       }
@@ -287,6 +293,21 @@ export default function AdminMerchantScratchCardsPage() {
 
     setSavingCampaign(false)
     setTimeout(() => setCampaignSaved(false), 2500)
+  }
+
+  const handleSetCampaignActive = async (campId: string) => {
+    if (campaign && campaign.id !== campId) {
+      await supabase.from('campaigns').update({ status: 'paused' }).eq('id', campaign.id)
+    }
+    const { error } = await supabase.from('campaigns').update({ status: 'active' }).eq('id', campId)
+    if (!error) {
+       setAllMerchantCampaigns(prev => prev.map(c => ({
+         ...c,
+         status: c.id === campId ? 'active' : (c.id === campaign?.id ? 'paused' : c.status)
+       })))
+    } else {
+       alert('Failed to activate campaign.')
+    }
   }
 
   const formatDate = (isoDate: string) => {
@@ -722,11 +743,19 @@ export default function AdminMerchantScratchCardsPage() {
                       <div className="relative">
                         <input
                           type="number"
-                          step="1"
-                          min="0"
+                          step="0.1"
+                          min="0.1"
                           max="100"
                           value={campaignForm.winning_probability}
-                          onChange={(e) => setCampaignForm({ ...campaignForm, winning_probability: e.target.value })}
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            if (val !== '' && parseFloat(val) > 100) val = '100';
+                            setCampaignForm({ ...campaignForm, winning_probability: val });
+                          }}
+                          onBlur={(e) => {
+                            let val = parseFloat(e.target.value);
+                            if (isNaN(val) || val < 0.1) setCampaignForm({ ...campaignForm, winning_probability: '0.1' });
+                          }}
                           required
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-9 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                         />
@@ -850,6 +879,107 @@ export default function AdminMerchantScratchCardsPage() {
                   )}
                 </div>
               </form>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    <Layers size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">All Merchant Campaigns</h2>
+                    <p className="text-xs text-slate-500">View and manage all your past and present merchant campaigns.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingCampaignId(null);
+                    setCampaignForm(EMPTY_CAMPAIGN_FORM);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100 transition-colors cursor-pointer"
+                >
+                  + Create New Campaign
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b border-slate-100">
+                      <th className="py-3 px-4 font-medium">Campaign Name</th>
+                      <th className="py-3 px-4 font-medium">Win Chance</th>
+                      <th className="py-3 px-4 font-medium">Cards Issued</th>
+                      <th className="py-3 px-4 font-medium">Status</th>
+                      <th className="py-3 px-4 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allMerchantCampaigns.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 text-slate-400">
+                          No merchant campaigns created yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      allMerchantCampaigns.map((camp) => (
+                        <tr key={camp.id} className={`border-b border-slate-50 transition-colors hover:bg-slate-50/50 ${editingCampaignId === camp.id ? 'bg-purple-50/30' : ''}`}>
+                          <td className="py-4 px-4">
+                            <span className="font-semibold text-slate-900">{camp.name}</span>
+                            {camp.prize_details && (
+                              <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[200px]">{camp.prize_details}</p>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 font-medium text-purple-600">
+                            {(camp.winning_probability * 100).toFixed(1)}%
+                          </td>
+                          <td className="py-4 px-4 text-slate-600">
+                            {camp.issued_cards} / {camp.total_cards}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${
+                              camp.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full bg-current ${camp.status === 'active' ? 'animate-pulse' : ''}`} />
+                              {camp.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              {camp.status !== 'active' && (
+                                <button
+                                  onClick={() => handleSetCampaignActive(camp.id)}
+                                  className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                >
+                                  Activate
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setEditingCampaignId(camp.id);
+                                  setCampaignForm({
+                                    name: camp.name,
+                                    prize_details: camp.prize_details || '',
+                                    winning_probability: String(Math.round((camp.winning_probability ?? 0.1) * 100)),
+                                    total_cards: String(camp.total_cards ?? 1000),
+                                    gift_id: camp.gift_id || '',
+                                    status: camp.status === 'active' ? 'active' : 'paused',
+                                  });
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </motion.div>
         )}

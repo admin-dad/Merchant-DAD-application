@@ -22,6 +22,7 @@ import {
   ArrowRight,
   CalendarClock,
   Wallet,
+  Sparkles,
 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
 import jsPDF from 'jspdf'
@@ -402,36 +403,38 @@ export default function QRCodeManagementPage() {
   return (
     <div className="mx-auto max-w-8xl bg-white px-4 py-8 sm:px-6 lg:px-8" style={{ fontFamily: 'var(--font-display)' }}>
       {/* Header Banner */}
-      <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/15 blur-2xl" />
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#1857D6] to-[#0B2E7A] text-white shadow-lg shadow-blue-500/20">
-              <QrCode size={30} />
+      <div className="relative mb-10 overflow-hidden rounded-[2.5rem] border border-slate-200/50 bg-white/60 p-6 shadow-xl shadow-slate-200/40 backdrop-blur-3xl sm:p-10 transition-all duration-500 hover:shadow-2xl hover:shadow-[#1857D6]/5">
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gradient-to-br from-[#1857D6]/20 via-[#7BC142]/15 to-transparent blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full bg-gradient-to-tr from-[#1857D6]/10 to-transparent blur-2xl" />
+        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-5">
+            <div className="group relative flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-tr from-[#1857D6] to-[#0B2E7A] text-white shadow-xl shadow-blue-500/30 transition-transform duration-500 hover:scale-105 hover:rotate-3">
+              <div className="absolute inset-0 rounded-3xl bg-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <QrCode size={36} strokeWidth={1.5} />
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                  QR Code Management
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+                  QR Code Manager
                 </h1>
-                <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${statusStyles[merchant.status] || statusStyles.pending}`}>
-                  <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+                <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-wider ${statusStyles[merchant.status] || statusStyles.pending} shadow-sm`}>
+                  <span className="h-2 w-2 rounded-full bg-current animate-pulse shadow-[0_0_8px_currentColor]" />
                   {merchant.status}
                 </span>
                 {isMonthlyMerchant && (
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
                       isMonthlyPaid
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm'
+                        : 'bg-rose-50 text-rose-700 border-rose-200 shadow-sm'
                     }`}
                   >
                     {isMonthlyPaid ? `Paid \u2013 ${monthLabel}` : `Unpaid \u2013 ${monthLabel}`}
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                Display this code at your shop counter. Customers scan it to participate in campaigns and win rewards.
+              <p className="mt-2 text-sm font-medium text-slate-500 max-w-xl leading-relaxed">
+                Display this code at your shop counter. When customers scan it, they participate in your live campaigns and unlock exclusive rewards instantly.
               </p>
             </div>
           </div>
@@ -517,51 +520,70 @@ export default function QRCodeManagementPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col self-start rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-5 sm:p-8"
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex flex-col self-start rounded-[2.5rem] border border-slate-200/50 bg-white/80 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-xl lg:col-span-5 sm:p-10 relative overflow-hidden group"
           >
-            <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                <Download size={18} />
+            {/* Ambient Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-gradient-to-r from-[#1857D6]/10 to-[#7BC142]/10 blur-3xl pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
+
+            <div className="mb-8 flex items-center gap-4 border-b border-slate-100/80 pb-5 relative z-10">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 shadow-inner border border-slate-100">
+                <Download size={20} strokeWidth={2} />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Download & Share</h2>
-                <p className="text-xs text-slate-500">Print or share your unique QR code.</p>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Your Custom Code</h2>
+                <p className="text-xs font-medium text-slate-500">Ready to print or share instantly.</p>
               </div>
             </div>
 
             {/* QR Canvas */}
-            <div className="flex flex-col items-center justify-center mb-6">
-              <div ref={qrCanvasRef} className="p-2 bg-white border-2 border-dashed border-slate-200 rounded-2xl shadow-sm">
-                <QRCodeCanvas
-                  id="merchant-qr-canvas"
-                  value={scanUrl}
-                  size={130}
-                  level="H"
-                  includeMargin={false}
-                  fgColor="#0B0F19"
-                  bgColor="#FFFFFF"
-                />
+            <div className="flex flex-col items-center justify-center mb-10 relative z-10">
+              <div className="relative group/qr perspective-1000">
+                <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-b from-[#1857D6]/20 to-[#7BC142]/20 opacity-0 blur-xl transition-all duration-500 group-hover/qr:opacity-100" />
+                <div 
+                  ref={qrCanvasRef} 
+                  className="relative z-10 p-6 bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl shadow-[#1857D6]/5 transition-all duration-500 transform group-hover/qr:scale-105 group-hover/qr:-translate-y-2 group-hover/qr:shadow-[#1857D6]/15 group-hover/qr:border-[#1857D6]/20"
+                >
+                  <QRCodeCanvas
+                    id="merchant-qr-canvas"
+                    value={scanUrl}
+                    size={160}
+                    level="H"
+                    includeMargin={false}
+                    fgColor="#0B0F19"
+                    bgColor="#FFFFFF"
+                  />
+                  {/* Small decorative elements inside frame */}
+                  <div className="absolute top-4 left-4 w-3 h-3 border-t-2 border-l-2 border-[#1857D6] rounded-tl-sm opacity-50" />
+                  <div className="absolute top-4 right-4 w-3 h-3 border-t-2 border-r-2 border-[#1857D6] rounded-tr-sm opacity-50" />
+                  <div className="absolute bottom-4 left-4 w-3 h-3 border-b-2 border-l-2 border-[#1857D6] rounded-bl-sm opacity-50" />
+                  <div className="absolute bottom-4 right-4 w-3 h-3 border-b-2 border-r-2 border-[#1857D6] rounded-br-sm opacity-50" />
+                </div>
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">{merchant.business_name}</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                ID: {merchant.id.substring(0, 8)}... • {merchant.category}
-                {merchant.sub_category ? ` (${merchant.sub_category})` : ''}
-              </p>
+
+              <div className="mt-8 text-center bg-slate-50/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-slate-100/80 shadow-inner">
+                <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">{merchant.business_name}</h3>
+                <p className="text-xs font-semibold text-slate-500 mt-1.5 uppercase tracking-widest flex items-center justify-center gap-1.5">
+                  <span className="text-[#1857D6]">ID: {merchant.id.substring(0, 8)}</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  {merchant.category}
+                </p>
+              </div>
+
               {isMonthlyMerchant && (
-                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  <CheckCircle2 size={12} />
+                <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 shadow-sm border border-emerald-100">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
                   Active for {monthLabel}
                 </p>
               )}
             </div>
 
             {/* Action Buttons Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <ActionButton icon={<Download size={18} />} label="Download PNG" onClick={downloadPNG} variant="green" />
-              <ActionButton icon={<FileText size={18} />} label="Download PDF" onClick={downloadPDF} variant="blue" />
-              <ActionButton icon={<Printer size={18} />} label="Print QR" onClick={printQR} variant="slate" />
-              <ActionButton icon={<Share2 size={18} />} label="Share QR" onClick={shareQR} variant="slate" />
+            <div className="grid grid-cols-2 gap-4 relative z-10">
+              <ActionButton icon={<Download size={20} />} label="PNG" onClick={downloadPNG} variant="green" />
+              <ActionButton icon={<FileText size={20} />} label="PDF" onClick={downloadPDF} variant="blue" />
+              <ActionButton icon={<Printer size={20} />} label="Print" onClick={printQR} variant="slate" />
+              <ActionButton icon={<Share2 size={20} />} label="Share" onClick={shareQR} variant="slate" />
             </div>
           </motion.div>
 
@@ -569,76 +591,82 @@ export default function QRCodeManagementPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="flex flex-col self-start rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-7 sm:p-8"
+            transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+            className="flex flex-col self-start rounded-[2.5rem] border border-slate-200/50 bg-white/80 p-6 shadow-2xl shadow-slate-200/40 backdrop-blur-xl lg:col-span-7 sm:p-10"
           >
-            <div className="mb-6 flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                  <History size={18} />
+            <div className="mb-8 flex items-center justify-between border-b border-slate-100/80 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 shadow-inner border border-slate-100">
+                  <History size={20} strokeWidth={2} />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">Scan History</h2>
-                  <p className="text-xs text-slate-500">Track customer participation and rewards.</p>
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Scan Activity</h2>
+                  <p className="text-xs font-medium text-slate-500">Live feed of customer scans.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => fetchMerchantData(true)}
                   disabled={refreshingScans}
                   aria-label="Refresh scan history"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full transition-all cursor-pointer disabled:opacity-50"
+                  className="group flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md px-4 py-2 rounded-full transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <RefreshCw size={12} className={refreshingScans ? 'animate-spin text-[#1857D6]' : ''} />
-                  <span>Refresh</span>
+                  <RefreshCw size={14} className={`transition-transform ${refreshingScans ? 'animate-spin text-[#1857D6]' : 'group-hover:rotate-180 duration-500'}`} />
+                  <span>Sync</span>
                 </button>
-                <span className="hidden sm:inline-block text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-                  Total Scans: {scans.length}
-                </span>
+                <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-[#1857D6] bg-blue-50 border border-blue-100 px-4 py-2 rounded-full shadow-inner">
+                  <Smartphone size={14} />
+                  {scans.length} Scans
+                </div>
               </div>
             </div>
 
             {/* History List */}
-            <div className="space-y-3 overflow-y-auto pr-2 max-h-[420px]">
+            <div className="space-y-4 overflow-y-auto pr-2 max-h-[460px] custom-scrollbar">
               {scans.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-300 shadow-sm">
-                    <Smartphone size={32} />
+                <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-200">
+                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.5rem] bg-white shadow-lg text-slate-300 border border-slate-100">
+                    <Smartphone size={40} strokeWidth={1.5} />
                   </div>
-                  <p className="text-sm font-semibold text-slate-800">No scans yet</p>
-                  <p className="mt-1 text-xs text-slate-500 max-w-xs">When customers scan your QR code, their participation will appear here.</p>
+                  <p className="text-base font-bold text-slate-900">Waiting for first scan</p>
+                  <p className="mt-2 text-sm font-medium text-slate-500 max-w-sm leading-relaxed">
+                    Once customers start scanning your new, beautiful QR code, their activity will instantly appear right here.
+                  </p>
                 </div>
               ) : (
                 scans.map((scan) => (
                   <div
                     key={scan.id}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-200"
+                    className="group flex items-center justify-between p-5 rounded-[1.5rem] border border-slate-200/60 bg-white hover:border-[#1857D6]/30 hover:bg-blue-50/10 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/10 text-[#1857D6]">
-                        <Smartphone size={18} />
+                    <div className="flex items-center gap-5">
+                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1857D6]/5 to-[#7BC142]/5 text-[#1857D6] border border-slate-100 group-hover:scale-110 group-hover:border-[#1857D6]/20 transition-all duration-300">
+                        <Smartphone size={22} strokeWidth={1.5} />
+                        <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#7BC142]" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {scan.customer_name ? `${scan.customer_name}` : 'Phone not provided'}
+                        <p className="text-base font-bold text-slate-900 group-hover:text-[#1857D6] transition-colors">
+                          {scan.customer_name ? `${scan.customer_name}` : 'Unknown Customer'}
+                        </p>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                          <Clock size={12} className="opacity-70" />
+                          {formatDate(scan.created_at)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${scan.status === 'Reward Won'
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide border shadow-sm ${
+                          scan.status === 'Reward Won'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : scan.status === 'No Win'
                             ? 'bg-rose-50 text-rose-700 border-rose-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                       >
+                        {scan.status === 'Reward Won' && <Sparkles size={12} />}
                         {scan.status}
                       </span>
-                      <p className="mt-1.5 text-xs text-slate-400 flex items-center justify-end gap-1.5">
-                        <Clock size={12} />
-                        {formatDate(scan.created_at)}
-                      </p>
                     </div>
                   </div>
                 ))
@@ -663,18 +691,19 @@ function ActionButton({
   variant: 'green' | 'blue' | 'slate'
 }) {
   const variantClasses = {
-    green: 'bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] text-white shadow-md shadow-emerald-500/20 hover:shadow-lg',
-    blue: 'bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] text-white shadow-md shadow-blue-500/20 hover:shadow-lg',
-    slate: 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+    green: 'bg-gradient-to-tr from-[#7BC142] to-[#3E7A1C] text-white shadow-lg shadow-emerald-500/30 border border-emerald-400/20 hover:shadow-emerald-500/40',
+    blue: 'bg-gradient-to-tr from-[#1857D6] to-[#0B2E7A] text-white shadow-lg shadow-blue-500/30 border border-blue-400/20 hover:shadow-blue-500/40',
+    slate: 'bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50 hover:border-[#1857D6]/30 hover:text-[#1857D6] shadow-sm hover:shadow-md'
   }
 
   return (
     <button
       onClick={onClick}
-      className={`group flex flex-col items-center justify-center gap-2 py-4 rounded-xl transition-all duration-300 hover:translate-y-[-1px] cursor-pointer ${variantClasses[variant]}`}
+      className={`group relative overflow-hidden flex flex-col items-center justify-center gap-3 py-5 rounded-2xl transition-all duration-300 hover:scale-[1.03] cursor-pointer ${variantClasses[variant]}`}
     >
-      <span className="transition-transform group-hover:scale-110">{icon}</span>
-      <span className="text-xs font-semibold">{label}</span>
+      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <span className="relative z-10 transition-transform duration-300 group-hover:-translate-y-1">{icon}</span>
+      <span className="relative z-10 text-xs font-bold tracking-wide uppercase">{label}</span>
     </button>
   )
 }

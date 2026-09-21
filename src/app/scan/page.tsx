@@ -330,21 +330,24 @@ function ScanContent() {
     }
 
     // ── INSERT NEW SCAN RECORD (With Customer Name!) ──
-    const { data, error: insertError } = await supabase
-      .from('qr_scans')
-      .insert([
-        {
-          merchant_id: merchantId,
-          customer_name: name.trim(),
-          customer_phone: phone.trim(),
-          status: 'Pending',
-          campaign_id: activeCampaignId,
-        },
-      ])
-      .select('id')
-      .single()
+    const res = await fetch('/api/scan/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        merchant_id: merchantId,
+        customer_name: name.trim(),
+        customer_phone: phone.trim(),
+        status: 'Pending',
+        campaign_id: activeCampaignId,
+      }),
+    })
 
-    if (insertError || !data) {
+    const data = await res.json()
+
+    if (!res.ok || !data.id) {
+      console.error('Submit error:', data.error)
       setError('Could not submit your details. Please try again.')
       setSubmitting(false)
       return

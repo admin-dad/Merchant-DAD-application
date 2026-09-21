@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X, History as HistoryIcon, Trophy } from 'lucide-react'
+import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X, History as HistoryIcon, Trophy, Download } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Interactive Canvas Scratch Card Component
@@ -179,6 +179,104 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
   const [isScratching, setIsScratching] = useState(false)
   const [result, setResult] = useState<'win' | 'lose' | null>(null)
   const [wonAmount, setWonAmount] = useState<number>(0)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadReward = async () => {
+    if (isDownloading || result !== 'win') return
+    setIsDownloading(true)
+    try {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not get canvas context')
+
+      const dpr = window.devicePixelRatio || 1
+      const width = 400
+      const height = 600
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      ctx.scale(dpr, dpr)
+
+      // Background
+      ctx.fillStyle = '#090D16'
+      ctx.fillRect(0, 0, width, height)
+
+      // Top gradient accent
+      const accent = ctx.createLinearGradient(0, 0, width, 0)
+      accent.addColorStop(0, '#9333EA')
+      accent.addColorStop(0.5, '#4F8CFF')
+      accent.addColorStop(1, '#7BC142')
+      ctx.fillStyle = accent
+      ctx.fillRect(0, 0, width, 14)
+
+      // Card panel
+      const pad = 48
+      ctx.fillStyle = 'rgba(255,255,255,0.06)'
+      roundRect(ctx, pad, 100, width - pad * 2, height - 100 - pad, 24)
+      ctx.fill()
+
+      // "YOU WON!" heading
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#7BC142'
+      ctx.font = '700 22px system-ui, -apple-system, sans-serif'
+      ctx.fillText('🎉 CONGRATULATIONS 🎉', width / 2, 170)
+
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 32px system-ui, -apple-system, sans-serif'
+      ctx.fillText(`You won a reward!`, width / 2, 225)
+
+      // Gift photo
+      let imageBottomY = 300
+      if (campaign?.gift?.image_url) {
+        try {
+          const img = await loadImage(campaign.gift.image_url)
+          const imgSize = 250
+          const imgX = width / 2 - imgSize / 2
+          const imgY = 280
+          ctx.save()
+          roundRect(ctx, imgX, imgY, imgSize, imgSize, 20)
+          ctx.clip()
+          ctx.drawImage(img, imgX, imgY, imgSize, imgSize)
+          ctx.restore()
+          imageBottomY = imgY + imgSize + 40
+        } catch {
+          imageBottomY = 320
+        }
+      } else {
+        imageBottomY = 320
+      }
+
+      // Prize name
+      ctx.fillStyle = '#FDE047'
+      ctx.font = '800 28px system-ui, -apple-system, sans-serif'
+      wrapText(ctx, `${wonAmount} Reward Points`, width / 2, imageBottomY, width - pad * 2 - 40, 36)
+
+      if (campaign?.gift?.name || campaign?.prize_details) {
+        ctx.fillStyle = '#cbd5e1'
+        ctx.font = '400 16px system-ui, -apple-system, sans-serif'
+        wrapText(ctx, (campaign?.gift?.name ?? campaign?.prize_details) as string, width / 2, imageBottomY + 50, width - pad * 2 - 60, 24)
+      }
+
+      // Trigger download
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setIsDownloading(false)
+          return
+        }
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `merchant-reward-${Date.now()}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        setIsDownloading(false)
+      }, 'image/png')
+    } catch (err) {
+      console.error(err)
+      setIsDownloading(false)
+    }
+  }
 
   // Rewards history (past won/lost cards) — shown when the merchant opens
   // the popup and has no pending card to scratch right now.
@@ -630,6 +728,26 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                             {campaign?.gift?.description ? ` — ${campaign.gift.description}` : ''}
                           </p>
                         )}
+
+                        {/* Download the reward as a shareable image */}
+                        <button
+                          type="button"
+                          onClick={handleDownloadReward}
+                          disabled={isDownloading}
+                          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
+                        >
+                          {isDownloading ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>Preparing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download size={16} />
+                              <span>Download Reward</span>
+                            </>
+                          )}
+                        </button>
                       </>
                     ) : (
                       <>
@@ -740,4 +858,57 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       </AnimatePresence>
     </>
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Canvas helpers for the downloadable reward image
+// ─────────────────────────────────────────────────────────────────────────
+
+// Draws a rounded rectangle path
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+// Loads an external image for drawing onto the canvas
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+// Simple word-wrap for canvas text
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number
+) {
+  const words = text.split(' ')
+  let line = ''
+  let curY = y
+
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line ? `${line} ${words[i]}` : words[i]
+    const testWidth = ctx.measureText(testLine).width
+    if (testWidth > maxWidth && line) {
+      ctx.fillText(line, x, curY)
+      line = words[i]
+      curY += lineHeight
+    } else {
+      line = testLine
+    }
+  }
+  if (line) ctx.fillText(line, x, curY)
 }

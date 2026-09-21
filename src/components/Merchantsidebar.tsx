@@ -81,20 +81,8 @@ export default function Merchantsidebar({
 
   return (
     <>
-      {/* Mobile topbar (below md breakpoint only — tablet gets the icon rail instead) */}
-      <div className="md:hidden sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
-        <Link href="" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
-          <div className="relative h-8 w-24 overflow-hidden flex items-center justify-start">
-            <Image
-              src="/logopng.jpeg"
-              alt="Logo"
-              fill
-              className="object-contain object-left"
-              priority
-            />
-          </div>
-          <span className="text-sm font-medium text-slate-400">Merchant Dashboard</span>
-        </Link>
+      {/* Mobile topbar */}
+      <div className="md:hidden sticky top-0 z-40 flex w-full h-16 items-center justify-between border-b border-white/10 bg-[#090D16] px-4">
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
@@ -102,6 +90,17 @@ export default function Merchantsidebar({
         >
           <Menu size={20} />
         </button>
+        <Link href="/dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
+          <div className="relative h-8 w-24 overflow-hidden flex items-center justify-end">
+            <Image
+              src="/logopng.jpeg"
+              alt="Logo"
+              fill
+              className="object-contain object-right"
+              priority
+            />
+          </div>
+        </Link>
       </div>
 
       {/* Tablet icon rail (md up to lg) — always-visible, compact, icon-only sidebar */}
