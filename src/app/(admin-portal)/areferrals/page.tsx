@@ -20,7 +20,7 @@ import {
   Link2,
   Phone,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -66,7 +66,7 @@ const SUCCESS_STATUSES = ['approved', 'active']
 // ─────────────────────────────────────────────────────────────────────────
 
 export default function AdminReferralsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)

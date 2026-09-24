@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import AdminSidebar from '@/components/AdminSidebar'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

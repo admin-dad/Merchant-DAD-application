@@ -150,7 +150,7 @@ export default function Merchantsidebar({
               className="absolute left-0 top-0 h-full w-[280px] max-w-[85vw] bg-[#090D16] border-r border-white/10 flex flex-col"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              <div className="flex items-center justify-end px-4 pt-4">
+              <div className="flex items-center justify-end px-4 pt-4 shrink-0">
                 <button
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
@@ -159,13 +159,15 @@ export default function Merchantsidebar({
                   <X size={20} />
                 </button>
               </div>
-              <SidebarContent
-                businessName={businessName}
-                merchantId={merchantId}
-                isActive={isActive}
-                onNavigate={() => setMobileOpen(false)}
-                onLogout={handleLogout}
-              />
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <SidebarContent
+                  businessName={businessName}
+                  merchantId={merchantId}
+                  isActive={isActive}
+                  onNavigate={() => setMobileOpen(false)}
+                  onLogout={handleLogout}
+                />
+              </div>
             </motion.aside>
           </div>
         )}

@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Download,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import { QRCodeCanvas } from 'qrcode.react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 // ─────────────────────────────────────────────────────────────────────────
 
 export default function AdminQRCodesPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)

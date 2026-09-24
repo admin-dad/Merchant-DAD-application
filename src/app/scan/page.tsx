@@ -16,6 +16,7 @@ import {
   Frown,
   Ban,
   Download,
+  X,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -189,6 +190,9 @@ function ScanContent() {
   // Form States
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showAgreementModal, setShowAgreementModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Scan & Scratch Card States
@@ -281,52 +285,36 @@ function ScanContent() {
     }
 
     // ── FETCH ACTIVE CUSTOMER-TYPE CAMPAIGN (with linked gift) ──
-    const { data: campaignData, error: campaignError } = await supabase
-      .from('campaigns')
-      .select(
-        `
-        id,
-        name,
-        winning_probability,
-        prize_details,
-        total_cards,
-        winning_numbers,
-        gift_id,
-        gift:gifts ( id, name, description, image_url )
-        `
-      )
-      .eq('status', 'active')
-      .eq('type', 'customer')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    let activeCampaignId: string | null = null
 
-    if (campaignError) {
-      console.error('campaign fetch error →', campaignError)
-    }
+    try {
+      const resCamp = await fetch('/api/scan/active-campaign', { cache: 'no-store' })
+      const { campaign: campaignData, count, error: campaignError } = await resCamp.json()
 
-    const normalizedCampaign: CampaignInfo | null = campaignData
-      ? {
-          ...campaignData,
-          gift: Array.isArray(campaignData.gift) ? campaignData.gift[0] ?? null : campaignData.gift,
-        }
-      : null
-
-    const activeCampaignId = normalizedCampaign?.id || null
-    setActiveCampaign(normalizedCampaign)
-
-    // ── CHECK INVENTORY LIMIT (SOW Section 12) ──
-    if (activeCampaignId) {
-      const { count } = await supabase
-        .from('qr_scans')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', activeCampaignId)
-
-      if (count !== null && count >= (normalizedCampaign?.total_cards || 999999)) {
-        setError('Sorry, this campaign has reached its maximum scratch card limit!')
-        setSubmitting(false)
-        return
+      if (campaignError) {
+        console.error('campaign fetch error →', campaignError)
       }
+
+      const normalizedCampaign: CampaignInfo | null = campaignData
+        ? {
+            ...campaignData,
+            gift: Array.isArray(campaignData.gift) ? campaignData.gift[0] ?? null : campaignData.gift,
+          }
+        : null
+
+      activeCampaignId = normalizedCampaign?.id || null
+      setActiveCampaign(normalizedCampaign)
+
+      // ── CHECK INVENTORY LIMIT (SOW Section 12) ──
+      if (activeCampaignId && count !== undefined) {
+        if (count >= (normalizedCampaign?.total_cards || 999999)) {
+          setError('Sorry, this campaign has reached its maximum scratch card limit!')
+          setSubmitting(false)
+          return
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch active campaign:', err)
     }
 
     // ── INSERT NEW SCAN RECORD (With Customer Name!) ──
@@ -393,19 +381,29 @@ function ScanContent() {
         setPrizeWon(wonPrize)
         setPrizeGift(activeCampaign?.gift || null)
 
-        await supabase
-          .from('qr_scans')
-          .update({ status: 'Reward Won', prize_won: wonPrize })
-          .eq('id', scanRecordId)
+        await fetch('/api/scan/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scan_id: scanRecordId,
+            status: 'Reward Won',
+            prize_won: wonPrize,
+          }),
+        })
       } else {
         setScratchResult('lose')
         setPrizeWon(null)
         setPrizeGift(null)
 
-        await supabase
-          .from('qr_scans')
-          .update({ status: 'No Win', prize_won: null })
-          .eq('id', scanRecordId)
+        await fetch('/api/scan/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scan_id: scanRecordId,
+            status: 'No Win',
+            prize_won: null,
+          }),
+        })
       }
 
       setIsScratching(false)
@@ -653,9 +651,29 @@ function ScanContent() {
                       )}
                     </div>
 
+                    {/* Terms & Conditions Checkbox and Points */}
+                    <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <div className="flex h-5 items-center">
+                          <input
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-[#1857D6] focus:ring-[#1857D6]"
+                          />
+                        </div>
+                        <span className="text-xs text-slate-600 leading-snug">
+                          I agree to the{' '}
+                          <button type="button" onClick={() => setShowTermsModal(true)} className="font-semibold text-[#1857D6] hover:underline">Terms & Conditions</button>
+                          {' '}and{' '}
+                          <button type="button" onClick={() => setShowAgreementModal(true)} className="font-semibold text-[#1857D6] hover:underline">Customer Agreement</button>.
+                        </span>
+                      </label>
+                    </div>
+
                     <button
                       type="submit"
-                      disabled={submitting}
+                      disabled={submitting || !agreedToTerms}
                       className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] active:translate-y-0 disabled:opacity-50 cursor-pointer"
                     >
                       {submitting ? (
@@ -875,6 +893,82 @@ function ScanContent() {
           </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* Terms Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative p-6"
+            >
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Terms & Conditions</h3>
+              <div className="space-y-4 text-sm text-slate-600 max-h-[60vh] overflow-y-auto pr-2">
+                <p>Welcome to our rewards platform. By participating, you agree to these fundamental rules:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>Rewards and scratch cards are subject to availability and merchant-specific limits.</li>
+                  <li>A single user may only participate once per campaign unless specified otherwise by the merchant.</li>
+                  <li>Prizes cannot be exchanged for cash or transferred to other users.</li>
+                  <li>Any attempt to manipulate, exploit, or bypass the reward systems will result in immediate disqualification and account ban.</li>
+                  <li>We reserve the right to modify or terminate campaigns at any time without prior notice.</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="w-full mt-6 py-2.5 bg-slate-100 text-slate-900 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Customer Agreement Modal */}
+      <AnimatePresence>
+        {showAgreementModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative p-6"
+            >
+              <button
+                onClick={() => setShowAgreementModal(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Customer Agreement</h3>
+              <div className="space-y-4 text-sm text-slate-600 max-h-[60vh] overflow-y-auto pr-2">
+                <p>This Customer Agreement outlines your rights and responsibilities when using our platform:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li><strong>Data Privacy:</strong> We only collect information necessary to track your rewards and ensure fair participation. Your data is not sold to third parties.</li>
+                  <li><strong>Communication:</strong> By participating, you agree to receive transactional notifications regarding your rewards and redemptions.</li>
+                  <li><strong>Fair Usage:</strong> You agree to use the platform fairly and respect merchant rules when claiming physical or digital goods in-store.</li>
+                  <li><strong>Accountability:</strong> Any fraudulent activity, including the use of automated bots or duplicate accounts, violates this agreement.</li>
+                  <li><strong>Updates:</strong> This agreement may be updated periodically to reflect new features and legal requirements.</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => setShowAgreementModal(false)}
+                className="w-full mt-6 py-2.5 bg-slate-100 text-slate-900 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -904,7 +998,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = reject
-    img.src = src
+    // Append cache-buster so the browser doesn't reuse the non-CORS cached image from the HTML <img> tag
+    img.src = src + (src.includes('?') ? '&' : '?') + 'cb=' + Date.now()
   })
 }
 

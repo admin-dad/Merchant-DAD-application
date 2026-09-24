@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Package,
   Loader2,
@@ -38,7 +38,7 @@ interface Product {
 }
 
 export default function AdminProductsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

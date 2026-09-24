@@ -58,6 +58,7 @@ interface QRScan {
   fulfillment_status: string | null
   is_paid?: boolean | null
   payment_status?: string | null
+  scan_cost?: number | null
 }
 
 interface PaymentRecord {
@@ -285,7 +286,7 @@ export default function MerchantScanPaymentPage() {
       const { data: scanData, error: scanError } = await supabase
         .from('qr_scans')
         .select(
-          'id, merchant_id, customer_name, customer_phone, status, prize_won, fulfillment_status, is_paid, payment_status, created_at'
+          'id, merchant_id, customer_name, customer_phone, status, prize_won, fulfillment_status, is_paid, payment_status, created_at, scan_cost'
         )
         .eq('merchant_id', merchData.id)
         .order('created_at', { ascending: false })
@@ -408,8 +409,12 @@ export default function MerchantScanPaymentPage() {
   const totalScansCount = scans.length
   const totalPayableScansCount = payableScans.length
   const totalAccruingScansCount = accruingScans.length
-  const totalBillingAmount = totalPayableScansCount * scanBillingRate
-
+  const totalBillingAmount = payableScans.reduce((sum, s) => {
+    return sum + Number(s.scan_cost ?? scanBillingRate)
+  }, 0)
+  const totalAccruingAmount = accruingScans.reduce((sum, s) => {
+    return sum + Number(s.scan_cost ?? scanBillingRate)
+  }, 0)
   const outstandingBase = totalBillingAmount
   const outstandingGst = outstandingBase * GST_RATE
   const outstandingTotalWithGst = outstandingBase + outstandingGst
@@ -431,12 +436,13 @@ export default function MerchantScanPaymentPage() {
       const d = new Date(s.created_at)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       const label = new Date(d.getFullYear(), d.getMonth(), 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' })
+      const scanCost = Number(s.scan_cost ?? scanBillingRate)
       const existing = map.get(key)
       if (existing) {
         existing.count += 1
-        existing.amount += scanBillingRate
+        existing.amount += scanCost
       } else {
-        map.set(key, { key, label, count: 1, amount: scanBillingRate })
+        map.set(key, { key, label, count: 1, amount: scanCost })
       }
     }
     return Array.from(map.values()).sort((a, b) => (a.key < b.key ? -1 : 1))
@@ -696,6 +702,23 @@ export default function MerchantScanPaymentPage() {
 
   return (
     <div className="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-8 bg-white min-h-screen">
+      
+      {/* Rate Change Warning Banner */}
+      {!isMonthlyMerchant && subcategoryScanAmount !== null && subcategoryScanAmount !== Number(merchant?.billing_rate) && (
+        <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertIcon className="mt-0.5 h-5 w-5 text-yellow-600 shrink-0" />
+            <div>
+              <h3 className="text-sm font-bold text-yellow-800">Notice: Billing Rate Updated</h3>
+              <p className="mt-1 text-sm text-yellow-700">
+                DAD Admin has updated the active scan rate for your category to ₹{subcategoryScanAmount}. 
+                All new scans will be billed at ₹{subcategoryScanAmount}/scan. Past unpaid scans remain locked at their historical rates.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-blue-500/10 blur-2xl" />
@@ -1116,7 +1139,7 @@ export default function MerchantScanPaymentPage() {
                         <span className="ml-2 text-xs text-slate-400">({totalAccruingScansCount} scans)</span>
                       </span>
                       <span className="font-semibold text-slate-400">
-                        ₹{formatMoney(totalAccruingScansCount * scanBillingRate)}
+                        ₹{formatMoney(totalAccruingAmount)}
                       </span>
                     </div>
                   </div>
@@ -1124,7 +1147,7 @@ export default function MerchantScanPaymentPage() {
 
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4">
                   <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>{totalPayableScansCount} unpaid scans × ₹{formatMoney(scanBillingRate)}</span>
+                    <span>{totalPayableScansCount} unpaid scans (locked rates)</span>
                     <span>₹{formatMoney(outstandingBase)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-slate-600 mt-1">
@@ -1304,7 +1327,7 @@ export default function MerchantScanPaymentPage() {
                             {isPaid ? (
                               <span className="text-slate-400 text-xs">Paid</span>
                             ) : (
-                              `₹${formatMoney(scanBillingRate)}`
+                              `₹${formatMoney(Number(scan.scan_cost ?? scanBillingRate))}`
                             )}
                           </td>
                         </tr>

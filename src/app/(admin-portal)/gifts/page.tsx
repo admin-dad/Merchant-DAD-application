@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Gift,
   Plus,
@@ -40,7 +40,7 @@ interface GiftItem {
 }
 
 export default function AdminGiftsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

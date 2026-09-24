@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   CreditCard as CreditCardIcon,
   Building2 as BuildingIcon,
@@ -502,7 +502,7 @@ function DeletePlanModal({ plan, onClose, onDeleted }: DeletePlanModalProps) {
 // ─────────────────────────────────────────────────────────────────────────
 export default function AdminSubscriptionsPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(true)

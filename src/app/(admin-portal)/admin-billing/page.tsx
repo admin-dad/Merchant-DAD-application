@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Building2 as BuildingIcon,
   Users as UsersIcon,
@@ -156,7 +156,7 @@ const KIND_FILTERS: { key: KindFilter; label: string; icon: typeof CardIcon | nu
 
 export default function AdminMerchantBillingPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(true)

@@ -23,7 +23,7 @@ import {
   ListTree,
   IndianRupee,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -68,7 +68,7 @@ type DeleteTarget =
 // ─────────────────────────────────────────────────────────────────────────
 
 export default function AdminCategoriesPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)

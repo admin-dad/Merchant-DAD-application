@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
-import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X, History as HistoryIcon, Trophy, Download } from 'lucide-react'
+import { Gift, Loader2, CheckCircle2, Frown, Sparkles, X, History as HistoryIcon, Trophy, Download, Dices } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Interactive Canvas Scratch Card Component
@@ -190,19 +190,23 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       if (!ctx) throw new Error('Could not get canvas context')
 
       const dpr = window.devicePixelRatio || 1
-      const width = 400
-      const height = 600
+      const width = 800
+      const height = 1000
       canvas.width = width * dpr
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
 
-      // Background
-      ctx.fillStyle = '#090D16'
+      // Background gradient (brand colors matching customer theme)
+      const bg = ctx.createLinearGradient(0, 0, width, height)
+      bg.addColorStop(0, '#0f172a')
+      bg.addColorStop(0.5, '#1e3a8a')
+      bg.addColorStop(1, '#0f172a')
+      ctx.fillStyle = bg
       ctx.fillRect(0, 0, width, height)
 
-      // Top gradient accent
+      // Decorative top accent bar (matches the app's brand gradient)
       const accent = ctx.createLinearGradient(0, 0, width, 0)
-      accent.addColorStop(0, '#9333EA')
+      accent.addColorStop(0, '#1857D6')
       accent.addColorStop(0.5, '#4F8CFF')
       accent.addColorStop(1, '#7BC142')
       ctx.fillStyle = accent
@@ -221,17 +225,22 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       ctx.fillText('🎉 CONGRATULATIONS 🎉', width / 2, 170)
 
       ctx.fillStyle = '#ffffff'
-      ctx.font = '900 32px system-ui, -apple-system, sans-serif'
+      ctx.font = '900 40px system-ui, -apple-system, sans-serif'
       ctx.fillText(`You won a reward!`, width / 2, 225)
+
+      // Merchant context
+      ctx.fillStyle = '#93c5fd'
+      ctx.font = '600 18px system-ui, -apple-system, sans-serif'
+      ctx.fillText(`Merchant Reward`, width / 2, 258)
 
       // Gift photo
       let imageBottomY = 300
       if (campaign?.gift?.image_url) {
         try {
           const img = await loadImage(campaign.gift.image_url)
-          const imgSize = 250
+          const imgSize = 300
           const imgX = width / 2 - imgSize / 2
-          const imgY = 280
+          const imgY = 300
           ctx.save()
           roundRect(ctx, imgX, imgY, imgSize, imgSize, 20)
           ctx.clip()
@@ -245,16 +254,28 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
         imageBottomY = 320
       }
 
-      // Prize name
+      // Main Prize Name (Gift Name or Prize Details)
+      const mainPrizeText = (campaign?.gift?.name ?? campaign?.prize_details) as string || 'Special Reward'
       ctx.fillStyle = '#FDE047'
-      ctx.font = '800 28px system-ui, -apple-system, sans-serif'
-      wrapText(ctx, `${wonAmount} Reward Points`, width / 2, imageBottomY, width - pad * 2 - 40, 36)
+      ctx.font = '800 32px system-ui, -apple-system, sans-serif'
+      wrapText(ctx, mainPrizeText, width / 2, imageBottomY, width - pad * 2 - 40, 40)
 
-      if (campaign?.gift?.name || campaign?.prize_details) {
+      // Points (as subtitle)
+      if (wonAmount > 0) {
         ctx.fillStyle = '#cbd5e1'
-        ctx.font = '400 16px system-ui, -apple-system, sans-serif'
-        wrapText(ctx, (campaign?.gift?.name ?? campaign?.prize_details) as string, width / 2, imageBottomY + 50, width - pad * 2 - 60, 24)
+        ctx.font = '600 20px system-ui, -apple-system, sans-serif'
+        wrapText(ctx, `+ ${wonAmount} Reward Points`, width / 2, imageBottomY + 50, width - pad * 2 - 60, 24)
       }
+
+      // Footer: date
+      ctx.fillStyle = '#64748b'
+      ctx.font = '400 14px system-ui, -apple-system, sans-serif'
+      const dateStr = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+      ctx.fillText(`Won on ${dateStr}`, width / 2, height - 70)
 
       // Trigger download
       canvas.toBlob((blob) => {
@@ -454,8 +475,8 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       const rewardLabel = campaign?.gift?.name
         ? campaign.gift.name
         : campaign?.prize_details
-        ? campaign.prize_details
-        : 'B2B Scratch Card Reward'
+          ? campaign.prize_details
+          : 'B2B Scratch Card Reward'
 
       await supabase.from('merchant_transactions').insert([{
         merchant_id: merchantId,
@@ -751,10 +772,20 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                       </>
                     ) : (
                       <>
-                        <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
-                          <Frown size={32} className="text-red-500" />
+                        <motion.div 
+                          initial={{ y: -10, opacity: 0, scale: 0.9 }} 
+                          animate={{ y: 0, opacity: 1, scale: 1 }} 
+                          transition={{ duration: 0.4 }}
+                          className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-rose-50 via-red-50 to-orange-50 shadow-inner ring-4 ring-rose-50"
+                        >
+                          <motion.div
+                            animate={{ y: [0, -6, 0], scale: [1, 1.15, 1] }}
+                            transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+                          >
+                            <Frown size={34} className="text-rose-500 drop-shadow-sm" />
+                          </motion.div>
                         </motion.div>
-                        <h2 className="text-2xl font-bold text-[#0B0F19]">Better Luck Next Time!</h2>
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-rose-500 to-red-400 bg-clip-text text-transparent">Better Luck Next Time!</h2>
                         <p className="mt-2 text-sm text-slate-500">Keep engaging customers to earn more rewards!</p>
                       </>
                     )}
@@ -806,8 +837,18 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
 
                       {/* List */}
                       <div className="max-h-96 overflow-y-auto rounded-2xl border border-slate-200/80 divide-y divide-slate-100">
-                        {history.map((h) => {
+                        {history.map((h, index) => {
                           const won = isWin(h.status)
+                          const lossColors = [
+                            'bg-rose-50 text-rose-500 border border-rose-100',
+                            'bg-indigo-50 text-indigo-500 border border-indigo-100',
+                            'bg-amber-50 text-amber-500 border border-amber-100',
+                            'bg-sky-50 text-sky-500 border border-sky-100',
+                            'bg-purple-50 text-purple-500 border border-purple-100',
+                            'bg-pink-50 text-pink-500 border border-pink-100',
+                          ]
+                          const noWinColor = lossColors[index % lossColors.length]
+
                           return (
                             <div key={h.id} className="flex items-center justify-between gap-3 px-4 py-3">
                               <div className="flex items-center gap-3 min-w-0">
@@ -823,11 +864,17 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                                   />
                                 ) : (
                                   <span
-                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                                      won ? 'bg-emerald-50 text-[#3E7A1C]' : 'bg-slate-100 text-slate-400'
-                                    }`}
+                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${won ? 'bg-emerald-50 text-[#3E7A1C]' : noWinColor
+                                      }`}
                                   >
-                                    {won ? <CheckCircle2 size={18} /> : <Frown size={18} />}
+                                    {won ? <CheckCircle2 size={18} /> : (
+                                      <motion.div
+                                        animate={{ y: [0, -2, 0], scale: [1, 1.1, 1] }}
+                                        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                      >
+                                        <Frown size={18} className="opacity-90" />
+                                      </motion.div>
+                                    )}
                                   </span>
                                 )}
                                 <div className="min-w-0">
@@ -882,7 +929,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = reject
-    img.src = src
+    img.src = src + (src.includes('?') ? '&' : '?') + 'cb=' + Date.now()
   })
 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import { 
   Coins, 
   Loader2, 
@@ -29,7 +29,7 @@ interface Product {
 }
 
 export default function PointsManagementPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])

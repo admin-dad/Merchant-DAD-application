@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Video,
@@ -93,7 +93,7 @@ export default function AdminSidebar({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
+  const supabase = createAdminClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [productsOpen, setProductsOpen] = useState(true) // Open by default to show sub-links
 
@@ -163,14 +163,14 @@ export default function AdminSidebar({
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute left-0 top-0 h-full w-[280px] bg-[#090D16] border-r border-white/10 flex flex-col"
+              className="absolute left-0 top-0 h-full w-[280px] bg-[#090D16] border-r border-white/10 flex flex-col overflow-hidden"
               style={{ fontFamily: 'var(--font-display)' }}
             >
-              <div className="flex items-center justify-end px-4 pt-4">
+              <div className="absolute right-4 top-4 z-50">
                 <button
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close menu"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-300 hover:bg-white/10 cursor-pointer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white cursor-pointer shadow-sm border border-white/10"
                 >
                   <X size={20} />
                 </button>

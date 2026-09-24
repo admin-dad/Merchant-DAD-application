@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import { Plus, Loader2, CheckCircle2, UploadCloud, ChevronDown, Image as ImageIcon, Coins } from 'lucide-react'
 
 // TypeScript Interfaces
@@ -19,7 +19,7 @@ interface Subcategory {
 
 export default function AddProductPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [submitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)

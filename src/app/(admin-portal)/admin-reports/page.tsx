@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   FileBarChart, Store, Users, Truck, Wallet, QrCode, Download, FileText,
   Loader2, AlertCircle, Calendar, TrendingUp, CreditCard, Share2, Ticket,
@@ -122,7 +122,7 @@ function lastNMonthLabels(n: number) {
 // ─────────────────────────────────────────────────────────────────────────
 export default function AdminReportsPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -393,7 +393,7 @@ export default function AdminReportsPage() {
       case 'campaign_perf':
         title = 'Campaign Performance Report'
         headers = ['Campaign Name', 'Status', 'Win Probability', 'Created Date']
-        rows = fCampaigns.map(c => [c.name, c.status, `${(c.winning_probability * 100).toFixed(0)}%`, new Date(c.created_at).toLocaleDateString('en-IN')])
+        rows = fCampaigns.map(c => [c.name, c.status, `${parseFloat((c.winning_probability * 100).toFixed(2))}%`, new Date(c.created_at).toLocaleDateString('en-IN')])
         colWidths = [60, 30, 30, 40]; filename = 'Campaign_Performance_Report'
         break
     }

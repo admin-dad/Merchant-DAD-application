@@ -93,11 +93,11 @@ export async function POST(req: NextRequest) {
       description = `Monthly QR subscription${billing_month ? ` (${billing_month})` : ''}`
     } else {
       // Per-scan billing — always "pay all outstanding scans together", server-computed.
-      const rate = await resolveScanRate(merchantData)
+      const rate = await resolveScanRate(merchantData) // Still used for fallback/logging if needed
 
       const { data: unpaidScans, error: unpaidError } = await supabaseAdmin
         .from('qr_scans')
-        .select('id')
+        .select('id, scan_cost')
         .eq('merchant_id', merchant_id)
         .or('is_paid.is.null,is_paid.eq.false')
         .neq('payment_status', 'paid')
@@ -107,13 +107,18 @@ export async function POST(req: NextRequest) {
       }
 
       scanIdsToCharge = (unpaidScans || []).map((s) => s.id)
-      baseAmount = scanIdsToCharge.length * rate
+      
+      // Calculate total base amount by summing the individual locked scan_costs
+      baseAmount = (unpaidScans || []).reduce((sum, scan) => {
+        // If scan_cost is somehow null (e.g. before migration), fallback to the current resolved rate
+        return sum + (scan.scan_cost !== null ? Number(scan.scan_cost) : rate)
+      }, 0)
 
       if (baseAmount <= 0 || scanIdsToCharge.length === 0) {
         return NextResponse.json({ error: 'There are no outstanding scans to pay for' }, { status: 400 })
       }
 
-      description = `QR scan charges \u00d7 ${scanIdsToCharge.length} scans @ \u20b9${rate}/scan`
+      description = `QR scan charges \u00d7 ${scanIdsToCharge.length} scans`
     }
 
     const gstAmount = Math.round(baseAmount * GST_RATE * 100) / 100

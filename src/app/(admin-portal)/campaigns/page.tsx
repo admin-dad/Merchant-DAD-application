@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Ticket,
   Plus,
@@ -80,7 +80,7 @@ const TYPE_META: Record<CampaignType, { label: string; icon: typeof Store; badge
 }
 
 export default function AdminCampaignsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -151,6 +151,10 @@ export default function AdminCampaignsPage() {
         .from('qr_scans')
         .select('campaign_id, status, fulfillment_status')
 
+      const { data: merchantScanData } = await supabase
+        .from('merchant_scratch_cards')
+        .select('campaign_id, status')
+
       const tempStats: Record<string, CampaignStats> = {}
       if (scanData) {
         scanData.forEach((scan) => {
@@ -172,6 +176,28 @@ export default function AdminCampaignsPage() {
               tempStats[cId].pendingRewards++
             }
           } else if (scan.status === 'No Win') {
+            tempStats[cId].opened++
+            tempStats[cId].nonWinners++
+          }
+        })
+      }
+
+      if (merchantScanData) {
+        merchantScanData.forEach((scan) => {
+          const cId = scan.campaign_id
+          if (!cId) return
+
+          if (!tempStats[cId]) {
+            tempStats[cId] = { issued: 0, opened: 0, winners: 0, nonWinners: 0, pendingRewards: 0, claimedRewards: 0 }
+          }
+
+          tempStats[cId].issued++
+
+          if (scan.status === 'won') {
+            tempStats[cId].opened++
+            tempStats[cId].winners++
+            tempStats[cId].claimedRewards++ // Merchant points are auto-credited immediately
+          } else if (scan.status === 'lost') {
             tempStats[cId].opened++
             tempStats[cId].nonWinners++
           }
@@ -223,10 +249,9 @@ export default function AdminCampaignsPage() {
         }
       ])
       .select('*, gifts(name)')
-      .single()
 
-    if (!error && data) {
-      setCampaigns(prev => [data as Campaign, ...prev])
+    if (!error && data && data.length > 0) {
+      setCampaigns(prev => [data[0] as Campaign, ...prev])
       setForm({ name: '', type: 'customer', gift_id: '', prize_details: '', winning_probability: '10', total_cards: '1000', winning_numbers: '', start_date: '', end_date: '' })
       setIsModalOpen(false)
     } else {
@@ -244,7 +269,7 @@ export default function AdminCampaignsPage() {
       type: camp.type || 'customer',
       gift_id: camp.gift_id || '',
       prize_details: camp.prize_details || '',
-      winning_probability: String(Math.round((camp.winning_probability || 0) * 100)),
+      winning_probability: String(parseFloat(((camp.winning_probability || 0) * 100).toFixed(2))),
       total_cards: String(camp.total_cards),
       winning_numbers: camp.winning_numbers || '',
       start_date: camp.start_date || '',
@@ -277,10 +302,10 @@ export default function AdminCampaignsPage() {
       })
       .eq('id', editingCamp.id)
       .select('*, gifts(name)')
-      .single()
 
-    if (!error && data) {
-      setCampaigns(prev => prev.map(c => c.id === data.id ? (data as Campaign) : c))
+    if (!error && data && data.length > 0) {
+      const updatedData = data[0] as Campaign
+      setCampaigns(prev => prev.map(c => c.id === updatedData.id ? updatedData : c))
       setIsEditModalOpen(false)
       setEditingCamp(null)
     } else {
@@ -587,7 +612,7 @@ export default function AdminCampaignsPage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Percent size={12} className="text-[#3E7A1C]" />
-                    <span>Target Rate: <span className="font-semibold text-slate-900">{(camp.winning_probability * 100).toFixed(0)}%</span></span>
+                    <span>Target Rate: <span className="font-semibold text-slate-900">{parseFloat((camp.winning_probability * 100).toFixed(2))}%</span></span>
                   </div>
                   <div className="flex items-center gap-1.5 col-span-2">
                     <Calendar size={12} className="text-slate-400" />

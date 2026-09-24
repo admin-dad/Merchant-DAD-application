@@ -89,6 +89,23 @@ export default function CustomerEngagementPage() {
     }
 
     fetchData()
+
+    // ── Realtime Subscription ───────────────────────────────────────────
+    const channel = supabase
+      .channel('public:qr_scans')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'qr_scans' },
+        () => {
+          // Re-fetch data on any insert or update
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [router, supabase])
 
   // ── Calculate Engagement Metrics ─────────────────────────────────────
@@ -379,17 +396,15 @@ export default function CustomerEngagementPage() {
             <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
               <button
                 onClick={() => setActiveTab('activity')}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === 'activity' ? 'bg-white text-[#1857D6] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${activeTab === 'activity' ? 'bg-white text-[#1857D6] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 Activity
               </button>
               <button
                 onClick={() => setActiveTab('winners')}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  activeTab === 'winners' ? 'bg-white text-[#1857D6] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${activeTab === 'winners' ? 'bg-white text-[#1857D6] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 Winners ({totalWinners})
               </button>
@@ -407,16 +422,19 @@ export default function CustomerEngagementPage() {
                   <p className="mt-1 text-xs text-slate-500 max-w-xs">When customers scan your QR code, their engagement will appear here in real-time.</p>
                 </div>
               ) : (
-                scans.slice(0, 15).map((scan) => (
+                scans.slice(0, 15).map((scan) => {
+                  const isUnscratched = scan.status === 'Pending' && (new Date().getTime() - new Date(scan.created_at).getTime() > 5 * 60 * 1000)
+                  const displayStatus = isUnscratched ? 'Unscratched' : scan.status
+                  
+                  return (
                   <div key={scan.id} className="flex items-center justify-between p-4 rounded-2xl border border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50 transition-all duration-200">
                     <div className="flex items-center gap-4">
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                        scan.status === 'Reward Won'
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${scan.status === 'Reward Won'
                           ? 'bg-emerald-50 text-emerald-600'
                           : scan.status === 'No Win'
-                          ? 'bg-rose-50 text-rose-600'
-                          : 'bg-amber-50 text-amber-600'
-                      }`}>
+                            ? 'bg-rose-50 text-rose-600'
+                            : isUnscratched ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-600'
+                        }`}>
                         {scan.status === 'Reward Won' ? <Gift size={18} /> : scan.status === 'No Win' ? <AlertCircle size={18} /> : <Clock size={18} />}
                       </div>
                       <div>
@@ -430,18 +448,17 @@ export default function CustomerEngagementPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                        scan.status === 'Reward Won'
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${scan.status === 'Reward Won'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : scan.status === 'No Win'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {scan.status}
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : isUnscratched ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                        {displayStatus}
                       </span>
                     </div>
                   </div>
-                ))
+                )})
               )
             ) : winnerScans.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">

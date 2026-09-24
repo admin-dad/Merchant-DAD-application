@@ -24,6 +24,8 @@ interface MerchantData {
   id: string
   business_name: string
   billing_rate: number
+  category?: string
+  sub_category?: string
 }
 
 interface PaymentRecord {
@@ -43,9 +45,13 @@ export default function BillingPage() {
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [totalScans, setTotalScans] = useState(0)
+  const [totalScanCost, setTotalScanCost] = useState(0)
   const [monthlyScans, setMonthlyScans] = useState(0)
   const [todayScans, setTodayScans] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  
+  // Rate change warning
+  const [activeRate, setActiveRate] = useState<number | null>(null)
 
   // Form State for Manual Payment
   const [utr, setUtr] = useState('')
@@ -65,7 +71,7 @@ export default function BillingPage() {
 
       const { data: merchantData, error: merchantError } = await supabase
         .from('merchants')
-        .select('id, business_name, billing_rate')
+        .select('id, business_name, billing_rate, category, sub_category')
         .eq('user_id', user.id)
         .single()
 
@@ -77,14 +83,41 @@ export default function BillingPage() {
 
       setMerchant(merchantData)
 
+      // Fetch active category rate to see if DAD changed it
+      if (merchantData.category && merchantData.sub_category) {
+        const { data: catRow } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('name', merchantData.category)
+          .maybeSingle()
+          
+        if (catRow) {
+          const { data: subRow } = await supabase
+            .from('subcategories')
+            .select('scan_amount')
+            .eq('category_id', catRow.id)
+            .eq('name', merchantData.sub_category)
+            .maybeSingle()
+            
+          if (subRow && subRow.scan_amount !== null && Number(subRow.scan_amount) > 0) {
+            setActiveRate(Number(subRow.scan_amount))
+          }
+        }
+      }
+
       // Get scans to calculate bill
       const { data: scanData } = await supabase
         .from('qr_scans')
-        .select('created_at')
+        .select('created_at, scan_cost')
         .eq('merchant_id', merchantData.id)
       
       if (scanData) {
         setTotalScans(scanData.length)
+        
+        const sumCost = scanData.reduce((sum, scan) => {
+          return sum + (scan.scan_cost !== null ? Number(scan.scan_cost) : merchantData.billing_rate)
+        }, 0)
+        setTotalScanCost(sumCost)
         
         const now = new Date()
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -112,7 +145,7 @@ export default function BillingPage() {
   }, [router, supabase])
 
   // Calculate Billing Stats
-  const totalBillAmount = totalScans * (merchant?.billing_rate || 0)
+  const totalBillAmount = totalScanCost
   const approvedPaymentsTotal = payments.filter(p => p.status === 'approved').reduce((sum, p) => sum + p.amount, 0)
   const outstandingAmount = Math.max(0, totalBillAmount - approvedPaymentsTotal)
 
@@ -184,9 +217,28 @@ export default function BillingPage() {
     )
   }
 
+  // Determine if rate changed
+  const rateChanged = activeRate !== null && activeRate !== Number(merchant?.billing_rate)
+
   return (
     <div className="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-8 bg-white" style={{ fontFamily: 'var(--font-display)' }}>
       
+      {/* Rate Change Warning Banner */}
+      {rateChanged && (
+        <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-600" />
+            <div>
+              <h3 className="text-sm font-bold text-yellow-800">Notice: Billing Rate Updated</h3>
+              <p className="mt-1 text-sm text-yellow-700">
+                DAD Admin has updated the scan rate for your category from ₹{merchant?.billing_rate} to ₹{activeRate}. 
+                All new scans will be billed at ₹{activeRate}/scan. Past unpaid scans remain locked at their historical rates.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/15 blur-2xl" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   ShoppingCart,
   Search,
@@ -50,7 +50,7 @@ const statusStyles: Record<string, string> = {
 const STATUS_OPTIONS = ['pending', 'completed', 'dispatched', 'delivered', 'cancelled']
 
 export default function AdminOrdersPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

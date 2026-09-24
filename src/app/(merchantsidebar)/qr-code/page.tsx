@@ -423,11 +423,10 @@ export default function QRCodeManagementPage() {
                 </span>
                 {isMonthlyMerchant && (
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
-                      isMonthlyPaid
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${isMonthlyPaid
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm'
                         : 'bg-rose-50 text-rose-700 border-rose-200 shadow-sm'
-                    }`}
+                      }`}
                   >
                     {isMonthlyPaid ? `Paid \u2013 ${monthLabel}` : `Unpaid \u2013 ${monthLabel}`}
                   </span>
@@ -540,8 +539,8 @@ export default function QRCodeManagementPage() {
             <div className="flex flex-col items-center justify-center mb-10 relative z-10">
               <div className="relative group/qr perspective-1000">
                 <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-b from-[#1857D6]/20 to-[#7BC142]/20 opacity-0 blur-xl transition-all duration-500 group-hover/qr:opacity-100" />
-                <div 
-                  ref={qrCanvasRef} 
+                <div
+                  ref={qrCanvasRef}
                   className="relative z-10 p-6 bg-white border-2 border-slate-100 rounded-[2.5rem] shadow-2xl shadow-[#1857D6]/5 transition-all duration-500 transform group-hover/qr:scale-105 group-hover/qr:-translate-y-2 group-hover/qr:shadow-[#1857D6]/15 group-hover/qr:border-[#1857D6]/20"
                 >
                   <QRCodeCanvas
@@ -656,12 +655,11 @@ export default function QRCodeManagementPage() {
                     </div>
                     <div className="text-right flex flex-col items-end">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide border shadow-sm ${
-                          scan.status === 'Reward Won'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : scan.status === 'No Win'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide border shadow-sm ${scan.status === 'Reward Won'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : scan.status === 'No Win'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                       >
                         {scan.status === 'Reward Won' && <Sparkles size={12} />}

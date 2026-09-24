@@ -20,7 +20,7 @@ import {
   ClipboardCheck,
   Save,
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -67,7 +67,7 @@ const NUMERIC_KEYS = new Set<keyof SettingsForm>([
 const BOOLEAN_KEYS = new Set<keyof SettingsForm>(['maintenance_mode', 'new_vendor_requires_approval'])
 
 export default function AdminSettingsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)

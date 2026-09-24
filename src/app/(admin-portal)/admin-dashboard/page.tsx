@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import {
   Store,
@@ -41,7 +41,7 @@ interface Merchant {
 
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

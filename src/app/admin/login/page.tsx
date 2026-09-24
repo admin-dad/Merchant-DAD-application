@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   ShieldCheck,
   Mail,
@@ -18,7 +18,7 @@ import {
 
 export default function AdminLoginPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

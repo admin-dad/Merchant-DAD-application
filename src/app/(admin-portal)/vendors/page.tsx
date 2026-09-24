@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Truck,
   Search,
@@ -41,7 +41,7 @@ const statusStyles: Record<string, string> = {
 }
 
 export default function AdminVendorsPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

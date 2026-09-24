@@ -54,6 +54,7 @@ interface MerchantData {
   country: string | null
   pincode: string | null
   billing_rate: number
+  billing_type?: 'per_scan' | 'monthly' | null
 }
 
 // Keep this list in sync with the required-field validation on /profile so
@@ -94,8 +95,9 @@ export default function DashboardPage() {
   const [totalScans, setTotalScans] = useState(0)
   const [winningCustomers, setWinningCustomers] = useState(0)
   const [totalCustomers, setTotalCustomers] = useState(0)
-  const [outstandingAmount, setOutstandingAmount] = useState(0)
-  const [totalPaid, setTotalPaid] = useState(0)
+  const [totalSpent, setTotalSpent] = useState(0)
+  const [totalPurchased, setTotalPurchased] = useState(0)
+  const [subcategoryScanAmount, setSubcategoryScanAmount] = useState<number | null>(null)
 
   const [chartData, setChartData] = useState<{day: string, scans: number}[]>([
     { day: 'Mon', scans: 0 }, { day: 'Tue', scans: 0 }, { day: 'Wed', scans: 0 },
@@ -117,7 +119,7 @@ export default function DashboardPage() {
       const { data: merchData, error: merchError } = await supabase
         .from('merchants')
         .select(
-          'id, business_name, owner_name, mobile, email, category, sub_category, house_floor, district, state, country, pincode, billing_rate'
+          'id, business_name, owner_name, mobile, email, category, sub_category, house_floor, district, state, country, pincode, billing_rate, billing_type'
         )
         .eq('user_id', user.id)
         .single()
@@ -128,6 +130,17 @@ export default function DashboardPage() {
         return
       }
       setMerchant(merchData)
+
+      // Fetch Subcategory scan amount if applicable
+      if (merchData.category && merchData.sub_category) {
+        const { data: catRow } = await supabase.from('categories').select('id').eq('name', merchData.category).maybeSingle()
+        if (catRow) {
+          const { data: subRow } = await supabase.from('subcategories').select('scan_amount').eq('category_id', catRow.id).eq('name', merchData.sub_category).maybeSingle()
+          if (subRow && subRow.scan_amount !== null) {
+            setSubcategoryScanAmount(Number(subRow.scan_amount))
+          }
+        }
+      }
 
       // 2. Fetch network-wide count of approved merchants (shown in header)
       const { count: merchantCount } = await supabase
@@ -140,7 +153,7 @@ export default function DashboardPage() {
       // 3. Fetch Scans
       const { data: scansData } = await supabase
         .from('qr_scans')
-        .select('id, customer_name, status, created_at')
+        .select('id, customer_name, status, created_at, scan_cost')
         .eq('merchant_id', merchData.id)
         .order('created_at', { ascending: false })
 
@@ -208,21 +221,24 @@ export default function DashboardPage() {
         let pts = 0
         let b2bWon = 0
         let referralWon = 0
+        let purchased = 0
+        let spent = 0
 
         txData.forEach(tx => {
           if (tx.wallet_type === 'points') {
             // Calculate total points balance
             pts += tx.transaction_type === 'credit' ? tx.amount : -tx.amount
 
-            // Calculate points specifically won from Admin B2B Scratch Cards
-            if (tx.transaction_type === 'credit' && (tx.category === 'reward' || tx.description?.toLowerCase().includes('scratch card'))) {
-              b2bWon += tx.amount
-            }
-
-            // Calculate points specifically earned from successful referrals
-            // (credited by the mark_referral_completed trigger with this description)
-            if (tx.transaction_type === 'credit' && tx.description?.toLowerCase().includes('referral bonus')) {
-              referralWon += tx.amount
+            if (tx.transaction_type === 'credit') {
+              if (tx.category === 'reward' || tx.description?.toLowerCase().includes('scratch card')) {
+                b2bWon += tx.amount
+              } else if (tx.description?.toLowerCase().includes('referral bonus')) {
+                referralWon += tx.amount
+              } else if (tx.category === 'purchase') {
+                purchased += tx.amount
+              }
+            } else if (tx.transaction_type === 'debit') {
+              spent += tx.amount
             }
           }
         })
@@ -230,6 +246,8 @@ export default function DashboardPage() {
         setPoints(pts)
         setB2bRewards(b2bWon)
         setReferralPoints(referralWon)
+        setTotalPurchased(purchased)
+        setTotalSpent(spent)
       }
 
       // 5. Fetch Referrals
@@ -254,12 +272,8 @@ export default function DashboardPage() {
         .select('amount, status')
         .eq('merchant_id', merchData.id)
 
-      if (payData) {
-        const paid = payData.filter(p => p.status === 'approved').reduce((sum, p) => sum + p.amount, 0)
-        const totalBill = (scansData?.length || 0) * merchData.billing_rate
-        setTotalPaid(paid)
-        setOutstandingAmount(Math.max(0, totalBill - paid))
-      }
+      // We no longer calculate paid/outstanding from merchant_payments because 
+      // the platform now tracks points directly via merchant_transactions.
 
       setLoading(false)
     }
@@ -320,18 +334,24 @@ const QUICK_ACTIONS = [
     { name: 'Won', value: winningCustomers },
     { name: 'Others', value: Math.max(0, totalScans - winningCustomers) }
   ]
-  const paidPieData = [
-    { name: 'Paid', value: totalPaid },
-    { name: 'Outstanding', value: outstandingAmount }
+  const purchasedPieData = [
+    { name: 'Purchased', value: totalPurchased },
+    { name: 'Spent', value: totalSpent }
   ]
-  const outPieData = [
-    { name: 'Outstanding', value: outstandingAmount },
-    { name: 'Paid', value: totalPaid }
+  const spentPieData = [
+    { name: 'Spent', value: totalSpent },
+    { name: 'Purchased', value: totalPurchased }
   ]
 
   const PIE_COLORS = ['#1857D6', '#E2E8F0']
   const GREEN_COLORS = ['#3E7A1C', '#E2E8F0']
   const ROSE_COLORS = ['#E11D48', '#E2E8F0']
+
+  const isMonthlyMerchant = merchant?.billing_type === 'monthly'
+  const effectiveRate = subcategoryScanAmount !== null && subcategoryScanAmount > 0 ? subcategoryScanAmount : merchant?.billing_rate ?? 0
+  const rateLabel = isMonthlyMerchant ? 'Monthly Fee' : 'Rate Per Scan'
+  const rateSub = isMonthlyMerchant ? 'Fixed monthly subscription' : 'Cost per customer scan'
+  const rateValue = isMonthlyMerchant ? (merchant?.billing_rate ?? 0) : effectiveRate
 
   return (
     <div className="mx-auto max-w-7xl px-4 pt-6 pb-12 sm:px-6 lg:px-8 bg-white" style={{ fontFamily: 'var(--font-display)' }}>
@@ -446,7 +466,7 @@ const QUICK_ACTIONS = [
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
 
         {/* Total Scans - Pie Chart */}
-        <ChartStatCard icon={<TrendingUp size={18} />} label="Total Scans" value={totalScans.toLocaleString()} sub="All-time engagements">
+        <ChartStatCard icon={<TrendingUp size={18} />} label="Total Customer Scans" value={totalScans.toLocaleString()} sub="All-time QR engagements">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={scanPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
@@ -459,7 +479,7 @@ const QUICK_ACTIONS = [
         </ChartStatCard>
 
         {/* Winning Customers - Pie Chart */}
-        <ChartStatCard icon={<Trophy size={18} />} label="Winning Customers" value={winningCustomers} sub="Reward claims">
+        <ChartStatCard icon={<Trophy size={18} />} label="Customer Wins" value={winningCustomers} sub="Total QR reward claims">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={winPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
@@ -471,11 +491,11 @@ const QUICK_ACTIONS = [
           </ResponsiveContainer>
         </ChartStatCard>
 
-        {/* Total Paid - Pie Chart (Now in Points) */}
-        <ChartStatCard icon={<CreditCard size={18} />} label="Total Paid" value={`${totalPaid.toLocaleString()} Points`} sub="Lifetime payments">
+        {/* Total Points Purchased - Pie Chart */}
+        <ChartStatCard icon={<CreditCard size={18} />} label="Total Points Purchased" value={`${totalPurchased.toLocaleString()} Pts`} sub="Lifetime points added to wallet">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={paidPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
+              <Pie data={purchasedPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
                 <Cell fill={GREEN_COLORS[0]} />
                 <Cell fill={GREEN_COLORS[1]} />
               </Pie>
@@ -484,13 +504,12 @@ const QUICK_ACTIONS = [
           </ResponsiveContainer>
         </ChartStatCard>
 
-        {/* Outstanding - Pie Chart (Now in Points) */}
-        <ChartStatCard icon={<Clock size={18} />} label="Outstanding" value={`${outstandingAmount.toLocaleString()} Points`} sub="Due now">
+        {/* Rate / Monthly Fee - Pie Chart */}
+        <ChartStatCard icon={<Tag size={18} />} label={rateLabel} value={`₹${rateValue}`} sub={rateSub}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={outPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
-                <Cell fill={ROSE_COLORS[0]} />
-                <Cell fill={ROSE_COLORS[1]} />
+              <Pie data={[{ name: rateLabel, value: rateValue }]} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={0}>
+                <Cell fill="#9333EA" />
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #E2E8F0', fontSize: 12 }} />
             </PieChart>

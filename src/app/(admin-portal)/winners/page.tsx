@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/client'
 import {
   Ticket,
   Search,
@@ -46,7 +46,7 @@ const fulfillmentStatusStyles: Record<string, string> = {
 const FULFILLMENT_OPTIONS = ['Pending', 'Verified', 'Dispatched', 'Delivered', 'Claimed', 'Rejected']
 
 export default function AdminWinnersPage() {
-  const supabase = createClient()
+  const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,10 +86,11 @@ export default function AdminWinnersPage() {
         merchData.forEach(m => map[m.id] = m.business_name)
         setMerchantMap(map)
 
-        setScans(scanData)
-
-        // Calculate Stats
+        // Filter only winners for this page
         const winners = scanData.filter(s => s.status === 'Reward Won')
+        setScans(winners)
+
+        // Calculate Stats based on all scans to keep top metrics accurate
         const opened = scanData.filter(s => s.status === 'Reward Won' || s.status === 'No Win')
         const pendingFulfill = winners.filter(s => !s.fulfillment_status || s.fulfillment_status === 'Pending')
         
@@ -288,7 +289,8 @@ export default function AdminWinnersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-100">
-                <th className="py-3 px-4 font-medium">Customer / Merchant</th>
+                <th className="py-3 px-4 font-medium">Winner</th>
+                <th className="py-3 px-4 font-medium">Merchant</th>
                 <th className="py-3 px-4 font-medium hidden md:table-cell">Prize Won</th>
                 <th className="py-3 px-4 font-medium hidden lg:table-cell">Date</th>
                 <th className="py-3 px-4 font-medium">Fulfillment Status</th>
@@ -298,14 +300,14 @@ export default function AdminWinnersPage() {
             <tbody>
               {filteredScans.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-400">
+                  <td colSpan={6} className="text-center py-12 text-slate-400">
                     No scratch cards found.
                   </td>
                 </tr>
               ) : (
                 filteredScans.map((s) => (
                   <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    {/* Customer / Merchant */}
+                    {/* Winner (Customer) */}
                     <td className="py-4 px-4">
                       <p className="font-semibold text-slate-900">
                         {s.customer_name || 'Walk-in Customer'}
@@ -314,8 +316,12 @@ export default function AdminWinnersPage() {
                         <Phone size={10} className="text-slate-400" />
                         {s.customer_phone ? `+91 ${s.customer_phone}` : 'Phone not provided'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-                        <Store size={10} />
+                    </td>
+                    
+                    {/* Merchant */}
+                    <td className="py-4 px-4">
+                      <p className="font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Store size={14} className="text-slate-400" />
                         {merchantMap[s.merchant_id] || 'Unknown Merchant'}
                       </p>
                     </td>

@@ -1,0 +1,752 @@
+[
+  {
+    "id": "64ee331c-a16d-4520-909b-6927da618efd",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 1000,
+    "description": "Purchased 1000 Points via Razorpay (pay_TOqUCYgnqHdKF5)",
+    "created_at": "2026-08-12T11:42:10.942614+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "93fc9d1f-bf3e-4191-9a69-2670decb2e8d",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Purchased 100 Points via Razorpay (pay_TOr4E0Hy0zQUyT)",
+    "created_at": "2026-08-12T12:16:18.300203+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "7e5d7b2d-e182-4acb-84b5-b21a5bf6f1ac",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 4,
+    "description": "Admin paid via Razorpay (pay_TOrgdicMJ7xASR) for scan customer: 6369813965",
+    "created_at": "2026-08-12T12:52:34.343406+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "63da9c8b-ea34-4908-8829-ede1aa488ef9",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 123,
+    "description": "Rewards Redemption Order #1a4ada45",
+    "created_at": "2026-08-12T13:25:09.49801+00:00",
+    "category": "redemption"
+  },
+  {
+    "id": "5f113a1c-9866-40a1-a306-07a9c954adbe",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 4,
+    "description": "Admin processed scan payment for customer phone: 7410258963",
+    "created_at": "2026-08-12T12:48:12.749211+00:00",
+    "category": "scan_bonus"
+  },
+  {
+    "id": "05940a51-d10f-42f8-905e-a2e7402386da",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 4,
+    "description": "Admin processed scan payment for customer phone: 7894561230",
+    "created_at": "2026-08-12T12:48:43.777891+00:00",
+    "category": "scan_bonus"
+  },
+  {
+    "id": "ca6c4c9f-ae42-47fd-8c67-7d33a151e997",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 500,
+    "description": "Purchased 500 Points via Razorpay (pay_TPB30byJOJVos8)",
+    "created_at": "2026-08-13T07:48:57.227695+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "4a4f5a0f-c525-4231-b0e8-d6cc38a96069",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 323,
+    "description": "Rewards Redemption Order #de997ea2",
+    "created_at": "2026-08-13T07:49:58.395337+00:00",
+    "category": null
+  },
+  {
+    "id": "20450075-f04f-45b9-aae0-33a5f02de052",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-17T10:56:35.209472+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "e3a0ec21-f775-46e2-b168-a0fffbb61f33",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 150,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-17T17:45:58.308196+00:00",
+    "category": null
+  },
+  {
+    "id": "1a242626-6c26-4870-9f96-bdecd0a53c77",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Purchased 100 Points via Razorpay (pay_TR98E8aQU3tMta)",
+    "created_at": "2026-08-18T07:14:31.041065+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "35f4bcba-3d10-4480-82ca-79dce44b5f13",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 200,
+    "description": "Rewards Redemption Order #e34742d4",
+    "created_at": "2026-08-18T07:24:33.838644+00:00",
+    "category": null
+  },
+  {
+    "id": "a696fe8c-dfd5-444c-9979-761eed915fb4",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Refund for Order #e34742d4",
+    "created_at": "2026-08-18T07:28:43.28597+00:00",
+    "category": null
+  },
+  {
+    "id": "842a2954-ce58-495d-bed1-783c33971a6c",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 200,
+    "description": "Rewards Redemption Order #8e2d1a33",
+    "created_at": "2026-08-18T07:31:36.510246+00:00",
+    "category": null
+  },
+  {
+    "id": "75149983-39f8-4a45-9401-c100a3b80a3e",
+    "merchant_id": "e88262fe-dec3-46af-a9c2-5377032484d0",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-19T07:43:32.400841+00:00",
+    "category": null
+  },
+  {
+    "id": "84ddb91c-84c6-4a82-a5c0-5755916fbdd1",
+    "merchant_id": "b1006460-73c9-4f98-bbe3-00464111a9e9",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-19T10:31:15.240664+00:00",
+    "category": null
+  },
+  {
+    "id": "22d6daca-b970-43fe-8b43-f7787e582882",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring sfsf",
+    "created_at": "2026-08-20T08:01:25.581753+00:00",
+    "category": null
+  },
+  {
+    "id": "f1a4ab72-c309-474c-9448-3f300b922635",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring sfsf",
+    "created_at": "2026-08-20T08:02:28.736145+00:00",
+    "category": null
+  },
+  {
+    "id": "0bf9f6b8-2ba2-41ba-8bef-11d9f0afe804",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-20T08:10:12.480323+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "28550a53-98e6-4038-ba4a-4a39f9f8b922",
+    "merchant_id": "e67318fd-2f79-462f-92b8-9cc723c7cc17",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-20T10:10:41.209201+00:00",
+    "category": null
+  },
+  {
+    "id": "7252bd6d-9138-4796-bf30-0e5711140b1f",
+    "merchant_id": "6d994eb2-ae54-4eb0-93a0-5d6049ae5e94",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-20T10:25:29.29728+00:00",
+    "category": null
+  },
+  {
+    "id": "933ff65e-16e0-48d3-bf23-ec82d75183bd",
+    "merchant_id": "8c217f0b-2e4b-4fef-916b-5aff5fdcc5b7",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-20T10:31:54.149996+00:00",
+    "category": null
+  },
+  {
+    "id": "03191182-5369-4bde-9903-e03f1bc90c84",
+    "merchant_id": "53ece5c5-c48c-49a4-a705-7d752edce02b",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-20T10:32:56.224165+00:00",
+    "category": null
+  },
+  {
+    "id": "e7496699-8d9c-4500-bca9-4c37396f97ec",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-20T13:07:42.405323+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "459d39f4-e036-49fd-8965-02bb5f9afb66",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward: Reward",
+    "created_at": "2026-08-20T13:13:40.542663+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "f5842c36-fa98-4e60-909b-23bca725f861",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-20T13:17:42.04704+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "823e5e25-fe4b-44f7-8220-5044b9217377",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-20T13:22:44.387354+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "b6f38bd0-ff83-4bdb-9d87-d10aabcdc0db",
+    "merchant_id": "fb24dd8f-320c-4df5-9d8d-e79e2fe7163c",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-22T10:00:43.007615+00:00",
+    "category": null
+  },
+  {
+    "id": "752ab885-263f-4c64-9152-b7cad6be9df4",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring SARAYU ENTERPRISES",
+    "created_at": "2026-08-22T10:02:51.457348+00:00",
+    "category": null
+  },
+  {
+    "id": "a50123a2-e163-4b4e-9031-47dc893b90bc",
+    "merchant_id": "fb24dd8f-320c-4df5-9d8d-e79e2fe7163c",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 10200,
+    "description": "Purchased 10200 Points via Razorpay (pay_TSmS2q3xBXIRi8)",
+    "created_at": "2026-08-22T10:21:54.40009+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "305829ab-096f-41b3-b123-cd3f5800f99a",
+    "merchant_id": "fb24dd8f-320c-4df5-9d8d-e79e2fe7163c",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 323,
+    "description": "Rewards Redemption Order #eba5ee28",
+    "created_at": "2026-08-22T10:26:46.864184+00:00",
+    "category": null
+  },
+  {
+    "id": "d4c2b4e5-456f-4655-87e5-78413504332e",
+    "merchant_id": "fb24dd8f-320c-4df5-9d8d-e79e2fe7163c",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-22T10:44:38.42814+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "d9079f5c-9612-49d3-8c16-51c4a1eb6568",
+    "merchant_id": "11d2f61b-24e0-4700-99a5-7704a4d242f4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-25T08:26:29.101705+00:00",
+    "category": null
+  },
+  {
+    "id": "80090737-b2e8-4fd7-88ab-a19139f47854",
+    "merchant_id": "8ad7472f-34d6-4430-a809-d0c8a3b6a459",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-25T08:40:12.852161+00:00",
+    "category": null
+  },
+  {
+    "id": "383bfe50-f4e6-4eab-b09c-ba9b454cdcc3",
+    "merchant_id": "962bf4bd-74dc-4113-aa3d-617631672f25",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-25T08:42:01.271677+00:00",
+    "category": null
+  },
+  {
+    "id": "25810145-c255-472c-81d8-96d721386f24",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-25T10:29:47.558009+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "47c499f3-260f-4242-88cc-31e580454cc0",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-25T10:30:57.718733+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "a522883e-0b65-45d1-92a1-2d3c6638c3ab",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won B2B Scratch Card Reward!",
+    "created_at": "2026-08-25T11:09:55.310168+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "00a8546f-8931-4bc5-b559-ebc8fa3f316c",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-08-25T11:21:19.461564+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "92e74299-42e0-473e-a6d2-ae9f8ff0c13d",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-08-25T11:33:29.188851+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "8ca2c7f7-d4d6-4276-8253-bebeb340b186",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-25T18:08:49.480738+00:00",
+    "category": null
+  },
+  {
+    "id": "6fed6bef-54f5-4f55-8279-abfde3bff1b2",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring SARAYU ENTERPRISES",
+    "created_at": "2026-08-26T04:13:42.519933+00:00",
+    "category": null
+  },
+  {
+    "id": "7dbc2502-fa95-48ff-99d8-879bcf3e0adc",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 123,
+    "description": "Rewards Redemption Order #7cbcf9f6",
+    "created_at": "2026-08-26T04:42:23.724783+00:00",
+    "category": null
+  },
+  {
+    "id": "902a8eac-1a10-419b-8374-7ed1f910c83f",
+    "merchant_id": "2f9a4304-c983-4730-8190-9f7238b51f30",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-26T04:55:53.715508+00:00",
+    "category": null
+  },
+  {
+    "id": "c054354b-fa8f-4e3b-a8bf-2901e46dd851",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring SARAYU ENTERPRISES",
+    "created_at": "2026-08-26T05:06:50.369219+00:00",
+    "category": null
+  },
+  {
+    "id": "24cf2402-f940-46e2-b4d8-84ee0ff809fd",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring Megana store",
+    "created_at": "2026-08-26T05:06:59.705691+00:00",
+    "category": null
+  },
+  {
+    "id": "bdf9a41f-9f88-45e4-9d73-df43905b842f",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "debit",
+    "amount": 200,
+    "description": "Rewards Redemption Order #7fba927f",
+    "created_at": "2026-08-27T09:35:05.223223+00:00",
+    "category": null
+  },
+  {
+    "id": "f4e9173e-2090-4365-899f-7c223c9f7650",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-08-27T09:49:12.840937+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "949463d4-5778-4f1a-a0a8-71f0fe0bbb7a",
+    "merchant_id": "df8ccf2d-badd-4ec3-85f6-7a3db6c39df4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T13:14:10.18753+00:00",
+    "category": null
+  },
+  {
+    "id": "9f988774-9407-4f08-ada6-35d35e93ebc8",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring vv",
+    "created_at": "2026-08-31T13:15:05.698962+00:00",
+    "category": null
+  },
+  {
+    "id": "c23185d7-38b4-4547-9de3-4cc07a6e2680",
+    "merchant_id": "2f1c2943-9bc5-48e4-bcd9-e85a28c223cc",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T13:25:53.609674+00:00",
+    "category": null
+  },
+  {
+    "id": "9c170e1f-96bd-44ae-b8e0-c9fdd16daa33",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring vyshnavitesting",
+    "created_at": "2026-08-31T13:26:20.346051+00:00",
+    "category": null
+  },
+  {
+    "id": "2b409e9c-672c-407f-af6b-c105a85a70ef",
+    "merchant_id": "c19e5659-e900-4f48-83ad-422d91aeb3d7",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T14:35:44.485992+00:00",
+    "category": null
+  },
+  {
+    "id": "8fb7e65c-8c49-427e-91a8-a89dafff81b8",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring vyshnavivgowda2024",
+    "created_at": "2026-08-31T14:36:13.651095+00:00",
+    "category": null
+  },
+  {
+    "id": "15d2da78-9829-468a-84e4-785d5cc78a9b",
+    "merchant_id": "a78642cb-3bfa-4da6-9e45-895c6799a618",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T14:40:40.613293+00:00",
+    "category": null
+  },
+  {
+    "id": "97f37c32-de36-4e6b-b208-bc523b091310",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring scratch",
+    "created_at": "2026-08-31T14:41:45.591179+00:00",
+    "category": null
+  },
+  {
+    "id": "e1077d45-5135-4765-a2eb-45238e7c2ae9",
+    "merchant_id": "8083bf65-3141-43bd-99d1-d34b02acb726",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T14:45:35.445729+00:00",
+    "category": null
+  },
+  {
+    "id": "a5dd6c18-ecb2-41c8-84de-4a3aae03487a",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring abc@gmail.com",
+    "created_at": "2026-08-31T14:46:03.180571+00:00",
+    "category": null
+  },
+  {
+    "id": "466d8623-4b6b-43ea-8b15-2ccb8cc14dfd",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring abc@gmail.com",
+    "created_at": "2026-08-31T14:51:54.250713+00:00",
+    "category": null
+  },
+  {
+    "id": "303a7119-97c3-4406-8816-e5fe76ee6139",
+    "merchant_id": "e9b4e8d2-1415-40ef-b10b-f8e2cb851b05",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-08-31T14:53:48.03254+00:00",
+    "category": null
+  },
+  {
+    "id": "ee2826cf-ff01-4f4f-8af0-0dba60de1c90",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring nisha@gmail.com",
+    "created_at": "2026-08-31T14:54:18.538725+00:00",
+    "category": null
+  },
+  {
+    "id": "ae30ef10-ceab-4257-9bff-c120bc7b3641",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 10,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-01T08:35:47.277366+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "878c4bb1-7c9f-4115-9cb6-c8b57360fb39",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-02T05:12:53.041319+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "73f997ed-f0d7-4b9d-951a-27a470754058",
+    "merchant_id": "69c3be77-5c81-4044-a227-badf0a09859e",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-09-02T06:43:47.823411+00:00",
+    "category": null
+  },
+  {
+    "id": "135aa2ba-e3fb-4402-9241-a32eb38c5677",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-02T07:02:33.823837+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "a17e39ff-afb9-4008-98ad-153423d60cb6",
+    "merchant_id": "b876d9b3-f733-4dc5-a6dc-6f7fbd7db8e4",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-02T07:02:57.483301+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "f2a377b1-d3c7-4cd7-86d4-f3c60e7db50c",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Referral Bonus for referring Ganesh hotel",
+    "created_at": "2026-09-02T07:09:09.443634+00:00",
+    "category": null
+  },
+  {
+    "id": "0098f27b-e1ff-444f-939a-5dcedc01e892",
+    "merchant_id": "a8175bde-2187-4d34-bb06-4599b7f0086f",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 100,
+    "description": "Purchased 100 Points via Razorpay (pay_TXAZ83BOOYQJyY)",
+    "created_at": "2026-09-02T12:32:43.17056+00:00",
+    "category": "purchase"
+  },
+  {
+    "id": "6d67da0b-70da-4bb6-9e85-a3beb16bc083",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-10T05:10:31.881885+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "79a7cbb8-0b53-434d-a9e6-89465fba5d79",
+    "merchant_id": "b1b51c44-853d-4275-81f6-c8d579700cc9",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 200,
+    "description": "Merchant Joining Bonus",
+    "created_at": "2026-09-15T13:25:13.059118+00:00",
+    "category": null
+  },
+  {
+    "id": "dec28d1d-0ed4-4329-8402-dc49d2b7133a",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won Laptops !",
+    "created_at": "2026-09-18T12:19:54.837706+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "ab7c81ff-1643-41ea-9a8b-03802dcc3f73",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won chain!",
+    "created_at": "2026-09-24T07:32:43.99803+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "66968b55-2cfc-4158-a78b-218a4bd58c46",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won chain!",
+    "created_at": "2026-09-24T07:47:20.86105+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "73396919-46a3-4518-ad7b-afba7d882914",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won chain!",
+    "created_at": "2026-09-24T13:37:57.321766+00:00",
+    "category": "reward"
+  },
+  {
+    "id": "96e8c543-1c91-43a6-ad43-07a13ebd4a83",
+    "merchant_id": "e602aa67-9743-4a84-86f9-e830a8ad6ef2",
+    "wallet_type": "points",
+    "transaction_type": "credit",
+    "amount": 50,
+    "description": "Won chain!",
+    "created_at": "2026-09-24T13:51:02.998379+00:00",
+    "category": "reward"
+  }
+]
