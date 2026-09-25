@@ -13,6 +13,7 @@ import {
   Gift,
   Clock,
   CheckCircle2,
+  User,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ interface ScanRecord {
   fulfillment_status: string // 'Pending', 'Verified', 'Dispatched', 'Delivered', 'Claimed', 'Rejected'
   created_at: string
   merchant_id: string
+  source: 'customer' | 'merchant'
 }
 
 interface Merchant {
@@ -64,6 +66,7 @@ export default function AdminWinnersPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'customer' | 'merchant'>('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   // ── Fetch Scans & Merchants ──────────────────────────────────────────
@@ -72,30 +75,59 @@ export default function AdminWinnersPage() {
       setLoading(true)
       
       try {
-        const [scansRes, merchRes] = await Promise.all([
+        const [scansRes, merchScansRes, merchRes] = await Promise.all([
           supabase.from('qr_scans').select('*').order('created_at', { ascending: false }),
-          supabase.from('merchants').select('id, business_name')
+          supabase.from('merchant_scratch_cards').select('*, campaigns(prize_details, gifts(name))').order('created_at', { ascending: false }),
+          supabase.from('merchants').select('id, business_name, mobile')
         ])
 
         if (scansRes.error) throw scansRes.error
+        if (merchScansRes.error) throw merchScansRes.error
 
-        const scanData = scansRes.data as ScanRecord[]
-        const merchData = merchRes.data as Merchant[]
+        const merchData = merchRes.data || []
+        const map: Record<string, {name: string, phone: string}> = {}
+        const nameMap: Record<string, string> = {}
+        merchData.forEach(m => {
+          map[m.id] = { name: m.business_name, phone: m.mobile }
+          nameMap[m.id] = m.business_name
+        })
+        setMerchantMap(nameMap)
+
+        const scanData = (scansRes.data || []).map(s => ({...s, source: 'customer' as const}))
+        const rawMerchScans = merchScansRes.data || []
         
-        const map: Record<string, string> = {}
-        merchData.forEach(m => map[m.id] = m.business_name)
-        setMerchantMap(map)
+        const merchScansData = rawMerchScans.map((s: any) => {
+          let prize = s.prize_amount ? `${s.prize_amount} Points` : 'Reward'
+          if (s.campaigns?.gifts?.name) {
+            prize = s.campaigns.gifts.name
+          } else if (s.campaigns?.prize_details) {
+            prize += ' (' + s.campaigns.prize_details + ')'
+          }
+          return {
+            id: s.id,
+            customer_name: `Merchant: ${map[s.merchant_id]?.name || 'Unknown'}`,
+            customer_phone: map[s.merchant_id]?.phone || null,
+            status: s.status === 'won' ? 'Reward Won' : s.status === 'lost' ? 'No Win' : s.status,
+            prize_won: prize,
+            fulfillment_status: s.fulfillment_status || 'Pending',
+            created_at: s.created_at,
+            merchant_id: s.merchant_id,
+            source: 'merchant' as const
+          }
+        })
+
+        const allData = [...scanData, ...merchScansData].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
         // Filter only winners for this page
-        const winners = scanData.filter(s => s.status === 'Reward Won')
+        const winners = allData.filter(s => s.status === 'Reward Won')
         setScans(winners)
 
-        // Calculate Stats based on all scans to keep top metrics accurate
-        const opened = scanData.filter(s => s.status === 'Reward Won' || s.status === 'No Win')
+        // Calculate Stats
+        const opened = allData.filter(s => s.status === 'Reward Won' || s.status === 'No Win')
         const pendingFulfill = winners.filter(s => !s.fulfillment_status || s.fulfillment_status === 'Pending')
         
         setStats({
-          totalIssued: scanData.length,
+          totalIssued: allData.length,
           totalOpened: opened.length,
           totalWinners: winners.length,
           pendingFulfillment: pendingFulfill.length,
@@ -114,13 +146,24 @@ export default function AdminWinnersPage() {
   // ── Handle Fulfillment Status Update ─────────────────────────────────
   const handleUpdateFulfillment = async (scanId: string, newStatus: string) => {
     setUpdatingId(scanId)
-    
-    const { error } = await supabase
-      .from('qr_scans')
-      .update({ fulfillment_status: newStatus })
-      .eq('id', scanId)
 
-    if (!error) {
+    const scanRecord = scans.find(s => s.id === scanId)
+    if (!scanRecord) {
+      setUpdatingId(null)
+      return
+    }
+    
+    const table = scanRecord.source === 'merchant' ? 'merchant_scratch_cards' : 'qr_scans'
+
+    try {
+      const res = await fetch('/api/admin/update-fulfillment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scanId, newStatus, table })
+      })
+
+      if (!res.ok) throw new Error('Failed to update')
+
       setScans(prev => 
         prev.map(s => s.id === scanId ? { ...s, fulfillment_status: newStatus } : s)
       )
@@ -129,7 +172,7 @@ export default function AdminWinnersPage() {
       if (newStatus !== 'Pending') {
         setStats(prev => ({ ...prev, pendingFulfillment: Math.max(0, prev.pendingFulfillment - 1) }))
       }
-    } else {
+    } catch (err) {
       alert('Failed to update status.')
     }
     
@@ -144,8 +187,9 @@ export default function AdminWinnersPage() {
       merchantMap[s.merchant_id]?.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || s.fulfillment_status === statusFilter || (statusFilter === 'Pending' && !s.fulfillment_status)
+    const matchesType = typeFilter === 'all' || s.source === typeFilter
     
-    return matchesSearch && matchesStatus
+    return matchesSearch && matchesStatus && matchesType
   })
 
   // ── Format Date Helper ──────────────────────────────────────────────
@@ -256,15 +300,29 @@ export default function AdminWinnersPage() {
           />
         </div>
         
-        <div className="relative w-full md:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full md:w-52 appearance-none rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-8 py-2.5 text-sm font-medium text-slate-700 transition-all duration-200 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 cursor-pointer"
-          >
-            <option value="all">All Fulfillment Status</option>
-            {FULFILLMENT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
+        <div className="flex w-full md:w-auto gap-3">
+          <div className="relative w-full md:w-44">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as 'all' | 'customer' | 'merchant')}
+              className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-8 py-2.5 text-sm font-medium text-slate-700 transition-all duration-200 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 cursor-pointer"
+            >
+              <option value="all">All Winners</option>
+              <option value="customer">Customers Only</option>
+              <option value="merchant">Merchants Only</option>
+            </select>
+          </div>
+
+          <div className="relative w-full md:w-52">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 pl-4 pr-8 py-2.5 text-sm font-medium text-slate-700 transition-all duration-200 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 cursor-pointer"
+            >
+              <option value="all">All Fulfillment Status</option>
+              {FULFILLMENT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -307,10 +365,21 @@ export default function AdminWinnersPage() {
               ) : (
                 filteredScans.map((s) => (
                   <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    {/* Winner (Customer) */}
+                    {/* Winner */}
                     <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {s.source === 'merchant' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-600 uppercase tracking-wide border border-purple-100">
+                            <Store size={10} /> Merchant
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600 uppercase tracking-wide border border-blue-100">
+                            <User size={10} /> Customer
+                          </span>
+                        )}
+                      </div>
                       <p className="font-semibold text-slate-900">
-                        {s.customer_name || 'Walk-in Customer'}
+                        {s.source === 'merchant' ? s.customer_name?.replace('Merchant: ', '') : (s.customer_name || 'Walk-in Customer')}
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                         <Phone size={10} className="text-slate-400" />

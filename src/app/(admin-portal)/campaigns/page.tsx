@@ -153,9 +153,12 @@ export default function AdminCampaignsPage() {
 
       const { data: merchantScanData } = await supabase
         .from('merchant_scratch_cards')
-        .select('campaign_id, status')
+        .select('campaign_id, status, fulfillment_status')
 
       const tempStats: Record<string, CampaignStats> = {}
+      
+      const campMap = new Map((campData as Campaign[]).map(c => [c.id, c]))
+
       if (scanData) {
         scanData.forEach((scan) => {
           const cId = scan.campaign_id
@@ -192,11 +195,21 @@ export default function AdminCampaignsPage() {
           }
 
           tempStats[cId].issued++
+          const camp = campMap.get(cId)
 
           if (scan.status === 'won') {
             tempStats[cId].opened++
             tempStats[cId].winners++
-            tempStats[cId].claimedRewards++ // Merchant points are auto-credited immediately
+            
+            if (camp && camp.gift_id) {
+              if (scan.fulfillment_status === 'Claimed' || scan.fulfillment_status === 'Delivered') {
+                tempStats[cId].claimedRewards++
+              } else {
+                tempStats[cId].pendingRewards++
+              }
+            } else {
+              tempStats[cId].claimedRewards++ // Merchant points are auto-credited immediately
+            }
           } else if (scan.status === 'lost') {
             tempStats[cId].opened++
             tempStats[cId].nonWinners++
@@ -487,49 +500,51 @@ export default function AdminCampaignsPage() {
                 className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm relative group overflow-hidden"
               >
                 {/* Campaign Header */}
-                <div className="flex items-start justify-between mb-4 relative z-20">
-                  <div className="flex items-center gap-3 pr-2 flex-1 min-w-0">
+                <div className="flex flex-col 2xl:flex-row 2xl:items-start justify-between gap-4 mb-5 relative z-20">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1857D6]/10 to-[#7BC142]/10 text-[#1857D6]">
                       <Gift size={20} />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-semibold text-slate-900 truncate">{camp.name}</h3>
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${typeMeta.badgeClass}`}>
+                    <div className="min-w-0 w-full">
+                      <div className="flex items-start gap-2 flex-wrap mb-1">
+                        <h3 className="text-base font-semibold text-slate-900 leading-snug break-words pr-2">
+                          {camp.name}
+                        </h3>
+                        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide mt-0.5 ${typeMeta.badgeClass}`}>
                           <TypeIcon size={10} />
                           {typeMeta.label}
                         </span>
                       </div>
-                      <p className="text-xs font-medium text-[#3E7A1C] truncate">
+                      <p className="text-xs font-medium text-[#3E7A1C] break-words">
                         Prize: {camp.gifts?.name || 'No specific gift attached'}
                       </p>
                       {camp.prize_details && (
-                        <p className="text-[10px] text-slate-500 truncate mt-0.5">{camp.prize_details}</p>
+                        <p className="text-[10px] text-slate-500 break-words mt-1 leading-snug">{camp.prize_details}</p>
                       )}
                     </div>
                   </div>
 
                   {/* Status & Actions Container */}
-                  <div className="flex items-center gap-3 shrink-0 mt-1">
+                  <div className="flex items-center gap-3 shrink-0 self-start">
                     {/* Actions (Edit/Delete) */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-slate-50/80 p-1 rounded-lg border border-slate-100">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleEditClick(camp); }}
-                        className="p-1.5 bg-blue-50 text-[#1857D6] hover:bg-blue-100 rounded-lg cursor-pointer transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-[#1857D6] hover:bg-white rounded-md cursor-pointer transition-all shadow-sm"
                         title="Edit Campaign"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(camp.id); }}
-                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg cursor-pointer transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-white rounded-md cursor-pointer transition-all shadow-sm"
                         title="Delete Campaign"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
 
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold capitalize ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                       <span className={`h-1.5 w-1.5 rounded-full bg-current ${isActive ? 'animate-pulse' : ''}`} />
                       {camp.status}
                     </span>
@@ -558,29 +573,65 @@ export default function AdminCampaignsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-center mb-3 pb-3 border-b border-slate-200">
+                  <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b border-slate-200">
                     <div className="p-2 rounded-lg bg-emerald-50/50">
                       <p className="text-[10px] font-bold uppercase text-emerald-600">Winners (Live / Target)</p>
                       <p className="text-base font-bold text-slate-900 mt-1">
                         {stats.winners} <span className="text-slate-400 font-semibold">/ {targetWinners}</span>
                       </p>
                     </div>
-                    <div className="p-2 rounded-lg bg-rose-50/50">
-                      <p className="text-[10px] font-bold uppercase text-rose-600">Non-Winners</p>
+                    <div className="p-2 rounded-lg bg-red-50 border border-red-100">
+                      <p className="text-[10px] font-bold uppercase text-red-600">Remaining Rewards</p>
+                      <p className="text-base font-bold text-red-600 mt-1">{Math.max(0, targetWinners - stats.winners)}</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-50/80">
+                      <p className="text-[10px] font-bold uppercase text-slate-500">Non-Winners</p>
                       <p className="text-base font-bold text-slate-900 mt-1">{stats.nonWinners}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="p-2 rounded-lg bg-amber-50/50">
-                      <p className="text-[10px] font-bold uppercase text-amber-600">Pending Rewards</p>
-                      <p className="text-base font-bold text-slate-900 mt-1">{stats.pendingRewards}</p>
+                  {/* 
+                  {camp.type === 'merchant' && camp.gift_id ? (
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="p-2 rounded-lg bg-emerald-50/50">
+                        <p className="text-[10px] font-bold uppercase text-emerald-600">Points Claimed</p>
+                        <p className="text-base font-bold text-slate-900 mt-1">
+                          {stats.winners} <span className="text-emerald-600/50 font-semibold">/ {targetWinners}</span>
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-amber-50/50">
+                        <p className="text-[10px] font-bold uppercase text-amber-600">Pending Gift</p>
+                        <p className="text-base font-bold text-slate-900 mt-1">{stats.pendingRewards}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-blue-50/50">
+                        <p className="text-[10px] font-bold uppercase text-blue-600">Claimed Gift</p>
+                        <p className="text-base font-bold text-slate-900 mt-1">{stats.claimedRewards}</p>
+                      </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-blue-50/50">
-                      <p className="text-[10px] font-bold uppercase text-blue-600">Claimed</p>
-                      <p className="text-base font-bold text-slate-900 mt-1">{stats.claimedRewards}</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className={`p-2 rounded-lg ${camp.type === 'merchant' ? 'bg-slate-50' : 'bg-amber-50/50'}`}>
+                        <p className={`text-[10px] font-bold uppercase ${camp.type === 'merchant' ? 'text-slate-400' : 'text-amber-600'}`}>
+                          {camp.type === 'merchant' ? 'Pending (N/A)' : 'Pending Rewards'}
+                        </p>
+                        <p className={`text-base font-bold mt-1 ${camp.type === 'merchant' ? 'text-slate-400' : 'text-slate-900'}`}>
+                          {stats.pendingRewards}
+                        </p>
+                      </div>
+                      <div className={`p-2 rounded-lg ${camp.type === 'merchant' ? 'bg-emerald-50/50' : 'bg-blue-50/50'}`}>
+                        <p className={`text-[10px] font-bold uppercase ${camp.type === 'merchant' ? 'text-emerald-600' : 'text-blue-600'}`}>
+                          {camp.type === 'merchant' ? 'Points Claimed' : 'Claimed'}
+                        </p>
+                        <p className="text-base font-bold text-slate-900 mt-1">
+                          {stats.claimedRewards}
+                          {camp.type === 'merchant' && (
+                            <span className="text-emerald-600/50 font-semibold"> / {targetWinners}</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  */}
 
                   <div className="mt-3 w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                     <motion.div

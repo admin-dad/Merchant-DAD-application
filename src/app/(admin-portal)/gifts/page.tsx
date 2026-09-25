@@ -373,23 +373,7 @@ export default function AdminGiftsPage() {
                 transition={{ duration: 0.3, delay: idx * 0.05 }}
                 className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm relative group overflow-hidden"
               >
-                {/* Actions (Edit/Delete) - Top Right */}
-                <div className="absolute top-4 right-4 z-20 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleEditClick(gift)}
-                    className="p-1.5 bg-white/90 text-[#1857D6] hover:bg-white rounded-lg shadow-sm cursor-pointer transition-colors"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteGift(gift.id, gift.claimed_count)}
-                    className="p-1.5 bg-white/90 text-rose-600 hover:bg-white rounded-lg shadow-sm cursor-pointer transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                {/* Gift Image or Icon Header */}
+                {/* Header (Image, Status & Actions) */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200/60 shadow-sm">
                     {gift.image_url ? (
@@ -398,16 +382,37 @@ export default function AdminGiftsPage() {
                       <Gift size={24} className="text-[#1857D6]" />
                     )}
                   </div>
-                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize mt-1 mr-16 ${
-                    isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
-                  }`}>
-                    <span className={`h-1.5 w-1.5 rounded-full bg-current ${isActive ? 'animate-pulse' : ''}`} />
-                    {gift.status}
-                  </span>
+                  
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${
+                      isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full bg-current ${isActive ? 'animate-pulse' : ''}`} />
+                      {gift.status}
+                    </span>
+
+                    {/* Actions (Edit/Delete) */}
+                    <div className="flex items-center gap-1 bg-slate-50/80 p-1 rounded-lg border border-slate-100">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleEditClick(gift); }}
+                        className="p-1.5 text-slate-500 hover:text-[#1857D6] hover:bg-white rounded-md shadow-sm cursor-pointer transition-colors"
+                        title="Edit Gift"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteGift(gift.id, gift.claimed_count); }}
+                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-white rounded-md shadow-sm cursor-pointer transition-colors"
+                        title="Delete Gift"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <h3 className="text-base font-semibold text-slate-900 pr-12">{gift.name}</h3>
-                <p className="mt-1 text-xs text-slate-500 flex-1 line-clamp-2">{gift.description || 'No description provided.'}</p>
+                <h3 className="text-base font-semibold text-slate-900 break-words pr-2">{gift.name}</h3>
+                <p className="mt-1 text-xs text-slate-500 flex-1 line-clamp-2 pr-2">{gift.description || 'No description provided.'}</p>
 
                 {/* Value Tag */}
                 <div className="mt-3 flex items-center gap-1.5 text-sm font-bold text-slate-900">
