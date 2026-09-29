@@ -784,8 +784,24 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
 
                       {/* List */}
                       <div className="max-h-96 overflow-y-auto rounded-2xl border border-slate-200/80 divide-y divide-slate-100">
-                        {history.map((h) => {
+                        {history.map((h, index) => {
                           const won = isWin(h.status)
+
+                          // 10 dark bg colours cycling for "No Reward" rows
+                          const noRewardColors = [
+                            'bg-rose-600    text-white',
+                            'bg-violet-600  text-white',
+                            'bg-amber-500   text-white',
+                            'bg-pink-600    text-white',
+                            'bg-green-600   text-white',
+                            'bg-orange-600  text-white',
+                            'bg-teal-600    text-white',
+                            'bg-blue-600    text-white',
+                            'bg-red-700     text-white',
+                            'bg-indigo-600  text-white',
+                          ]
+                          const noRewardColor = noRewardColors[index % noRewardColors.length]
+
                           return (
                             <div key={h.id} className="flex items-center justify-between gap-3 px-4 py-3">
                               <div className="flex items-center gap-3 min-w-0">
@@ -797,7 +813,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                                     className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-black/5"
                                   />
                                 ) : (
-                                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${won ? 'bg-emerald-50 text-[#3E7A1C]' : 'bg-slate-100 text-slate-400'}`}>
+                                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${won ? 'bg-emerald-50 text-[#3E7A1C]' : noRewardColor}`}>
                                     {won ? <CheckCircle2 size={18} /> : <Frown size={18} />}
                                   </span>
                                 )}

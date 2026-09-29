@@ -605,6 +605,20 @@ function ScanContent() {
                   </strong>
                   . Each scan is allowed once every 10 minutes.
                 </p>
+
+                {/* Let a different customer reset and enter their own number */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAlreadyParticipated(false)
+                    setName('')
+                    setPhone('')
+                    setError(null)
+                  }}
+                  className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Use a different number
+                </button>
               </motion.div>
             ) : (
               /* ── STEP 1: Name & Phone Entry ── */
