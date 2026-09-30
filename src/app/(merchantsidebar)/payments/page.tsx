@@ -159,6 +159,8 @@ export default function MerchantScanPaymentPage() {
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
+  // Which months the merchant has checked to pay — defaults to all unpaid months
+  const [selectedMonthKeys, setSelectedMonthKeys] = useState<Set<string>>(new Set())
 
   const [searchTerm, setSearchTerm] = useState<string>('')
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string>('ALL')
@@ -375,12 +377,12 @@ export default function MerchantScanPaymentPage() {
 
   const isMonthlyPaid = isMonthlyMerchant && unpaidMonths.length === 0
 
-  // Payment is only accepted on the 1st of the month (today === 1), full
-  // stop — no "stays open if overdue" exception. If a merchant misses the
-  // 1st, their unpaid month(s) simply carry forward and get included
-  // automatically the next time the 1st comes around.
-  const isFirstOfMonth = daysRemaining === 0
-  const canPayMonthlyNow = isMonthlyMerchant && isFirstOfMonth && unpaidMonths.length > 0
+  // Bill for a month generates on the 1st of the FOLLOWING month.
+  // After that the merchant can pay ANY day — there is no "only on the 1st"
+  // restriction. daysRemaining > 0 means the current month has not closed
+  // yet (bill not generated), so nothing is payable yet.
+  const isFirstOfMonth = daysRemaining === 0   // kept for display labels only
+  const canPayMonthlyNow = isMonthlyMerchant && unpaidMonths.length > 0
 
   const currentMonthPayment = useMemo(() => {
     if (!isMonthlyMerchant) return null
@@ -390,6 +392,33 @@ export default function MerchantScanPaymentPage() {
       ) || null
     )
   }, [isMonthlyMerchant, payments, previousMonthKey])
+
+  // Auto-select ALL unpaid months by default when they first load
+  useEffect(() => {
+    if (unpaidMonths.length > 0) {
+      setSelectedMonthKeys(new Set(unpaidMonths.map((m) => m.key)))
+    }
+  }, [unpaidMonths.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedMonths = unpaidMonths.filter((m) => selectedMonthKeys.has(m.key))
+  const selectedBase = selectedMonths.length * monthlyFeeBase
+  const selectedGst = selectedBase * GST_RATE
+  const selectedTotal = selectedBase + selectedGst
+
+  const toggleMonthKey = (key: string) => {
+    setSelectedMonthKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
+  const selectAllMonths = () => setSelectedMonthKeys(new Set(unpaidMonths.map((m) => m.key)))
+  const clearAllMonths = () => setSelectedMonthKeys(new Set())
 
   // ── Per-scan branch ──────────────────────────────────────────────────
   const payableScans = useMemo(() => {
@@ -423,7 +452,8 @@ export default function MerchantScanPaymentPage() {
   // Same rule as the monthly branch: payment only opens on the 1st of the
   // month. isScanOverdue is kept for banner/messaging only.
   const isScanOverdue = payableScans.some((s) => new Date(s.created_at) < new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1))
-  const canPayScansNow = isFirstOfMonth && totalPayableScansCount > 0
+  // Scans from closed months are payable any day — no "only on the 1st" restriction.
+  const canPayScansNow = totalPayableScansCount > 0
 
   // Breaks payable (unpaid, closed) scans down by the calendar month they
   // were created in, so you can see "August: N scans, ₹X" and
@@ -556,14 +586,9 @@ export default function MerchantScanPaymentPage() {
     }
   }
 
-  // --- MONTHLY SUBSCRIPTION PAYMENT: payable any day once a closed month
-  // is unpaid. Pays off ALL unpaid closed months at once. ---
+  // Pays only the months the merchant has selected (defaults to all unpaid).
   const handleMonthlyPayment = async () => {
-    if (!merchant || cumulativeTotal <= 0 || unpaidMonths.length === 0) return
-    if (!canPayMonthlyNow) {
-      setError(`Payment only opens on ${dueDateLabel} (1st of the month).`)
-      return
-    }
+    if (!merchant || selectedMonths.length === 0) return
     if (typeof window === 'undefined' || !window.Razorpay) {
       setError('Razorpay SDK failed to load. Please check your internet connection and retry.')
       return
@@ -573,7 +598,7 @@ export default function MerchantScanPaymentPage() {
     setError(null)
     setPaymentSuccess(null)
 
-    const billingMonths = unpaidMonths.map((m) => m.key)
+    const billingMonths = selectedMonths.map((m) => m.key)
 
     try {
       const res = await fetch('/api/create-order', {
@@ -582,7 +607,7 @@ export default function MerchantScanPaymentPage() {
         body: JSON.stringify({
           merchant_id: merchant.id,
           payment_mode: 'monthly',
-          billing_month: previousMonthKey,
+          billing_month: billingMonths[billingMonths.length - 1], // latest selected month
           billing_months: billingMonths,
         }),
       })
@@ -593,11 +618,11 @@ export default function MerchantScanPaymentPage() {
         throw new Error(orderData.error || 'Failed to create payment order')
       }
 
-      const totalWithGst: number = orderData.total_amount ?? cumulativeTotal
+      const totalWithGst: number = orderData.total_amount ?? selectedTotal
       const monthsLabel =
         billingMonths.length > 1
-          ? `${unpaidMonths[0].label} \u2013 ${unpaidMonths[unpaidMonths.length - 1].label}`
-          : previousMonthLabel
+          ? `${selectedMonths[0].label} – ${selectedMonths[selectedMonths.length - 1].label}`
+          : selectedMonths[0].label
 
       const options = {
         key: orderData.key_id,
@@ -622,7 +647,7 @@ export default function MerchantScanPaymentPage() {
                 base_amount: orderData.base_amount,
                 gst_amount: orderData.gst_amount,
                 payment_mode: 'monthly',
-                billing_month: previousMonthKey,
+                billing_month: billingMonths[billingMonths.length - 1],
                 billing_months: billingMonths,
               }),
             })
@@ -890,75 +915,122 @@ export default function MerchantScanPaymentPage() {
                     <CheckIcon size={20} className="text-[#1857D6] shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
                       {isOverdue
-                        ? 'A previous month is overdue too — paying now settles everything and reactivates your QR code.'
-                        : `Today is the due date (${dueDateLabel}) — payment is open now.`}
+                        ? `You have ${unpaidMonths.length} overdue month(s). Pay now to settle all outstanding bills.`
+                        : `${previousMonthLabel}'s bill is ready. Select the months below and pay anytime.`}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4">
                     <CalendarClockIcon size={20} className="text-slate-500 shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
-                      Payment only opens on <span className="font-bold">{dueDateLabel}</span> (1st of the month).
-                      {daysRemaining > 0 && ` ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} to go.`}
-                      {isOverdue && ' Unpaid months will carry forward and be included then.'}
+                      {currentMonthLabel}&apos;s bill will be generated on{' '}
+                      <span className="font-bold">{dueDateLabel}</span>.{' '}
+                      {daysRemaining > 0 && `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining.`}{' '}
+                      You can pay anytime after the 1st.
                     </p>
                   </div>
                 )}
 
-                {/* Month-by-month breakdown — always shown while anything is unpaid,
-                    so a rolled-forward month and the newly-closed month are both
-                    visible as separate lines, not just lumped into one total. */}
-                <div className="rounded-2xl border border-slate-200/80 bg-white divide-y divide-slate-100">
-                  {unpaidMonths.map((m) => (
-                    <div key={m.key} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                      <span className="text-slate-600">
-                        {m.label}
-                        {m.key !== previousMonthKey && (
-                          <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
-                            CARRIED FORWARD
-                          </span>
-                        )}
-                      </span>
-                      <span className="font-semibold text-slate-900">₹{formatMoney(monthlyFeeBase)}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50/60">
-                    <span className="text-slate-500">
-                      {currentMonthLabel} <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
+                {/* Month selector — pick which months to pay */}
+                <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
+                  {/* Header row with Select All / Clear All */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50/70 border-b border-slate-100">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Select months to pay
                     </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={selectAllMonths}
+                        className="text-xs font-semibold text-[#1857D6] hover:underline cursor-pointer"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={clearAllMonths}
+                        className="text-xs font-semibold text-slate-400 hover:underline cursor-pointer"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Unpaid months — each is a checkbox row */}
+                  {unpaidMonths.map((m) => {
+                    const checked = selectedMonthKeys.has(m.key)
+                    return (
+                      <label
+                        key={m.key}
+                        className={`flex items-center justify-between px-4 py-3 text-sm cursor-pointer transition-colors border-b border-slate-100 last:border-b-0 ${checked ? 'bg-blue-50/50' : 'hover:bg-slate-50/60'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleMonthKey(m.key)}
+                            className="h-4 w-4 rounded border-slate-300 text-[#1857D6] accent-[#1857D6] cursor-pointer"
+                          />
+                          <span className={`font-medium ${checked ? 'text-slate-800' : 'text-slate-500'}`}>
+                            {m.label}
+                          </span>
+                          {m.key !== previousMonthKey && (
+                            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600">
+                              OVERDUE
+                            </span>
+                          )}
+                        </div>
+                        <span className={`font-semibold ${checked ? 'text-slate-900' : 'text-slate-400'}`}>
+                          ₹{formatMoney(monthlyFeeBase)}
+                        </span>
+                      </label>
+                    )
+                  })}
+
+                  {/* Accruing current month — info only, not selectable */}
+                  <div className="flex items-center justify-between px-4 py-3 text-sm bg-slate-50/60 opacity-60">
+                    <div className="flex items-center gap-3">
+                      <div className="h-4 w-4 rounded border border-dashed border-slate-300" />
+                      <span className="text-slate-500">
+                        {currentMonthLabel}{' '}
+                        <span className="text-[10px] font-semibold text-slate-400">(accruing — bill generates on {dueDateLabel})</span>
+                      </span>
+                    </div>
                     <span className="font-semibold text-slate-400">₹{formatMoney(monthlyFeeBase)}</span>
                   </div>
                 </div>
 
+                {/* Summary for selected months */}
                 <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>
-                      {unpaidMonths.length > 1
-                        ? `${unpaidMonths.length} months × ₹${formatMoney(monthlyFeeBase)}`
-                        : 'Monthly fee (base)'}
+                      {selectedMonths.length > 0
+                        ? `${selectedMonths.length} month${selectedMonths.length > 1 ? 's' : ''} × ₹${formatMoney(monthlyFeeBase)}`
+                        : 'No months selected'}
                     </span>
-                    <span>₹{formatMoney(cumulativeBase)}</span>
+                    <span>₹{formatMoney(selectedBase)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-slate-600 mt-1">
                     <span>GST (18%)</span>
-                    <span>₹{formatMoney(cumulativeGst)}</span>
+                    <span>₹{formatMoney(selectedGst)}</span>
                   </div>
                   <div className="flex items-center justify-between text-base font-bold text-slate-900 mt-2 pt-2 border-t border-slate-100">
-                    <span>Total Due Now</span>
-                    <span>₹{formatMoney(cumulativeTotal)}</span>
+                    <span>Total to Pay</span>
+                    <span>₹{formatMoney(selectedTotal)}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-slate-200/80 pt-4">
                   <div>
                     <span className="text-xs text-slate-500 font-semibold block">Amount Due</span>
-                    <span className="text-2xl font-black text-[#1857D6]">₹{formatMoney(cumulativeTotal)}</span>
+                    <span className="text-2xl font-black text-[#1857D6]">₹{formatMoney(selectedTotal)}</span>
                   </div>
 
                   <button
                     onClick={handleMonthlyPayment}
-                    disabled={isSubmitting || cumulativeTotal <= 0 || !canPayMonthlyNow}
-                    aria-disabled={isSubmitting || cumulativeTotal <= 0 || !canPayMonthlyNow}
+                    disabled={isSubmitting || selectedMonths.length === 0}
+                    aria-disabled={isSubmitting || selectedMonths.length === 0}
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 cursor-pointer"
                   >
                     {isSubmitting ? (
@@ -966,11 +1038,11 @@ export default function MerchantScanPaymentPage() {
                         <LoaderIcon size={18} className="animate-spin" />
                         <span>Opening Razorpay...</span>
                       </>
-                    ) : !canPayMonthlyNow ? (
-                      <span>Opens {dueDateLabel}</span>
+                    ) : selectedMonths.length === 0 ? (
+                      <span>Select at least one month</span>
                     ) : (
                       <>
-                        <span>Pay ₹{formatMoney(cumulativeTotal)} Now</span>
+                        <span>Pay ₹{formatMoney(selectedTotal)} Now</span>
                         <ArrowRightIcon size={18} />
                       </>
                     )}
@@ -1099,16 +1171,19 @@ export default function MerchantScanPaymentPage() {
                   <div className="flex items-center gap-3 rounded-2xl bg-white border border-blue-200 p-4 mb-4">
                     <CheckIcon size={20} className="text-[#1857D6] shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
-                      Today is the due date ({dueDateLabel}) — payment is open now.
+                      {isScanOverdue
+                        ? `You have unpaid scans from multiple months. Pay anytime to settle all outstanding charges.`
+                        : `${previousMonthLabel}'s scans are billed and ready. You can pay anytime.`}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 p-4 mb-4">
                     <CalendarClockIcon size={20} className="text-slate-500 shrink-0" />
                     <p className="text-sm font-medium text-slate-700">
-                      Payment only opens on <span className="font-bold">{dueDateLabel}</span> (1st of the month).
-                      {daysRemaining > 0 && ` ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} to go.`}
-                      {isScanOverdue && ' Charges from more than one closed month will be included then.'}
+                      {currentMonthLabel}&apos;s scans are still accruing — bill generates on{' '}
+                      <span className="font-bold">{dueDateLabel}</span>.{' '}
+                      {daysRemaining > 0 && `${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining.`}{' '}
+                      You can pay anytime after the 1st.
                     </p>
                   </div>
                 )}
