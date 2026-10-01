@@ -57,7 +57,7 @@ export default function Footer() {
             <Link href="/" className="group inline-flex items-center gap-3">
               <div className="relative h-10 w-28 overflow-hidden transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
                 <Image
-                  src="/logopng.jpeg"
+                  src="/homelg.png"
                   alt="MerchantApp Logo"
                   fill
                   className="object-contain"

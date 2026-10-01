@@ -159,6 +159,7 @@ export default function MerchantScanPaymentPage() {
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null)
+  const [activePayMonth, setActivePayMonth] = useState<{ key: string; label: string; count: number; amount: number } | null>(null)
   // Which months the merchant has checked to pay — defaults to all unpaid months
   const [selectedMonthKeys, setSelectedMonthKeys] = useState<Set<string>>(new Set())
 
@@ -568,6 +569,7 @@ export default function MerchantScanPaymentPage() {
             setError(verifyErr.message || 'Payment verification failed')
           } finally {
             setIsSubmitting(false)
+            setActivePayMonth(null)
           }
         },
         modal: {
@@ -1197,50 +1199,68 @@ export default function MerchantScanPaymentPage() {
                       const mGst = m.amount * GST_RATE;
                       const mTotal = m.amount + mGst;
                       return (
-                        <div key={m.key} className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 text-sm gap-3">
+                        <div key={m.key} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 text-sm gap-3 hover:bg-slate-50/50 transition-colors">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-700 font-semibold">
+                            <span className="text-slate-800 font-bold text-base">
                               {m.label}
                               {m.key !== previousMonthKey && (
-                                <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
+                                <span className="ml-3 rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 align-middle">
                                   CARRIED FORWARD
                                 </span>
                               )}
-                              <span className="ml-2 text-xs font-normal text-slate-500">({m.count} scans)</span>
                             </span>
-                            <span className="text-xs text-slate-500">
-                              Base: ₹{formatMoney(m.amount)} + GST (18%): ₹{formatMoney(mGst)}
+                            <span className="text-xs text-slate-500 font-medium">
+                              {m.count} unpaid scans
                             </span>
                           </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0">
+                          <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto mt-2 sm:mt-0">
                             <span className="font-bold text-slate-900 text-lg">₹{formatMoney(mTotal)}</span>
                             <button
-                              onClick={() => handlePayment(m.key)}
-                              disabled={isSubmitting || !canPayScansNow}
+                              onClick={() => setActivePayMonth(m)}
+                              disabled={!canPayScansNow}
                               className="rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-2 text-xs font-bold text-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
                             >
-                              {isSubmitting ? 'Wait...' : 'Pay Now'}
+                              Pay Now
                             </button>
                           </div>
                         </div>
                       )
                     })}
-                    <div className="flex items-center justify-between px-4 py-3 text-sm bg-slate-50/60 rounded-b-2xl">
-                      <span className="text-slate-500 flex flex-col gap-0.5">
-                        <span>
-                          {currentMonthLabel}{' '}
-                          <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
-                        </span>
-                        <span className="text-xs text-slate-400">({totalAccruingScansCount} scans)</span>
-                      </span>
-                      <span className="font-semibold text-slate-400 text-base">
-                        ₹{formatMoney(totalAccruingAmount)}
-                      </span>
-                    </div>
                   </div>
                 )}
 
+                {/* Accruing Month - Separated */}
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5 flex flex-col gap-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-bold text-lg">
+                      {currentMonthLabel}
+                      <span className="ml-3 rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-600 align-middle">
+                        ACCRUING
+                      </span>
+                    </span>
+                  </div>
 
+                  <div className="rounded-2xl border border-slate-200/50 bg-white p-4 opacity-75">
+                    <div className="flex items-center justify-between text-sm text-slate-500">
+                      <span>{totalAccruingScansCount} scans (not yet due)</span>
+                      <span>₹{formatMoney(totalAccruingAmount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-slate-500 mt-2">
+                      <span>GST (18%)</span>
+                      <span>₹{formatMoney(totalAccruingAmount * GST_RATE)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-base font-bold text-slate-500 mt-3 pt-3 border-t border-slate-200/50">
+                      <span>Estimated Total</span>
+                      <span className="text-lg">₹{formatMoney(totalAccruingAmount * (1 + GST_RATE))}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end mt-1">
+                    <p className="text-xs text-slate-400 font-medium">
+                      Bill generates on {dueDateLabel}. Payment locked until then.
+                    </p>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -1388,6 +1408,75 @@ export default function MerchantScanPaymentPage() {
             )}
           </motion.div>
         </>
+      )}
+
+      {/* Payment Modal */}
+      {activePayMonth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"
+          >
+            <div className="border-b border-slate-100 p-6 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xl font-bold text-slate-900">
+                Confirm Payment
+              </h3>
+              <button onClick={() => setActivePayMonth(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <h4 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wide">
+                {activePayMonth.label} Billing
+              </h4>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50 p-4 mb-6">
+                <div className="flex items-center justify-between text-sm text-slate-600">
+                  <span>{activePayMonth.count} unpaid scans (locked rates)</span>
+                  <span>₹{formatMoney(activePayMonth.amount)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-slate-600 mt-2">
+                  <span>GST (18%)</span>
+                  <span>₹{formatMoney(activePayMonth.amount * GST_RATE)}</span>
+                </div>
+                <div className="flex items-center justify-between text-base font-bold text-slate-900 mt-3 pt-3 border-t border-slate-200">
+                  <span>Total Payable</span>
+                  <span className="text-xl text-[#1857D6]">
+                    ₹{formatMoney(activePayMonth.amount * (1 + GST_RATE))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setActivePayMonth(null)}
+                  disabled={isSubmitting}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handlePayment(activePayMonth.key)}
+                  disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-3 text-sm font-bold text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <LoaderIcon size={16} className="animate-spin" />
+                      Wait...
+                    </>
+                  ) : (
+                    <>
+                      Pay ₹{formatMoney(activePayMonth.amount * (1 + GST_RATE))}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   )

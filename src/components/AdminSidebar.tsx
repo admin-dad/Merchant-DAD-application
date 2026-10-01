@@ -112,7 +112,7 @@ export default function AdminSidebar({
         <Link href="/admin-dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
           <div className="relative h-8 w-28 overflow-hidden flex items-center justify-start">
             <Image
-              src="/logopng.jpeg"
+              src="/homelg.png"
               alt="DAD Logo"
               fill
               className="object-contain object-left"
@@ -219,7 +219,7 @@ function SidebarContent({
       <Link href="/admin-dashboard" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
         <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
           <Image
-            src="/logopng.jpeg"
+            src="/homelg.png"
             alt="DAD Logo"
             fill
             className="object-contain object-left"

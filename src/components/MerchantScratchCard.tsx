@@ -787,18 +787,18 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                         {history.map((h, index) => {
                           const won = isWin(h.status)
 
-                          // 10 dark bg colours cycling for "No Reward" rows
+                          // 10 light bg colours cycling for "No Reward" rows
                           const noRewardColors = [
-                            'bg-rose-600    text-white',
-                            'bg-violet-600  text-white',
-                            'bg-amber-500   text-white',
-                            'bg-pink-600    text-white',
-                            'bg-green-600   text-white',
-                            'bg-orange-600  text-white',
-                            'bg-teal-600    text-white',
-                            'bg-blue-600    text-white',
-                            'bg-red-700     text-white',
-                            'bg-indigo-600  text-white',
+                            'bg-rose-50     text-rose-600',
+                            'bg-violet-50   text-violet-600',
+                            'bg-amber-50    text-amber-600',
+                            'bg-pink-50     text-pink-600',
+                            'bg-emerald-50  text-emerald-600',
+                            'bg-orange-50   text-orange-600',
+                            'bg-teal-50     text-teal-600',
+                            'bg-sky-50      text-sky-600',
+                            'bg-red-50      text-red-600',
+                            'bg-indigo-50   text-indigo-600',
                           ]
                           const noRewardColor = noRewardColors[index % noRewardColors.length]
 

@@ -86,7 +86,7 @@ export default function Merchantsidebar({
         <Link href="/dashboard" className="flex items-center gap-3 text-white" style={{ fontFamily: 'var(--font-display)' }}>
           <div className="relative h-8 w-24 overflow-hidden flex items-center justify-start">
             <Image
-              src="/logopng.jpeg"
+              src="/homelg.png"
               alt="Logo"
               fill
               className="object-contain object-left"
@@ -198,7 +198,7 @@ function IconRailContent({
       {/* Logo */}
       <Link href="" className="flex items-center justify-center pt-6 pb-5">
         <div className="relative h-9 w-9 overflow-hidden rounded-lg">
-          <Image src="/logopng.jpeg" alt="Logo" fill className="object-contain" priority />
+          <Image src="/homelg.png" alt="Logo" fill className="object-contain" priority />
         </div>
       </Link>
 
@@ -295,7 +295,7 @@ function SidebarContent({
       <Link href="" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
         <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
           <Image
-            src="/logopng.jpeg"
+            src="/homelg.png"
             alt="Logo"
             fill
             className="object-contain object-left"
