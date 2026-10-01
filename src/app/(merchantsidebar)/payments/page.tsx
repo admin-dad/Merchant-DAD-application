@@ -1359,10 +1359,7 @@ export default function MerchantScanPaymentPage() {
                                   {scan.customer_name}
                                 </span>
                               )}
-                              <span className="font-mono text-slate-600 flex items-center gap-1 mt-0.5">
-                                <PhoneIcon size={12} className="text-slate-400" />
-                                {scan.customer_phone || 'N/A'}
-                              </span>
+                              
                             </div>
                           </td>
 

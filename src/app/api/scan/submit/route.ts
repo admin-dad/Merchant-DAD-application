@@ -15,6 +15,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // ── DUPLICATE PARTICIPATION CHECK (Server-side to fix clock skew) ──
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+    const { data: recentScan } = await supabase
+      .from('qr_scans')
+      .select('created_at')
+      .eq('merchant_id', merchant_id)
+      .eq('customer_phone', customer_phone.trim())
+      .gte('created_at', tenMinutesAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (recentScan && recentScan.length > 0) {
+      return NextResponse.json({ error: 'cooldown' }, { status: 429 })
+    }
+
     // Resolve current scan cost
     let scanCost = 4.0 // default fallback
     const { data: merchantData } = await supabase

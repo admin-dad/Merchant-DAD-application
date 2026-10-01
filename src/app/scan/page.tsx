@@ -203,7 +203,7 @@ function ScanContent() {
   const [prizeWon, setPrizeWon] = useState<string | null>(null)
   const [prizeGift, setPrizeGift] = useState<GiftInfo | null>(null)
   const [alreadyParticipated, setAlreadyParticipated] = useState(false)
-  const [cooldownMinutesLeft, setCooldownMinutesLeft] = useState(10)
+
 
   // Download-as-image state for the win screen
   const [isDownloading, setIsDownloading] = useState(false)
@@ -262,35 +262,6 @@ function ScanContent() {
       return
     }
 
-    // ── DUPLICATE PARTICIPATION CHECK – 10-minute cooldown ──
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
-
-    const { data: existingScans, error: checkError } = await supabase
-      .from('qr_scans')
-      .select('id, created_at')
-      .eq('merchant_id', merchantId)
-      .eq('customer_phone', phone.trim())
-      .gte('created_at', tenMinutesAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (checkError) {
-      setError('Could not verify participation. Please try again.')
-      setSubmitting(false)
-      return
-    }
-
-    if (existingScans && existingScans.length > 0) {
-      // Calculate how many minutes remain before the cooldown ends
-      const lastScanAt = new Date(existingScans[0].created_at).getTime()
-      const cooldownEndsAt = lastScanAt + 10 * 60 * 1000
-      const msRemaining = cooldownEndsAt - Date.now()
-      const minsLeft = Math.ceil(msRemaining / 60000)
-      setCooldownMinutesLeft(minsLeft)
-      setAlreadyParticipated(true)
-      setSubmitting(false)
-      return
-    }
 
     // ── FETCH ACTIVE CUSTOMER-TYPE CAMPAIGN (with linked gift) ──
     let activeCampaignId: string | null = null
@@ -343,6 +314,11 @@ function ScanContent() {
     const data = await res.json()
 
     if (!res.ok || !data.id) {
+      if (res.status === 429) {
+        setAlreadyParticipated(true)
+        setSubmitting(false)
+        return
+      }
       console.error('Submit error:', data.error)
       setError('Could not submit your details. Please try again.')
       setSubmitting(false)
@@ -593,32 +569,10 @@ function ScanContent() {
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
                   <Ban size={32} className="text-amber-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-[#0B0F19]">Please Wait!</h2>
+                <h2 className="text-2xl font-bold text-[#0B0F19]">Every 10 Minutes = Another Chance</h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  <strong className="text-[#0B0F19]">{name}</strong> (+91 {phone}) already
-                  participated at {merchantName} recently.
-                  <br />
-                  <br />
-                  You can scan again in{' '}
-                  <strong className="text-amber-600">
-                    {cooldownMinutesLeft} minute{cooldownMinutesLeft !== 1 ? 's' : ''}
-                  </strong>
-                  . Each scan is allowed once every 10 minutes.
+                  Shop again after 10 minutes and scan the QR code for more chances to win rewards.
                 </p>
-
-                {/* Let a different customer reset and enter their own number */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAlreadyParticipated(false)
-                    setName('')
-                    setPhone('')
-                    setError(null)
-                  }}
-                  className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Use a different number
-                </button>
               </motion.div>
             ) : (
               /* ── STEP 1: Name & Phone Entry ── */
