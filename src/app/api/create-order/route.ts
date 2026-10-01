@@ -92,33 +92,44 @@ export async function POST(req: NextRequest) {
 
       description = `Monthly QR subscription${billing_month ? ` (${billing_month})` : ''}`
     } else {
-      // Per-scan billing — always "pay all outstanding scans together", server-computed.
+      // Per-scan billing — server-computed. If billing_month is provided, pay only that month.
       const rate = await resolveScanRate(merchantData) // Still used for fallback/logging if needed
 
-      const { data: unpaidScans, error: unpaidError } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('qr_scans')
-        .select('id, scan_cost')
+        .select('id, scan_cost, created_at')
         .eq('merchant_id', merchant_id)
         .or('is_paid.is.null,is_paid.eq.false')
         .neq('payment_status', 'paid')
+
+      const { data: unpaidScans, error: unpaidError } = await query
 
       if (unpaidError) {
         return NextResponse.json({ error: `Failed to load outstanding scans: ${unpaidError.message}` }, { status: 500 })
       }
 
-      scanIdsToCharge = (unpaidScans || []).map((s) => s.id)
+      let filteredScans = unpaidScans || []
+      if (billing_month) {
+        filteredScans = filteredScans.filter((s) => {
+          const d = new Date(s.created_at)
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          return key === billing_month
+        })
+      }
+
+      scanIdsToCharge = filteredScans.map((s) => s.id)
       
       // Calculate total base amount by summing the individual locked scan_costs
-      baseAmount = (unpaidScans || []).reduce((sum, scan) => {
+      baseAmount = filteredScans.reduce((sum, scan) => {
         // If scan_cost is somehow null (e.g. before migration), fallback to the current resolved rate
         return sum + (scan.scan_cost !== null ? Number(scan.scan_cost) : rate)
       }, 0)
 
       if (baseAmount <= 0 || scanIdsToCharge.length === 0) {
-        return NextResponse.json({ error: 'There are no outstanding scans to pay for' }, { status: 400 })
+        return NextResponse.json({ error: 'There are no outstanding scans to pay for this month' }, { status: 400 })
       }
 
-      description = `QR scan charges \u00d7 ${scanIdsToCharge.length} scans`
+      description = `QR scan charges \u00d7 ${scanIdsToCharge.length} scans${billing_month ? ` (${billing_month})` : ''}`
     }
 
     const gstAmount = Math.round(baseAmount * GST_RATE * 100) / 100

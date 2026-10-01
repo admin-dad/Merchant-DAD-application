@@ -492,7 +492,7 @@ export default function MerchantScanPaymentPage() {
     })
   }, [scans, searchTerm, fulfillmentFilter])
 
-  const handlePayment = async () => {
+  const handlePayment = async (billingMonth?: string) => {
     if (!merchant || !hasOutstandingPayment) return
     if (!canPayScansNow) {
       setError(`Payment only opens on ${dueDateLabel} (1st of the month).`)
@@ -515,6 +515,7 @@ export default function MerchantScanPaymentPage() {
         body: JSON.stringify({
           merchant_id: merchant.id,
           payment_mode: 'outstanding',
+          billing_month: billingMonth,
         }),
       })
 
@@ -549,6 +550,7 @@ export default function MerchantScanPaymentPage() {
                 gst_amount: orderData.gst_amount,
                 scan_ids: targetScanIds,
                 payment_mode: 'outstanding',
+                billing_month: billingMonth,
               }),
             })
 
@@ -1155,7 +1157,7 @@ export default function MerchantScanPaymentPage() {
           <div className="mb-8 rounded-3xl border border-blue-200/80 bg-gradient-to-br from-blue-50/50 to-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <SparklesIcon className="text-[#1857D6]" size={20} />
-              <h2 className="text-lg font-bold text-slate-900">Pay All Outstanding Scans</h2>
+              <h2 className="text-lg font-bold text-slate-900">Pay Outstanding Scans</h2>
             </div>
 
             {!hasOutstandingPayment ? (
@@ -1188,82 +1190,57 @@ export default function MerchantScanPaymentPage() {
                   </div>
                 )}
 
-                {/* Month-by-month breakdown of unpaid scans, so a rolled-forward
-                    month (e.g. July) and the newly-closed month (e.g. August)
-                    both show as separate line items instead of one lump sum. */}
+                {/* Month-by-month breakdown of unpaid scans */}
                 {payableScansByMonth.length > 0 && (
                   <div className="rounded-2xl border border-slate-200/80 bg-white divide-y divide-slate-100 mb-4">
-                    {payableScansByMonth.map((m) => (
-                      <div key={m.key} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                        <span className="text-slate-600">
-                          {m.label}
-                          {m.key !== previousMonthKey && (
-                            <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
-                              CARRIED FORWARD
+                    {payableScansByMonth.map((m) => {
+                      const mGst = m.amount * GST_RATE;
+                      const mTotal = m.amount + mGst;
+                      return (
+                        <div key={m.key} className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-4 text-sm gap-3">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-700 font-semibold">
+                              {m.label}
+                              {m.key !== previousMonthKey && (
+                                <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 align-middle">
+                                  CARRIED FORWARD
+                                </span>
+                              )}
+                              <span className="ml-2 text-xs font-normal text-slate-500">({m.count} scans)</span>
                             </span>
-                          )}
-                          <span className="ml-2 text-xs text-slate-400">({m.count} scans)</span>
+                            <span className="text-xs text-slate-500">
+                              Base: ₹{formatMoney(m.amount)} + GST (18%): ₹{formatMoney(mGst)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0">
+                            <span className="font-bold text-slate-900 text-lg">₹{formatMoney(mTotal)}</span>
+                            <button
+                              onClick={() => handlePayment(m.key)}
+                              disabled={isSubmitting || !canPayScansNow}
+                              className="rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-2 text-xs font-bold text-white shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
+                            >
+                              {isSubmitting ? 'Wait...' : 'Pay Now'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div className="flex items-center justify-between px-4 py-3 text-sm bg-slate-50/60 rounded-b-2xl">
+                      <span className="text-slate-500 flex flex-col gap-0.5">
+                        <span>
+                          {currentMonthLabel}{' '}
+                          <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
                         </span>
-                        <span className="font-semibold text-slate-900">₹{formatMoney(m.amount)}</span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50/60">
-                      <span className="text-slate-500">
-                        {currentMonthLabel}{' '}
-                        <span className="text-[10px] font-semibold text-slate-400">(still accruing, not yet due)</span>
-                        <span className="ml-2 text-xs text-slate-400">({totalAccruingScansCount} scans)</span>
+                        <span className="text-xs text-slate-400">({totalAccruingScansCount} scans)</span>
                       </span>
-                      <span className="font-semibold text-slate-400">
+                      <span className="font-semibold text-slate-400 text-base">
                         ₹{formatMoney(totalAccruingAmount)}
                       </span>
                     </div>
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4">
-                  <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>{totalPayableScansCount} unpaid scans (locked rates)</span>
-                    <span>₹{formatMoney(outstandingBase)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-slate-600 mt-1">
-                    <span>GST (18%)</span>
-                    <span>₹{formatMoney(outstandingGst)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-base font-bold text-slate-900 mt-2 pt-2 border-t border-slate-100">
-                    <span>Total Payable</span>
-                    <span>₹{formatMoney(outstandingTotalWithGst)}</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between border-t border-slate-200/80 pt-4">
-                  <div>
-                    <span className="text-xs text-slate-500 font-semibold block">Total Payable</span>
-                    <span className="text-2xl font-black text-[#1857D6]">
-                      ₹{formatMoney(outstandingTotalWithGst)}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={handlePayment}
-                    disabled={isSubmitting || !hasOutstandingPayment || !canPayScansNow}
-                    aria-disabled={isSubmitting || !hasOutstandingPayment || !canPayScansNow}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 cursor-pointer"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <LoaderIcon size={18} className="animate-spin" />
-                        <span>Opening Razorpay...</span>
-                      </>
-                    ) : !canPayScansNow ? (
-                      <span>Opens {dueDateLabel}</span>
-                    ) : (
-                      <>
-                        <span>Pay ₹{formatMoney(outstandingTotalWithGst)} Now</span>
-                        <ArrowRightIcon size={18} />
-                      </>
-                    )}
-                  </button>
-                </div>
               </>
             )}
           </div>
