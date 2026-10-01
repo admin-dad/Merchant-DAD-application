@@ -43,6 +43,7 @@ interface Campaign {
   start_date: string | null
   end_date: string | null
   status: string
+  issued_cards: number
   created_at: string
   gifts?: {
     name: string

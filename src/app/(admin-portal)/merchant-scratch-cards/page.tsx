@@ -145,8 +145,8 @@ export default function AdminMerchantScratchCardsPage() {
         if (activeCamp) {
           setEditingCampaignId(activeCamp.id)
           
-          const allNums = (activeCamp.winning_numbers || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
-          const editableNums = allNums.filter(n => n > (activeCamp.issued_cards || 0))
+          const allNums = (activeCamp.winning_numbers || '').split(',').map((n: string) => parseInt(n.trim())).filter((n: number) => !isNaN(n))
+          const editableNums = allNums.filter((n: number) => n > (activeCamp.issued_cards || 0))
 
           setCampaignForm({
             name: activeCamp.name,
@@ -1039,10 +1039,14 @@ export default function AdminMerchantScratchCardsPage() {
                               <button
                                 onClick={() => {
                                   setEditingCampaignId(camp.id);
+                                  const allNums = (camp.winning_numbers || '').split(',').map((n: string) => parseInt(n.trim())).filter((n: number) => !isNaN(n));
+                                  const editableNums = allNums.filter((n: number) => n > (camp.issued_cards || 0));
+
                                   setCampaignForm({
                                     name: camp.name,
                                     prize_details: camp.prize_details || '',
                                     winning_probability: String(parseFloat(((camp.winning_probability ?? 0.1) * 100).toFixed(2))),
+                                    winning_numbers: editableNums.join(', '),
                                     total_cards: String(camp.total_cards ?? 1000),
                                     gift_id: camp.gift_id || '',
                                     status: camp.status === 'active' ? 'active' : 'paused',

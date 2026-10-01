@@ -150,6 +150,7 @@ interface MerchantCampaign {
   name: string
   prize_details: string | null
   winning_probability: number
+  winning_numbers: string | null
   total_cards: number
   issued_cards: number
   gift: { id: string; name: string; description: string | null; image_url: string | null } | null
@@ -198,7 +199,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       const campaignPromise = supabase
         .from('campaigns')
         .select(`
-          id, name, prize_details, winning_probability, total_cards, issued_cards,
+          id, name, prize_details, winning_probability, winning_numbers, total_cards, issued_cards,
           gift:gifts ( id, name, description, image_url )
         `)
         .eq('type', 'merchant')
@@ -236,6 +237,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
           name: campaignData.name,
           prize_details: campaignData.prize_details,
           winning_probability: campaignData.winning_probability,
+          winning_numbers: campaignData.winning_numbers,
           total_cards: campaignData.total_cards,
           issued_cards: campaignData.issued_cards,
           gift: giftJoin ?? null,
