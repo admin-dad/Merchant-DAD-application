@@ -236,46 +236,130 @@ export default function QRCodeManagementPage() {
   const isQrUnlocked = isProfileComplete && (!isMonthlyMerchant || isMonthlyPaid)
 
   // ── Download QR as PNG ──────────────────────────────────────────────
-  const downloadPNG = () => {
+  const downloadPNG = async () => {
     if (!merchant || !isQrUnlocked) return
-    const canvas = qrCanvasRef.current?.querySelector('canvas')
-    if (!canvas) return
+    const qrCanvas = qrCanvasRef.current?.querySelector('canvas')
+    if (!qrCanvas) return
 
-    const pngUrl = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
-    const downloadLink = document.createElement('a')
-    downloadLink.href = pngUrl
-    downloadLink.download = `${merchant.business_name.replace(/\s/g, '_')}_QR.png`
-    document.body.appendChild(downloadLink)
-    downloadLink.click()
-    document.body.removeChild(downloadLink)
+    try {
+      // Load the background image
+      const bgImg = new window.Image()
+      bgImg.src = '/qrscancode.png'
+      
+      await new Promise((resolve, reject) => {
+        bgImg.onload = resolve
+        bgImg.onerror = reject
+      })
+
+      // Create a new canvas matching the background image size
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not get canvas context')
+
+      canvas.width = bgImg.width
+      canvas.height = bgImg.height
+
+      // Draw background
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
+
+      // Calculate sizes (QR takes ~35% of the height)
+      const qrSize = Math.min(canvas.width, canvas.height) * 0.35
+      const qrX = (canvas.width - qrSize) / 2
+      const qrY = (canvas.height - qrSize) / 2 + (canvas.height * 0.05) // Shifted down slightly
+
+      // Draw a white border/background for the QR code
+      const padding = canvas.height * 0.02
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2)
+      
+      // Draw the QR code
+      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize)
+
+      // Draw Merchant Name
+      ctx.fillStyle = '#0B0F19'
+      ctx.font = `bold ${canvas.height * 0.05}px system-ui, -apple-system, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      // Add subtle text shadow for better readability
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.8)'
+      ctx.shadowBlur = 10
+      ctx.fillText(merchant.business_name, canvas.width / 2, qrY - padding - 15)
+
+      // Draw Subtitle
+      ctx.fillStyle = '#1e293b'
+      ctx.font = `bold ${canvas.height * 0.03}px system-ui, -apple-system, sans-serif`
+      ctx.textBaseline = 'top'
+      ctx.fillText('Scan & Win Rewards!', canvas.width / 2, qrY + qrSize + padding + 15)
+
+      // Reset shadow before exporting (just good practice)
+      ctx.shadowBlur = 0
+
+      // Download the combined image
+      const pngUrl = canvas.toDataURL('image/png')
+      const downloadLink = document.createElement('a')
+      downloadLink.href = pngUrl
+      downloadLink.download = `${merchant.business_name.replace(/\s/g, '_')}_Promotional_QR.png`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
+      document.body.removeChild(downloadLink)
+
+    } catch (err) {
+      console.error('Failed to generate PNG:', err)
+      alert('Failed to generate PNG. Please try again.')
+    }
   }
 
   // ── Download QR as PDF ──────────────────────────────────────────────
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     if (!merchant || !isQrUnlocked) return
     const canvas = qrCanvasRef.current?.querySelector('canvas')
     if (!canvas) return
 
     const pngData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF()
-    pdf.setFontSize(20)
-    pdf.setTextColor(11, 15, 25)
-    pdf.text(merchant.business_name, 105, 30, { align: 'center' })
-    pdf.setFontSize(12)
-    pdf.setTextColor(100, 116, 139)
-    pdf.text(`Merchant ID: ${merchant.id}`, 105, 40, { align: 'center' })
-    pdf.text(`Category: ${merchant.category}${merchant.sub_category ? ` (${merchant.sub_category})` : ''}`, 105, 47, { align: 'center' })
+    
+    try {
+      // Fetch the promotional background image
+      const imgResponse = await fetch('/qrscancode.png')
+      const blob = await imgResponse.blob()
+      
+      const base64bg = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
 
-    const imgWidth = 100
-    const imgHeight = 100
-    const x = (pdf.internal.pageSize.width - imgWidth) / 2
-    const y = 60
-    pdf.addImage(pngData, 'PNG', x, y, imgWidth, imgHeight)
-    pdf.setFontSize(10)
-    pdf.setTextColor(24, 87, 214)
-    pdf.text('Scan to participate in exclusive campaigns & win rewards!', 105, 180, { align: 'center' })
+      const fileFormat = blob.type === 'image/jpeg' ? 'JPEG' : 'PNG'
 
-    pdf.save(`${merchant.business_name.replace(/\s/g, '_')}_QR.pdf`)
+      // Initialize landscape A4 PDF
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pdfWidth = pdf.internal.pageSize.getWidth()   // 297mm
+      const pdfHeight = pdf.internal.pageSize.getHeight() // 210mm
+
+      // Draw background
+      pdf.addImage(base64bg, fileFormat, 0, 0, pdfWidth, pdfHeight)
+
+      // Draw QR Code centered in the blank space
+      const qrSize = 80 // 80x80 mm
+      const qrX = (pdfWidth - qrSize) / 2
+      const qrY = (pdfHeight - qrSize) / 2 + 10 // Shifted slightly down for visual balance
+
+      pdf.addImage(pngData, 'PNG', qrX, qrY, qrSize, qrSize)
+
+      // Add Merchant Name above the QR code
+      pdf.setFontSize(28)
+      pdf.setTextColor(11, 15, 25) // Dark slate
+      pdf.text(merchant.business_name, pdfWidth / 2, qrY - 15, { align: 'center' })
+
+      // Add call to action below the QR code
+      pdf.setFontSize(16)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text('Scan & Win Rewards!', pdfWidth / 2, qrY + qrSize + 15, { align: 'center' })
+
+      pdf.save(`${merchant.business_name.replace(/\s/g, '_')}_QR.pdf`)
+    } catch (err) {
+      console.error('Failed to generate PDF with background:', err)
+      alert('Failed to generate PDF. Please try again.')
+    }
   }
 
   // ── Print QR Code ───────────────────────────────────────────────────
@@ -285,7 +369,7 @@ export default function QRCodeManagementPage() {
     if (!canvas) return
 
     const pngData = canvas.toDataURL('image/png')
-    const printWindow = window.open('', '', 'width=600,height=600')
+    const printWindow = window.open('', '', 'width=1200,height=800')
     if (!printWindow) return
 
     printWindow.document.write(`
@@ -293,25 +377,50 @@ export default function QRCodeManagementPage() {
         <head>
           <title>Print QR - ${merchant.business_name}</title>
           <style>
-            body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
-            h1 { font-size: 24px; color: #0B0F19; margin-bottom: 5px; }
-            p { color: #64748B; margin: 2px 0 20px; font-size: 14px; }
-            img { width: 300px; height: 300px; }
+            @page { size: landscape; margin: 0; }
+            body { 
+              margin: 0; 
+              padding: 0; 
+              width: 100vw; 
+              height: 100vh; 
+              background-image: url('${window.location.origin}/qrscancode.png'); 
+              background-size: cover; 
+              background-position: center; 
+              background-repeat: no-repeat;
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center; 
+              font-family: system-ui, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .content {
+              text-align: center;
+              margin-top: 30px;
+            }
+            h1 { font-size: 42px; color: #0B0F19; margin: 0 0 20px 0; text-shadow: 0 2px 10px rgba(255,255,255,0.8); }
+            p { font-size: 24px; color: #1e293b; margin: 20px 0 0 0; font-weight: bold; text-shadow: 0 2px 10px rgba(255,255,255,0.8); }
+            img.qr { width: 320px; height: 320px; display: block; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 16px; border: 8px solid white; }
           </style>
         </head>
         <body>
-          <h1>${merchant.business_name}</h1>
-          <p>Merchant ID: ${merchant.id} | ${merchant.category}</p>
-          <img src="${pngData}" />
+          <div class="content">
+            <h1>${merchant.business_name}</h1>
+            <img class="qr" src="${pngData}" />
+            <p>Scan & Win Rewards!</p>
+          </div>
+          <script>
+            // Wait a moment for the background image to load before triggering print
+            setTimeout(() => {
+              window.print();
+              window.close();
+            }, 800);
+          </script>
         </body>
       </html>
     `)
     printWindow.document.close()
-    setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-      printWindow.close()
-    }, 500)
   }
 
   // ── Share QR Code ───────────────────────────────────────────────────

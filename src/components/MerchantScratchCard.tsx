@@ -316,9 +316,40 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
     setIsScratching(true)
 
     const effectiveProbability = campaign?.winning_probability ?? card.winning_probability
-    const isWinner = Math.random() < effectiveProbability
-    const newStatus = isWinner ? 'won' : 'lost'
+    const winNumsStr = campaign?.winning_numbers?.trim()
     const linkedCampaignId = campaign?.id ?? card.campaign_id ?? null
+
+    let currentCardNumber = 1
+    if (linkedCampaignId) {
+      const { count, error } = await supabase
+        .from('merchant_scratch_cards')
+        .select('*', { count: 'exact', head: true })
+        .eq('merchant_id', merchantId)
+        .eq('campaign_id', linkedCampaignId)
+        .in('status', ['won', 'lost']) // already opened cards
+      
+      if (!error) {
+        currentCardNumber = (count || 0) + 1
+      }
+    }
+
+    let isWinner = false
+    if (winNumsStr && winNumsStr.length > 0) {
+      const winNums = winNumsStr
+        .split(',')
+        .map((n: string) => parseInt(n.trim()))
+        .filter((n: number) => !isNaN(n))
+      
+      if (winNums.length > 0) {
+        isWinner = winNums.includes(currentCardNumber)
+      } else {
+        isWinner = Math.random() < effectiveProbability
+      }
+    } else {
+      isWinner = Math.random() < effectiveProbability
+    }
+
+    const newStatus = isWinner ? 'won' : 'lost'
 
     await supabase
       .from('merchant_scratch_cards')

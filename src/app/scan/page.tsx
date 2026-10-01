@@ -197,6 +197,7 @@ function ScanContent() {
 
   // Scan & Scratch Card States
   const [scanRecordId, setScanRecordId] = useState<string | null>(null)
+  const [scanNumber, setScanNumber] = useState<number | null>(null)
   const [activeCampaign, setActiveCampaign] = useState<CampaignInfo | null>(null)
   const [isScratching, setIsScratching] = useState(false)
   const [scratchResult, setScratchResult] = useState<'win' | 'lose' | null>(null)
@@ -324,8 +325,11 @@ function ScanContent() {
       setSubmitting(false)
       return
     }
-
+    
     setScanRecordId(data.id)
+    if (data.scan_number) {
+      setScanNumber(data.scan_number)
+    }
     setSubmitting(false)
   }
 
@@ -348,8 +352,7 @@ function ScanContent() {
         .filter((n: number) => !isNaN(n))
 
       if (winNums.length > 0) {
-        const generatedNumber = Math.floor(Math.random() * 100) + 1
-        if (winNums.includes(generatedNumber)) {
+        if (scanNumber !== null && winNums.includes(scanNumber)) {
           isWinner = true
         }
       } else {

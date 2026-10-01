@@ -58,6 +58,7 @@ interface CampaignRow {
   name: string
   prize_details: string | null
   winning_probability: number
+  winning_numbers: string | null
   start_date: string | null
   end_date: string | null
   status: string
@@ -70,6 +71,7 @@ const EMPTY_CAMPAIGN_FORM = {
   name: 'Merchant Scratch Card Campaign',
   prize_details: '',
   winning_probability: '10',
+  winning_numbers: '',
   total_cards: '1000',
   gift_id: '',
   status: 'active' as 'active' | 'paused',
@@ -133,7 +135,7 @@ export default function AdminMerchantScratchCardsPage() {
       // Fetch ALL merchant campaigns
       const { data: campaignData } = await supabase
         .from('campaigns')
-        .select('id, name, prize_details, winning_probability, start_date, end_date, status, total_cards, issued_cards, gift_id')
+        .select('id, name, prize_details, winning_probability, winning_numbers, start_date, end_date, status, total_cards, issued_cards, gift_id')
         .eq('type', 'merchant')
         .order('created_at', { ascending: false })
 
@@ -142,10 +144,15 @@ export default function AdminMerchantScratchCardsPage() {
         const activeCamp = campaignData.find(c => c.status === 'active') || campaignData[0]
         if (activeCamp) {
           setEditingCampaignId(activeCamp.id)
+          
+          const allNums = (activeCamp.winning_numbers || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+          const editableNums = allNums.filter(n => n > (activeCamp.issued_cards || 0))
+
           setCampaignForm({
             name: activeCamp.name,
             prize_details: activeCamp.prize_details || '',
             winning_probability: String(parseFloat(((activeCamp.winning_probability ?? 0.1) * 100).toFixed(2))),
+            winning_numbers: editableNums.join(', '),
             total_cards: String(activeCamp.total_cards ?? 1000),
             gift_id: activeCamp.gift_id || '',
             status: activeCamp.status === 'active' ? 'active' : 'paused',
@@ -247,10 +254,33 @@ export default function AdminMerchantScratchCardsPage() {
     setSavingCampaign(true)
     setCampaignSaved(false)
 
+    let finalWinningNumbers: string | null = null
+    if (editingCampaignId) {
+      const pastCamp = allMerchantCampaigns.find(c => c.id === editingCampaignId)
+      if (pastCamp) {
+        const pastNums = (pastCamp.winning_numbers || '')
+          .split(',')
+          .map(n => parseInt(n.trim()))
+          .filter(n => !isNaN(n) && n <= pastCamp.issued_cards)
+        
+        const newEditableNums = (campaignForm.winning_numbers || '')
+          .split(',')
+          .map(n => parseInt(n.trim()))
+          .filter(n => !isNaN(n))
+
+        const combinedNums = Array.from(new Set([...pastNums, ...newEditableNums])).sort((a, b) => a - b)
+        finalWinningNumbers = combinedNums.length > 0 ? combinedNums.join(', ') : null
+      }
+    } else {
+      const newEditableNums = (campaignForm.winning_numbers || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+      finalWinningNumbers = newEditableNums.length > 0 ? newEditableNums.join(', ') : null
+    }
+
     const payload = {
       name: campaignForm.name.trim() || 'Merchant Scratch Card Campaign',
       prize_details: campaignForm.prize_details.trim() || null,
       winning_probability: (parseFloat(campaignForm.winning_probability) || 0) / 100,
+      winning_numbers: finalWinningNumbers,
       total_cards: parseInt(campaignForm.total_cards, 10) || 0,
       gift_id: campaignForm.gift_id || null,
       status: campaignForm.status,
@@ -759,33 +789,58 @@ export default function AdminMerchantScratchCardsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 flex items-center gap-1.5">
-                        <Percent size={12} /> Winning Chance (%)
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 flex items-center justify-between">
+                        <span>Winning Numbers</span>
+                        {campaign && campaign.issued_cards > 0 && editingCampaignId === campaign.id && (
+                          <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                            Next Card: #{campaign.issued_cards + 1}
+                          </span>
+                        )}
                       </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          max="100"
-                          value={campaignForm.winning_probability}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (val !== '' && parseFloat(val) > 100) val = '100';
-                            setCampaignForm({ ...campaignForm, winning_probability: val });
-                          }}
-                          onBlur={(e) => {
-                            let val = parseFloat(e.target.value);
-                            if (isNaN(val) || val < 0.1) setCampaignForm({ ...campaignForm, winning_probability: '0.1' });
-                          }}
-                          required
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 pr-9 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Roughly {Math.round((parseInt(campaignForm.total_cards) || 0) * ((parseFloat(campaignForm.winning_probability) || 0) / 100))} winners out of {campaignForm.total_cards || 0} cards
-                      </p>
+                      {(() => {
+                        if (campaign && campaign.issued_cards > 0 && editingCampaignId === campaign.id) {
+                          const pastNums = (campaign.winning_numbers || '')
+                            .split(',')
+                            .map(n => parseInt(n.trim()))
+                            .filter(n => !isNaN(n) && n <= campaign.issued_cards)
+                          
+                          if (pastNums.length > 0) {
+                            return (
+                              <div className="mb-2 flex flex-wrap gap-1.5">
+                                <span className="text-[10px] text-slate-400 self-center mr-1">Locked:</span>
+                                {pastNums.map(n => (
+                                  <span key={n} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
+                                    {n}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                          }
+                        }
+                        return null
+                      })()}
+                      
+                      <input
+                        type="text"
+                        value={campaignForm.winning_numbers}
+                        onChange={(e) => setCampaignForm({ ...campaignForm, winning_numbers: e.target.value })}
+                        placeholder={campaign ? `e.g. ${campaign.issued_cards + 1}, ${campaign.issued_cards + 2}` : "e.g. 6, 10, 31"}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                      />
+                      {campaign && campaign.issued_cards > 0 && editingCampaignId === campaign.id && (
+                        (() => {
+                          const inputNums = campaignForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+                          const invalidNums = inputNums.filter(n => n <= campaign.issued_cards)
+                          if (invalidNums.length > 0) {
+                            return (
+                              <p className="mt-1.5 text-[11px] font-semibold text-rose-500">
+                                Error: Cannot add {invalidNums.join(', ')} because the next card is #{campaign.issued_cards + 1}.
+                              </p>
+                            )
+                          }
+                          return null
+                        })()
+                      )}
                     </div>
                     <div>
                       <label className="text-xs font-bold uppercase text-slate-500 mb-1.5 block">Total Cards Allowed</label>
@@ -838,7 +893,13 @@ export default function AdminMerchantScratchCardsPage() {
 
                   <button
                     type="submit"
-                    disabled={savingCampaign}
+                    disabled={savingCampaign || (() => {
+                      if (campaign && campaign.issued_cards > 0 && editingCampaignId === campaign.id) {
+                        const inputNums = campaignForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+                        return inputNums.some(n => n <= campaign.issued_cards)
+                      }
+                      return false
+                    })()}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#9333EA] to-[#7BC142] px-7 py-3 text-sm font-semibold text-white shadow-md hover:translate-y-[-1px] disabled:opacity-50 cursor-pointer"
                   >
                     {savingCampaign ? (

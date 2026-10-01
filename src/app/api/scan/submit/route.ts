@@ -87,7 +87,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ id: data.id })
+    // ── COUNT CHRONOLOGICAL SCANS FOR THIS CAMPAIGN & MERCHANT ──
+    let currentScanCount = 0
+    if (campaign_id) {
+      const { count } = await supabase
+        .from('qr_scans')
+        .select('*', { count: 'exact', head: true })
+        .eq('merchant_id', merchant_id)
+        .eq('campaign_id', campaign_id)
+      
+      currentScanCount = count || 1 // count includes the one we just inserted, if count is 0 for some reason fallback to 1
+    }
+
+    return NextResponse.json({ id: data.id, scan_number: currentScanCount })
   } catch (err: any) {
     console.error('API /scan/submit exception:', err)
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })

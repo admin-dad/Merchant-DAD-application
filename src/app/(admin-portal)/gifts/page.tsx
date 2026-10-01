@@ -395,14 +395,14 @@ export default function AdminGiftsPage() {
                     <div className="flex items-center gap-1 bg-slate-50/80 p-1 rounded-lg border border-slate-100">
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleEditClick(gift); }}
-                        className="p-1.5 text-slate-500 hover:text-[#1857D6] hover:bg-white rounded-md shadow-sm cursor-pointer transition-colors"
+                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-md shadow-sm cursor-pointer transition-colors"
                         title="Edit Gift"
                       >
                         <Pencil size={14} />
                       </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleDeleteGift(gift.id, gift.claimed_count); }}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-white rounded-md shadow-sm cursor-pointer transition-colors"
+                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-md shadow-sm cursor-pointer transition-colors"
                         title="Delete Gift"
                       >
                         <Trash2 size={14} />

@@ -236,6 +236,10 @@ export default function AdminCampaignsPage() {
   // Mirrors the rounding done server-side in determine_scan_outcome() so the number shown
   // here always matches what the DB function is aiming for.
   const getTargetWinners = (camp: Campaign) => {
+    if (camp.winning_numbers && camp.winning_numbers.trim() !== '') {
+      return camp.winning_numbers.split(',').filter(n => n.trim().length > 0).length
+    }
+    // Fallback if no specific numbers are set, though going forward we rely on winning_numbers
     return Math.round((camp.total_cards || 0) * (camp.winning_probability || 0))
   }
 
@@ -277,6 +281,11 @@ export default function AdminCampaignsPage() {
   const handleEditClick = (camp: Campaign) => {
     setEditingCamp(camp)
     setEditFormError(null)
+
+    // Only allow editing of future numbers in the UI. Past numbers are locked.
+    const allNums = (camp.winning_numbers || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+    const editableNums = allNums.filter(n => n > camp.issued_cards)
+
     setEditForm({
       name: camp.name,
       type: camp.type || 'customer',
@@ -284,7 +293,7 @@ export default function AdminCampaignsPage() {
       prize_details: camp.prize_details || '',
       winning_probability: String(parseFloat(((camp.winning_probability || 0) * 100).toFixed(2))),
       total_cards: String(camp.total_cards),
-      winning_numbers: camp.winning_numbers || '',
+      winning_numbers: editableNums.join(', '),
       start_date: camp.start_date || '',
       end_date: camp.end_date || '',
       status: camp.status || 'active'
@@ -299,6 +308,20 @@ export default function AdminCampaignsPage() {
     setSubmitting(true)
     setEditFormError(null)
 
+    // Combine locked past numbers with the new edited future numbers
+    const pastNums = (editingCamp.winning_numbers || '')
+      .split(',')
+      .map(n => parseInt(n.trim()))
+      .filter(n => !isNaN(n) && n <= editingCamp.issued_cards)
+    
+    const newEditableNums = (editForm.winning_numbers || '')
+      .split(',')
+      .map(n => parseInt(n.trim()))
+      .filter(n => !isNaN(n))
+
+    const combinedNums = Array.from(new Set([...pastNums, ...newEditableNums])).sort((a, b) => a - b)
+    const finalWinningNumbers = combinedNums.length > 0 ? combinedNums.join(', ') : null
+
     const { data, error } = await supabase
       .from('campaigns')
       .update({
@@ -308,7 +331,7 @@ export default function AdminCampaignsPage() {
         prize_details: editForm.prize_details || null,
         winning_probability: (parseFloat(editForm.winning_probability) || 0) / 100,
         total_cards: parseInt(editForm.total_cards) || 1000,
-        winning_numbers: editForm.winning_numbers || null,
+        winning_numbers: finalWinningNumbers,
         start_date: editForm.start_date || null,
         end_date: editForm.end_date || null,
         status: editForm.status
@@ -527,17 +550,17 @@ export default function AdminCampaignsPage() {
                   {/* Status & Actions Container */}
                   <div className="flex items-center gap-3 shrink-0 self-start">
                     {/* Actions (Edit/Delete) */}
-                    <div className="flex items-center gap-1 bg-slate-50/80 p-1 rounded-lg border border-slate-100">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleEditClick(camp); }}
-                        className="p-1.5 text-slate-500 hover:text-[#1857D6] hover:bg-white rounded-md cursor-pointer transition-all shadow-sm"
+                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-md cursor-pointer transition-all shadow-sm"
                         title="Edit Campaign"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(camp.id); }}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-white rounded-md cursor-pointer transition-all shadow-sm"
+                        className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 rounded-md cursor-pointer transition-all shadow-sm"
                         title="Delete Campaign"
                       >
                         <Trash2 size={14} />
@@ -576,16 +599,17 @@ export default function AdminCampaignsPage() {
                   <div className="grid grid-cols-3 gap-2 text-center mb-3 pb-3 border-b border-slate-200">
                     <div className="p-2 rounded-lg bg-emerald-50/50">
                       <p className="text-[10px] font-bold uppercase text-emerald-600">Winners (Live / Target)</p>
-                      <p className="text-base font-bold text-slate-900 mt-1">
-                        {stats.winners} <span className="text-slate-400 font-semibold">/ {targetWinners}</span>
+                      <p className="text-base font-bold mt-1">
+                        <span className={stats.winners > targetWinners ? "text-rose-600" : "text-slate-900"}>{stats.winners}</span> 
+                        <span className="text-slate-400 font-semibold"> / {targetWinners}</span>
                       </p>
                     </div>
                     <div className="p-2 rounded-lg bg-red-50 border border-red-100">
                       <p className="text-[10px] font-bold uppercase text-red-600">Remaining Rewards</p>
                       <p className="text-base font-bold text-red-600 mt-1">{Math.max(0, targetWinners - stats.winners)}</p>
                     </div>
-                    <div className="p-2 rounded-lg bg-slate-50/80">
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Non-Winners</p>
+                    <div className="p-2 rounded-lg bg-slate-100">
+                      <p className="text-[10px] font-bold uppercase text-slate-600">Non-Winners</p>
                       <p className="text-base font-bold text-slate-900 mt-1">{stats.nonWinners}</p>
                     </div>
                   </div>
@@ -644,8 +668,12 @@ export default function AdminCampaignsPage() {
 
                   {/* Quota status line — driven by the same dynamic-allocation logic as the DB function */}
                   <div className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
-                    <Target size={12} className={quotaExhausted ? 'text-slate-400' : 'text-[#1857D6]'} />
-                    {quotaExhausted ? (
+                    <Target size={12} className={stats.winners > targetWinners ? 'text-rose-600' : (quotaExhausted ? 'text-slate-400' : 'text-[#1857D6]')} />
+                    {stats.winners > targetWinners ? (
+                      <span className="text-rose-600">
+                        Warning: Live winners ({stats.winners}) have exceeded the target quota ({targetWinners}). Edit the campaign to increase total cards.
+                      </span>
+                    ) : quotaExhausted ? (
                       <span className="text-slate-500">Winner quota reached — remaining scans will all be non-winners.</span>
                     ) : (
                       <span className="text-slate-600">
@@ -657,13 +685,9 @@ export default function AdminCampaignsPage() {
 
                 {/* Winning Logic Meta */}
                 <div className="grid grid-cols-2 gap-3 text-xs text-slate-600 mb-4">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 col-span-2">
                     <Hash size={12} className="text-slate-400" />
-                    <span>Win Nos: <span className="font-semibold text-slate-900">{camp.winning_numbers || 'Random'}</span></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Percent size={12} className="text-[#3E7A1C]" />
-                    <span>Target Rate: <span className="font-semibold text-slate-900">{parseFloat((camp.winning_probability * 100).toFixed(2))}%</span></span>
+                    <span>Win Nos: <span className="font-semibold text-slate-900">{camp.winning_numbers || 'None specified'}</span></span>
                   </div>
                   <div className="flex items-center gap-1.5 col-span-2">
                     <Calendar size={12} className="text-slate-400" />
@@ -817,44 +841,17 @@ export default function AdminCampaignsPage() {
                       />
                     </div>
                     <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Chance (%)</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          max="100"
-                          value={form.winning_probability}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (val !== '' && parseFloat(val) > 100) val = '100';
-                            setForm({ ...form, winning_probability: val });
-                          }}
-                          onBlur={(e) => {
-                            let val = parseFloat(e.target.value);
-                            if (isNaN(val) || val < 0.1) setForm({ ...form, winning_probability: '0.1' });
-                          }}
-                          required
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-9 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
-                      </div>
-                      <p className="mt-1 text-[10px] text-slate-400">
-                        Roughly {Math.round((parseInt(form.total_cards) || 0) * ((parseFloat(form.winning_probability) || 0) / 100))} winners out of {form.total_cards || 0} cards
-                      </p>
+                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Numbers</label>
+                      <input
+                        type="text"
+                        value={form.winning_numbers}
+                        onChange={(e) => setForm({...form, winning_numbers: e.target.value})}
+                        placeholder="e.g. 31, 50, 100"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                      />
+                      <p className="mt-1 text-[10px] text-slate-400">Specific scan counts that will win (comma separated, e.g. "31" for the 31st person)</p>
                     </div>
                   </div>
-
-                  {/* <div>
-                    <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Numbers (Optional)</label>
-                    <input
-                      type="text"
-                      value={form.winning_numbers}
-                      onChange={(e) => setForm({...form, winning_numbers: e.target.value})}
-                      placeholder="e.g. 11, 22, 33"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                    />
-                  </div> */}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -1012,44 +1009,58 @@ export default function AdminCampaignsPage() {
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
                       />
                     </div>
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Chance (%)</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0.1"
-                          max="100"
-                          value={editForm.winning_probability}
-                          onChange={(e) => {
-                            let val = e.target.value;
-                            if (val !== '' && parseFloat(val) > 100) val = '100';
-                            setEditForm({ ...editForm, winning_probability: val });
-                          }}
-                          onBlur={(e) => {
-                            let val = parseFloat(e.target.value);
-                            if (isNaN(val) || val < 0.1) setEditForm({ ...editForm, winning_probability: '0.1' });
-                          }}
-                          required
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-9 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
-                      </div>
-                      <p className="mt-1 text-[10px] text-slate-400">
-                        Roughly {Math.round((parseInt(editForm.total_cards) || 0) * ((parseFloat(editForm.winning_probability) || 0) / 100))} winners out of {editForm.total_cards || 0} cards
-                      </p>
+                    <div className="col-span-1">
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        <span>Winning Numbers</span>
+                        {editingCamp.issued_cards > 0 && (
+                          <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                            Next Card: #{editingCamp.issued_cards + 1}
+                          </span>
+                        )}
+                      </label>
+                      
+                      {(() => {
+                        const pastNums = (editingCamp.winning_numbers || '')
+                          .split(',')
+                          .map(n => parseInt(n.trim()))
+                          .filter(n => !isNaN(n) && n <= editingCamp.issued_cards)
+                        
+                        if (pastNums.length > 0) {
+                          return (
+                            <div className="mb-2 flex flex-wrap gap-1.5">
+                              <span className="text-[10px] text-slate-400 self-center mr-1">Locked:</span>
+                              {pastNums.map(n => (
+                                <span key={n} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
+                                  {n}
+                                </span>
+                              ))}
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+
+                      <input
+                        type="text"
+                        value={editForm.winning_numbers}
+                        onChange={(e) => setEditForm({...editForm, winning_numbers: e.target.value})}
+                        placeholder={`e.g. ${editingCamp.issued_cards + 1}, ${editingCamp.issued_cards + 2}`}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                      />
+                      {(() => {
+                        const inputNums = editForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+                        const invalidNums = inputNums.filter(n => n <= editingCamp.issued_cards)
+                        if (invalidNums.length > 0) {
+                          return (
+                            <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                              Error: Cannot add {invalidNums.join(', ')} because the next card is #{editingCamp.issued_cards + 1}.
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   </div>
-
-                  {/* <div>
-                    <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Winning Numbers</label>
-                    <input
-                      type="text"
-                      value={editForm.winning_numbers}
-                      onChange={(e) => setEditForm({...editForm, winning_numbers: e.target.value})}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                    />
-                  </div> */}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -1089,7 +1100,10 @@ export default function AdminCampaignsPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (() => {
+                      const inputNums = editForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+                      return inputNums.some(n => n <= editingCamp.issued_cards)
+                    })()}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg disabled:opacity-50 cursor-pointer mt-4"
                   >
                     {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
