@@ -543,18 +543,18 @@ function ScanContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-slate-50 p-3 sm:p-4">
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-hidden"
-        style={{ fontFamily: 'var(--font-display)' }}
+        className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-hidden flex flex-col justify-center"
+        style={{ fontFamily: 'var(--font-display)', maxHeight: 'calc(100dvh - 24px)' }}
       >
         <div className="h-1.5 w-full bg-gradient-to-r from-[#1857D6] via-[#4F8CFF] to-[#7BC142] absolute top-0 left-0" />
 
-        <div className="pt-4">
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7BC142]/10 to-[#1857D6]/10 px-3 py-1 text-xs font-semibold text-[#3E7A1C]">
+        <div className="pt-2 sm:pt-4 overflow-y-auto hide-scrollbar">
+          <div className="mb-2 sm:mb-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7BC142]/10 to-[#1857D6]/10 px-3 py-1 text-xs font-semibold text-[#3E7A1C]">
             <Store size={13} />
             <span>{merchantName}</span>
           </div>
@@ -567,13 +567,13 @@ function ScanContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex flex-col items-center text-center pt-6"
+                className="flex flex-col items-center text-center pt-4 sm:pt-6"
               >
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
-                  <Ban size={32} className="text-amber-500" />
+                <div className="mb-3 sm:mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-amber-50">
+                  <Ban size={28} className="text-amber-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-[#0B0F19]">Every 10 Minutes = Another Chance</h2>
-                <p className="mt-2 text-sm text-slate-500">
+                <h2 className="text-xl sm:text-2xl font-bold text-[#0B0F19]">Every 10 Minutes = Another Chance</h2>
+                <p className="mt-2 text-xs sm:text-sm text-slate-500">
                   Shop again after 10 minutes and scan the QR code for more chances to win rewards.
                 </p>
               </motion.div>
@@ -585,18 +585,19 @@ function ScanContent() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
+                  className="flex flex-col"
                 >
-                  <h2 className="text-2xl font-semibold text-[#0B0F19] sm:text-[28px]">
+                  <h2 className="text-xl font-semibold text-[#0B0F19] sm:text-[28px] leading-tight">
                     Win Exciting Rewards!
                   </h2>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-                    Enter your details to participate in exclusive campaigns at this store.
+                  <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm leading-relaxed text-slate-500">
+                    Enter your details to participate in exclusive campaigns.
                   </p>
 
-                  <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                  <form onSubmit={handleSubmit} className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                     {/* Full Name Input */}
                     <div>
-                      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <label className="mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <User size={14} className="text-[#1857D6]" />
                         Full Name
                       </label>
@@ -605,18 +606,18 @@ function ScanContent() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Enter your full name"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/15 transition-all"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/15 transition-all"
                       />
                     </div>
 
                     {/* Mobile Number Input */}
                     <div>
-                      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <label className="mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <Smartphone size={14} className="text-[#1857D6]" />
                         Mobile Number
                       </label>
                       <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden focus-within:bg-white focus-within:border-[#1857D6] focus-within:ring-2 focus-within:ring-[#1857D6]/15 transition-all">
-                        <span className="pl-3.5 pr-2 text-sm font-medium text-slate-500 border-r border-slate-200 h-full py-2.5 flex items-center">
+                        <span className="pl-3 pr-2 sm:pl-3.5 sm:pr-2 text-xs sm:text-sm font-medium text-slate-500 border-r border-slate-200 h-full py-2 sm:py-2.5 flex items-center">
                           +91
                         </span>
                         <input
@@ -626,26 +627,26 @@ function ScanContent() {
                           value={phone}
                           onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                           placeholder="10-digit mobile number"
-                          className="w-full bg-transparent px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                          className="w-full bg-transparent px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
                         />
                       </div>
                       {error && (
-                        <p className="mt-1 text-xs font-medium text-red-500">{error}</p>
+                        <p className="mt-1 text-[10px] sm:text-xs font-medium text-red-500">{error}</p>
                       )}
                     </div>
 
                     {/* Terms & Conditions Checkbox and Points */}
-                    <div className="mt-4 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <div className="flex h-5 items-center">
+                    <div className="mt-2 sm:mt-4 space-y-3 sm:space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                      <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
+                        <div className="flex h-4 sm:h-5 items-center mt-0.5 sm:mt-0">
                           <input
                             type="checkbox"
                             checked={agreedToTerms}
                             onChange={(e) => setAgreedToTerms(e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-[#1857D6] focus:ring-[#1857D6]"
+                            className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded border-slate-300 text-[#1857D6] focus:ring-[#1857D6]"
                           />
                         </div>
-                        <span className="text-xs text-slate-600 leading-snug">
+                        <span className="text-[10px] sm:text-xs text-slate-600 leading-snug">
                           I agree to the{' '}
                           <button type="button" onClick={() => setShowTermsModal(true)} className="font-semibold text-[#1857D6] hover:underline">Terms & Conditions</button>
                           {' '}and{' '}
@@ -657,7 +658,7 @@ function ScanContent() {
                     <button
                       type="submit"
                       disabled={submitting || !agreedToTerms}
-                      className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] active:translate-y-0 disabled:opacity-50 cursor-pointer"
+                      className="group relative mt-1 sm:mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-2.5 sm:px-6 sm:py-3.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] active:translate-y-0 disabled:opacity-50 cursor-pointer"
                     >
                       {submitting ? (
                         <>
@@ -802,7 +803,7 @@ function ScanContent() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                className="flex flex-col items-center text-center pt-6"
+                className="flex flex-col items-center text-center pt-3 sm:pt-6"
               >
                 {scratchResult === 'win' ? (
                   <>
@@ -810,12 +811,12 @@ function ScanContent() {
                       initial={{ rotate: -10, scale: 0 }}
                       animate={{ rotate: 0, scale: 1 }}
                       transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-                      className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#7BC142]/15 to-[#1857D6]/15"
+                      className="mb-2 sm:mb-4 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#7BC142]/15 to-[#1857D6]/15"
                     >
-                      <CheckCircle2 size={32} className="text-[#3E7A1C]" />
+                      <CheckCircle2 size={28} className="text-[#3E7A1C]" />
                     </motion.div>
-                    <h2 className="text-2xl font-bold text-[#0B0F19]">Congratulations, {name}! 🎉</h2>
-                    <p className="mt-2 text-sm text-slate-500">You won a special reward from {merchantName}:</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-[#0B0F19]">Congratulations, {name}! 🎉</h2>
+                    <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-slate-500">You won a special reward from {merchantName}:</p>
 
                     {/* Gift photo, pulled from the gifts table via campaigns.gift_id */}
                     {prizeGift?.image_url && (
@@ -825,14 +826,14 @@ function ScanContent() {
                         transition={{ delay: 0.15 }}
                         src={prizeGift.image_url}
                         alt={prizeGift.name}
-                        className="mt-4 h-32 w-32 rounded-xl object-cover shadow-lg ring-1 ring-black/5"
+                        className="mt-3 sm:mt-4 h-24 w-24 sm:h-32 sm:w-32 rounded-xl object-cover shadow-lg ring-1 ring-black/5"
                       />
                     )}
 
-                    <div className="mt-4 px-6 py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
-                      <span className="block text-lg font-bold text-[#3E7A1C]">{prizeWon}</span>
+                    <div className="mt-3 sm:mt-4 px-4 sm:px-6 py-2 sm:py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
+                      <span className="block text-base sm:text-lg font-bold text-[#3E7A1C]">{prizeWon}</span>
                       {prizeGift?.description && (
-                        <span className="block mt-1 text-xs text-slate-500">{prizeGift.description}</span>
+                        <span className="block mt-0.5 sm:mt-1 text-[10px] sm:text-xs text-slate-500">{prizeGift.description}</span>
                       )}
                     </div>
 
@@ -841,32 +842,33 @@ function ScanContent() {
                       type="button"
                       onClick={handleDownloadReward}
                       disabled={isDownloading}
-                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
+                      className="mt-3 sm:mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
                     >
                       {isDownloading ? (
                         <>
-                          <Loader2 size={16} className="animate-spin" />
+                          <Loader2 size={14} className="animate-spin" />
                           <span>Preparing...</span>
                         </>
                       ) : (
                         <>
-                          <Download size={16} />
-                          <span>Download Reward</span>
+                          <Download size={14} />
+                          <span>Save to Phone</span>
                         </>
                       )}
                     </button>
+                    <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-500">Please claim this at the store counter.</p>
                   </>
                 ) : (
                   <>
                     <motion.div
                       initial={{ y: -10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50"
+                      className="mb-3 sm:mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-red-50"
                     >
-                      <Frown size={32} className="text-red-500" />
+                      <Frown size={28} className="text-red-500" />
                     </motion.div>
-                    <h2 className="text-2xl font-bold text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <h2 className="text-xl sm:text-2xl font-bold text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
+                    <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-500">
                       You didn't win this time, but keep shopping at {merchantName} and scan again tomorrow for more chances!
                     </p>
                   </>
