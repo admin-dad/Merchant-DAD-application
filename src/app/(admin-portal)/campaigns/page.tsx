@@ -139,6 +139,7 @@ export default function AdminCampaignsPage() {
       const { data: campData, error: campError } = await supabase
         .from('campaigns')
         .select('*, gifts(name)')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false })
 
       if (campError) {
@@ -284,8 +285,9 @@ export default function AdminCampaignsPage() {
     setEditFormError(null)
 
     // Only allow editing of future numbers in the UI. Past numbers are locked.
+    const actualIssuedCount = statsMap[camp.id]?.issued || 0
     const allNums = (camp.winning_numbers || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
-    const editableNums = allNums.filter(n => n > camp.issued_cards)
+    const editableNums = allNums.filter(n => n > actualIssuedCount)
 
     setEditForm({
       name: camp.name,
@@ -310,10 +312,11 @@ export default function AdminCampaignsPage() {
     setEditFormError(null)
 
     // Combine locked past numbers with the new edited future numbers
+    const actualIssuedCount = statsMap[editingCamp.id]?.issued || 0
     const pastNums = (editingCamp.winning_numbers || '')
       .split(',')
       .map(n => parseInt(n.trim()))
-      .filter(n => !isNaN(n) && n <= editingCamp.issued_cards)
+      .filter(n => !isNaN(n) && n <= actualIssuedCount)
     
     const newEditableNums = (editForm.winning_numbers || '')
       .split(',')
@@ -1011,54 +1014,61 @@ export default function AdminCampaignsPage() {
                       />
                     </div>
                     <div className="col-span-1">
-                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                        <span>Winning Numbers</span>
-                        {editingCamp.issued_cards > 0 && (
-                          <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
-                            Next Card: #{editingCamp.issued_cards + 1}
-                          </span>
-                        )}
-                      </label>
-                      
                       {(() => {
-                        const pastNums = (editingCamp.winning_numbers || '')
-                          .split(',')
-                          .map(n => parseInt(n.trim()))
-                          .filter(n => !isNaN(n) && n <= editingCamp.issued_cards)
-                        
-                        if (pastNums.length > 0) {
-                          return (
-                            <div className="mb-2 flex flex-wrap gap-1.5">
-                              <span className="text-[10px] text-slate-400 self-center mr-1">Locked:</span>
-                              {pastNums.map(n => (
-                                <span key={n} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
-                                  {n}
+                        const actualIssuedCount = statsMap[editingCamp.id]?.issued || 0
+                        return (
+                          <>
+                            <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                              <span>Winning Numbers</span>
+                              {actualIssuedCount > 0 && (
+                                <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                                  Next Card: #{actualIssuedCount + 1}
                                 </span>
-                              ))}
-                            </div>
-                          )
-                        }
-                        return null
-                      })()}
+                              )}
+                            </label>
+                            
+                            {(() => {
+                              const pastNums = (editingCamp.winning_numbers || '')
+                                .split(',')
+                                .map(n => parseInt(n.trim()))
+                                .filter(n => !isNaN(n) && n <= actualIssuedCount)
+                              
+                              if (pastNums.length > 0) {
+                                return (
+                                  <div className="mb-2 flex flex-wrap gap-1.5">
+                                    <span className="text-[10px] text-slate-400 self-center mr-1">Locked:</span>
+                                    {pastNums.map(n => (
+                                      <span key={n} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
+                                        {n}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()}
 
-                      <input
-                        type="text"
-                        value={editForm.winning_numbers}
-                        onChange={(e) => setEditForm({...editForm, winning_numbers: e.target.value})}
-                        placeholder={`e.g. ${editingCamp.issued_cards + 1}, ${editingCamp.issued_cards + 2}`}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
-                      />
-                      {(() => {
-                        const inputNums = editForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
-                        const invalidNums = inputNums.filter(n => n <= editingCamp.issued_cards)
-                        if (invalidNums.length > 0) {
-                          return (
-                            <p className="mt-1 text-[11px] font-semibold text-rose-500">
-                              Error: Cannot add {invalidNums.join(', ')} because the next card is #{editingCamp.issued_cards + 1}.
-                            </p>
-                          )
-                        }
-                        return null
+                            <input
+                              type="text"
+                              value={editForm.winning_numbers}
+                              onChange={(e) => setEditForm({...editForm, winning_numbers: e.target.value})}
+                              placeholder={`e.g. ${actualIssuedCount + 1}, ${actualIssuedCount + 2}`}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6]"
+                            />
+                            {(() => {
+                              const inputNums = editForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
+                              const invalidNums = inputNums.filter(n => n <= actualIssuedCount)
+                              if (invalidNums.length > 0) {
+                                return (
+                                  <p className="mt-1 text-[11px] font-semibold text-rose-500">
+                                    Error: Cannot add {invalidNums.join(', ')} because the next card is #{actualIssuedCount + 1}.
+                                  </p>
+                                )
+                              }
+                              return null
+                            })()}
+                          </>
+                        )
                       })()}
                     </div>
                   </div>
@@ -1102,8 +1112,9 @@ export default function AdminCampaignsPage() {
                   <button
                     type="submit"
                     disabled={submitting || (() => {
+                      const actualIssuedCount = statsMap[editingCamp.id]?.issued || 0
                       const inputNums = editForm.winning_numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n))
-                      return inputNums.some(n => n <= editingCamp.issued_cards)
+                      return inputNums.some(n => n <= actualIssuedCount)
                     })()}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg disabled:opacity-50 cursor-pointer mt-4"
                   >

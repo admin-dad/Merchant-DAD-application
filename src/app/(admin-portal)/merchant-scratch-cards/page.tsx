@@ -137,6 +137,7 @@ export default function AdminMerchantScratchCardsPage() {
         .from('campaigns')
         .select('id, name, prize_details, winning_probability, winning_numbers, start_date, end_date, status, total_cards, issued_cards, gift_id')
         .eq('type', 'merchant')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false })
 
       if (campaignData) {

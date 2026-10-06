@@ -31,14 +31,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing campaign id.' }, { status: 400 })
     }
 
-    // Delete associated QR scans and merchant scratch cards to satisfy foreign key constraints
-    await supabaseAdmin.from('qr_scans').delete().eq('campaign_id', id)
-    await supabaseAdmin.from('merchant_scratch_cards').delete().eq('campaign_id', id)
-
-    // Delete the campaign
+    // Soft delete the campaign so that historical scans can still join on it to read the gift names.
     const { error: deleteErr } = await supabaseAdmin
       .from('campaigns')
-      .delete()
+      .update({ status: 'deleted' })
       .eq('id', id)
 
     if (deleteErr) throw deleteErr

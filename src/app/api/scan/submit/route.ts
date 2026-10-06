@@ -87,13 +87,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // ── COUNT CHRONOLOGICAL SCANS FOR THIS CAMPAIGN & MERCHANT ──
+    // ── COUNT CHRONOLOGICAL SCANS FOR THIS CAMPAIGN GLOBALLY ──
     let currentScanCount = 0
     if (campaign_id) {
       const { count } = await supabase
         .from('qr_scans')
         .select('*', { count: 'exact', head: true })
-        .eq('merchant_id', merchant_id)
         .eq('campaign_id', campaign_id)
       
       currentScanCount = count || 1 // count includes the one we just inserted, if count is 0 for some reason fallback to 1

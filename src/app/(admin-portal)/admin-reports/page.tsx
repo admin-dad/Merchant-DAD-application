@@ -163,7 +163,7 @@ export default function AdminReportsPage() {
         supabase.from('merchant_referrals').select('id, referred_business_name, status, created_at, referrer_id').order('created_at', { ascending: false }),
         supabase.from('vendors').select('id, store_name, owner_name, status, created_at').order('created_at', { ascending: false }),
         supabase.from('orders').select('id, status, created_at').order('created_at', { ascending: false }),
-        supabase.from('campaigns').select('id, name, status, winning_probability, created_at').order('created_at', { ascending: false })
+        supabase.from('campaigns').select('id, name, status, winning_probability, created_at').neq('status', 'deleted').order('created_at', { ascending: false })
       ])
 
       const merchData = merchantsRes.data as MerchantRow[] || []

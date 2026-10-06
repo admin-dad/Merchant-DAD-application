@@ -326,9 +326,8 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       const { count, error } = await supabase
         .from('merchant_scratch_cards')
         .select('*', { count: 'exact', head: true })
-        .eq('merchant_id', merchantId)
         .eq('campaign_id', linkedCampaignId)
-        .in('status', ['won', 'lost']) // already opened cards
+        .in('status', ['won', 'lost']) // already opened cards globally for this campaign
       
       if (!error) {
         currentCardNumber = (count || 0) + 1
