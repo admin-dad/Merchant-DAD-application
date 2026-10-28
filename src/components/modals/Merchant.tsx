@@ -80,6 +80,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [openingPanel, setOpeningPanel] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -263,9 +264,9 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
           return
         }
 
-        resetAndClose()
-        router.push('/dashboard')
-        router.refresh()
+        // Keep the home page covered until the merchant route replaces it.
+        setOpeningPanel(true)
+        router.replace('/dashboard')
         return
       }
 
@@ -449,6 +450,18 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
   }
 
   const showResult = submitted || needsEmailConfirm || !!blockedStatus || !!newMerchant
+
+  if (openingPanel) {
+    return (
+      <div className="fixed inset-0 z-[110] flex min-h-dvh items-center justify-center bg-[#090D16] p-6" role="status" aria-live="polite" aria-busy="true">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-5 h-12 w-12 animate-spin text-[#7BC142]" aria-hidden="true" />
+          <h2 className="text-xl font-semibold text-white">Opening merchant panel…</h2>
+          <p className="mt-2 text-sm text-slate-300">You’re signed in. Getting your dashboard ready.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence>

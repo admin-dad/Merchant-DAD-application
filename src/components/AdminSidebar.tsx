@@ -37,6 +37,7 @@ import {
   Boxes,
   IndianRupee,
   Film,
+  FileText,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin-videos', label: 'Video Feed', icon: Video },
   { href: '/admin-winnervideos', label: 'Winner Videos', icon: Film },
   { href: '/admin-reports', label: 'Reports & Analytics', icon: BarChart3 },
+  { href: '/legal-policies', label: 'Legal Policies', icon: FileText },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
 
