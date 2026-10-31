@@ -60,6 +60,7 @@ export default function Footer() {
                   src="/homelg.png"
                   alt="MerchantApp Logo"
                   fill
+                  sizes="112px"
                   className="object-contain"
                   priority
                 />

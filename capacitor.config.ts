@@ -7,6 +7,8 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://merchant-dad-application.vercel.app/',
     cleartext: false,
+    // Capacitor serves this bundled file when the main page cannot load.
+    errorPath: 'offline.html',
   },
   plugins: {
     SystemBars: {
@@ -15,9 +17,10 @@ const config: CapacitorConfig = {
       hidden: false,
     },
     SplashScreen: {
-      launchShowDuration: 2000,
+      // MainActivity shows the branded logo and spinner until the first page loads.
+      launchShowDuration: 0,
       backgroundColor: '#ffffff',
-      showSpinner: true,
+      showSpinner: false,
       androidScaleType: 'CENTER_INSIDE',
     },
   },

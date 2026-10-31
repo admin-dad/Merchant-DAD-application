@@ -26,7 +26,7 @@ import {
   BadgePercent,
   Zap,
 } from 'lucide-react'
-import jsPDF from 'jspdf'
+import { buildRewardsInvoice } from '@/lib/rewards-invoice'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Feature flags
@@ -457,11 +457,19 @@ export default function MerchantShopPage() {
 
   // ── Cancel Order & Refund Points ─────────────────────────────────────
   const handleCancelOrder = async (order: Order) => {
-    if (!merchant) return
+    if (!merchant || order.status !== 'pending') return
     if (!confirm('Cancel this order? Your reward points will be refunded.')) return
 
-    const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id)
-    if (!error) {
+    // Only cancel a still-pending order owned by this merchant. An admin may
+    // have completed it since this page loaded; do not refund in that case.
+    const { data: cancelledOrder, error } = await supabase.from('orders')
+      .update({ status: 'cancelled' }).eq('id', order.id)
+      .eq('merchant_id', merchant.id).eq('status', 'pending').select('id').maybeSingle()
+    if (error || !cancelledOrder) {
+      alert('This order could not be cancelled. It may already be completed. Refresh your orders and try again.')
+      return
+    }
+    if (cancelledOrder) {
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o))
       
       if (Number(order.points_used) > 0) {
@@ -480,55 +488,21 @@ export default function MerchantShopPage() {
   }
 
   // ── Download Invoice ─────────────────────────────────────────────────
-  const downloadInvoice = (order: Order) => {
-    const pdf = new jsPDF()
-    pdf.setFontSize(20)
-    pdf.text('DAD Solutions - Rewards Invoice', 14, 20)
-    pdf.setFontSize(10)
-    pdf.setTextColor(100)
-    pdf.text(`Order ID: ${order.id}`, 14, 30)
-    pdf.text(`Date: ${new Date(order.created_at).toLocaleString('en-IN')}`, 14, 35)
-    pdf.text(`Status: ${order.status.toUpperCase()}`, 14, 40)
-    
-    if (order.shipping_address) {
-      pdf.text(`Shipping Address: ${order.shipping_address}`, 14, 45)
+  const downloadInvoice = async (order: Order) => {
+    try {
+      let logo: Uint8Array | undefined
+      try {
+        const response = await fetch('/homelg.png')
+        if (response.ok) logo = new Uint8Array(await response.arrayBuffer())
+      } catch {
+        // A text wordmark keeps invoices available if the logo cannot load.
+      }
+      const pdf = buildRewardsInvoice(order, logo)
+      pdf.save(`Invoice_${order.id.substring(0, 8)}.pdf`)
+    } catch (error) {
+      console.error('Could not generate invoice:', error)
+      alert('Could not download your invoice. Please try again.')
     }
-    
-    pdf.setDrawColor(200)
-    pdf.line(14, 52, 196, 52)
-    
-    pdf.setTextColor(0)
-    pdf.setFontSize(12)
-    pdf.text('Redeemed Items:', 14, 60)
-    
-    let y = 68
-    pdf.setFontSize(10)
-    order.order_items.forEach(item => {
-      pdf.text(`${item.name} (x${item.quantity})`, 14, y)
-      pdf.text(`${Number(item.price) * item.quantity} Pts`, 150, y)
-      y += 7
-    })
-    
-    y += 10
-    pdf.setDrawColor(200)
-    pdf.line(14, y, 196, y)
-    y += 7
-
-    const discount = Number(order.discount_amount) || 0
-    if (discount > 0) {
-      pdf.setFontSize(10)
-      pdf.setTextColor(100)
-      pdf.text(`Coupon Applied: ${order.coupon_code ?? ''}`, 14, y)
-      pdf.text(`- ${discount} Pts`, 150, y)
-      y += 7
-      pdf.setTextColor(0)
-    }
-    
-    pdf.setFontSize(14)
-    pdf.setFont("helvetica", "bold")
-    pdf.text(`Total Points Spent: ${Number(order.total_amount)} Pts`, 14, y)
-    
-    pdf.save(`Invoice_${order.id.substring(0,8)}.pdf`)
   }
 
   // ── Apply Search, Filters, and Sorting ───────────────────────────────
@@ -901,7 +875,7 @@ export default function MerchantShopPage() {
                           <button onClick={() => downloadInvoice(o)} className="flex flex-1 justify-center items-center gap-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors shadow-sm">
                             <Download size={14} /> Invoice
                           </button>
-                          {o.status === 'completed' && (
+                          {o.status === 'pending' && (
                             <button onClick={() => handleCancelOrder(o)} className="flex flex-1 justify-center items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 px-3 py-2 text-xs font-semibold cursor-pointer transition-colors shadow-sm">
                               <XCircle size={14} /> Cancel
                             </button>

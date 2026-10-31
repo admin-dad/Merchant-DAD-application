@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -78,6 +79,9 @@ export default function DashboardPage() {
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
+  const [downloadingQR, setDownloadingQR] = useState(false)
+  const downloadQRRef = useRef<HTMLDivElement>(null)
+  const [qrPaymentState, setQRPaymentState] = useState<'checking' | 'ready' | 'unpaid' | 'error'>('checking')
   const [error, setError] = useState<string | null>(null)
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
 
@@ -130,6 +134,18 @@ export default function DashboardPage() {
         return
       }
       setMerchant(merchData)
+
+      // The visible dashboard QR uses the same monthly-payment gate as /qr-code.
+      if (merchData.billing_type === 'monthly') {
+        const now = new Date()
+        const { data: payment, error: paymentError } = await supabase.from('merchant_payments').select('id')
+          .eq('merchant_id', merchData.id).in('status', ['approved', 'completed'])
+          .gte('created_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
+          .lt('created_at', new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()).limit(1)
+        setQRPaymentState(paymentError ? 'error' : payment?.length ? 'ready' : 'unpaid')
+      } else {
+        setQRPaymentState('ready')
+      }
 
       // Fetch Subcategory scan amount if applicable
       if (merchData.category && merchData.sub_category) {
@@ -287,6 +303,63 @@ export default function DashboardPage() {
     : REQUIRED_FIELDS
   const isProfileComplete = merchant !== null && missingFields.length === 0
 
+  const checkQRAccess = async () => {
+    if (!merchant) return false
+    if (!isProfileComplete) { router.push('/profile'); return false }
+    if (merchant.billing_type === 'monthly') {
+      const now = new Date()
+      const { data, error } = await supabase.from('merchant_payments').select('id')
+        .eq('merchant_id', merchant.id).in('status', ['approved', 'completed'])
+        .gte('created_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
+        .lt('created_at', new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()).limit(1)
+      if (error) throw new Error('Could not verify your monthly payment. Please try again.')
+      if (!data?.length) { router.push('/scan-payments'); return false }
+    }
+    return true
+  }
+
+  const showDashboardQR = () => {
+    document.getElementById('dashboard-qr')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const downloadFramedQR = async () => {
+    if (!merchant || downloadingQR) return
+    setDownloadingQR(true)
+    try {
+      if (!await checkQRAccess()) return
+      const qr = downloadQRRef.current?.querySelector('canvas')
+      if (!qr) throw new Error('Your QR code is not ready yet. Please try again.')
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 1200
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Could not create the QR image.')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, 1200, 1200)
+      ctx.strokeStyle = '#0B2E7A'
+      ctx.lineWidth = 12
+      ctx.strokeRect(24, 24, 1152, 1152)
+      ctx.strokeStyle = '#7BC142'
+      ctx.lineWidth = 6
+      ctx.strokeRect(46, 46, 1108, 1108)
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(qr, 88, 88, 1024, 1024)
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+        value => value ? resolve(value) : reject(new Error('Could not create the PNG.')), 'image/png'))
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${merchant.business_name.replace(/\s/g, '_')}_Framed_QR.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not download your QR code.')
+    } finally {
+      setDownloadingQR(false)
+    }
+  }
+
   // ── Loading State ───────────────────────────────────────────────────
   if (loading) {
     return (
@@ -382,8 +455,8 @@ const QUICK_ACTIONS = [
 
           {isProfileComplete ? (
             <Link
-              href="/qr-code"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
+              href="#dashboard-qr"
+              className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
             >
               <QrCode size={18} />
               <span>View Shop QR</span>
@@ -430,7 +503,7 @@ const QUICK_ACTIONS = [
       )}
 
       {/* Primary Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           icon={<Gift size={18} />}
           label="Available Points"
@@ -463,11 +536,11 @@ const QUICK_ACTIONS = [
       </div>
 
       {/* Beautiful Pie Chart Stat Cards */}
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
 
         {/* Total Scans - Pie Chart */}
         <ChartStatCard icon={<TrendingUp size={18} />} label="Total Customer Scans" value={totalScans.toLocaleString()} sub="All-time QR engagements">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={90} minWidth={0} minHeight={90}>
             <PieChart>
               <Pie data={scanPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
                 <Cell fill={PIE_COLORS[0]} />
@@ -480,7 +553,7 @@ const QUICK_ACTIONS = [
 
         {/* Winning Customers - Pie Chart */}
         <ChartStatCard icon={<Trophy size={18} />} label="Customer Wins" value={winningCustomers} sub="Total QR reward claims">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={90} minWidth={0} minHeight={90}>
             <PieChart>
               <Pie data={winPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
                 <Cell fill={GREEN_COLORS[0]} />
@@ -493,7 +566,7 @@ const QUICK_ACTIONS = [
 
         {/* Total Points Purchased - Pie Chart */}
         <ChartStatCard icon={<CreditCard size={18} />} label="Total Points Purchased" value={`${totalPurchased.toLocaleString()} Pts`} sub="Lifetime points added to wallet">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={90} minWidth={0} minHeight={90}>
             <PieChart>
               <Pie data={purchasedPieData} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={3}>
                 <Cell fill={GREEN_COLORS[0]} />
@@ -506,7 +579,7 @@ const QUICK_ACTIONS = [
 
         {/* Rate / Monthly Fee - Pie Chart */}
         <ChartStatCard icon={<Tag size={18} />} label={rateLabel} value={`₹${rateValue}`} sub={rateSub}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={90} minWidth={0} minHeight={90}>
             <PieChart>
               <Pie data={[{ name: rateLabel, value: rateValue }]} dataKey="value" nameKey="name" innerRadius={30} outerRadius={45} paddingAngle={0}>
                 <Cell fill="#9333EA" />
@@ -526,7 +599,7 @@ const QUICK_ACTIONS = [
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-2"
+          className="min-w-0 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm lg:col-span-2"
         >
           <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
@@ -537,8 +610,8 @@ const QUICK_ACTIONS = [
               Weekly Engagement
             </span>
           </div>
-          <div className="h-[260px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[260px] min-w-0 w-full">
+            <ResponsiveContainer width="100%" height={260} minWidth={0} minHeight={260}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorScans" x1="0" y1="0" x2="0" y2="1">
@@ -588,6 +661,36 @@ const QUICK_ACTIONS = [
         </motion.div>
       </div>
 
+      <section id="dashboard-qr" aria-labelledby="dashboard-qr-heading" className="mb-8 scroll-mt-24 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#1857D6]"><QrCode size={23} /></span>
+          <div>
+            <h2 id="dashboard-qr-heading" className="text-lg font-bold text-slate-900">Your Shop QR</h2>
+            <p className="mt-1 text-sm text-slate-500">Your framed QR code, ready to download as a PNG image.</p>
+          </div>
+        </div>
+        {isProfileComplete && qrPaymentState === 'ready' ? <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
+          <div className="w-full max-w-[264px] border-[5px] border-[#0B2E7A] bg-white p-1.5">
+            <div ref={downloadQRRef} className="border-2 border-[#7BC142] bg-white p-3">
+              <QRCodeCanvas value={`${typeof window !== 'undefined' ? window.location.origin : ''}/scan?merchant=${merchant.id}`}
+                size={1024} style={{ width: '100%', height: 'auto', display: 'block' }} level="H" marginSize={4} fgColor="#000000" bgColor="#ffffff" />
+            </div>
+          </div>
+          <div className="w-full text-center sm:w-auto sm:max-w-xs sm:text-left">
+            <h3 className="break-words text-xl font-bold text-slate-900">{merchant.business_name}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">Display this QR code at your shop so customers can scan and participate.</p>
+            <button type="button" onClick={downloadFramedQR} disabled={downloadingQR}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60 sm:w-auto">
+              {downloadingQR ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              {downloadingQR ? 'Preparing PNG…' : 'Download PNG'}
+            </button>
+          </div>
+        </div> : <div className="rounded-2xl bg-slate-50 p-6 text-center">
+          <p className="text-sm text-slate-600">{!isProfileComplete ? 'Complete your profile to view and download your shop QR.' : qrPaymentState === 'unpaid' ? 'Pay your monthly fee to unlock your shop QR.' : qrPaymentState === 'error' ? 'Could not verify your monthly payment. Refresh the dashboard to try again.' : 'Checking QR availability…'}</p>
+          {(!isProfileComplete || qrPaymentState === 'unpaid') && <Link href={!isProfileComplete ? '/profile' : '/scan-payments'} className="mt-4 inline-flex rounded-xl bg-[#1857D6] px-5 py-2.5 text-sm font-semibold text-white">{!isProfileComplete ? 'Complete Profile' : 'Pay Monthly Fee'}</Link>}
+        </div>}
+      </section>
+
       {/* Quick Actions */}
       <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-3 border-b border-slate-100 pb-4">
@@ -604,6 +707,16 @@ const QUICK_ACTIONS = [
             const Icon = action.icon
             const isQrAction = action.href === '/qr-code'
             const locked = isQrAction && !isProfileComplete
+            if (isQrAction) return (
+              <button key={action.href} type="button" onClick={showDashboardQR} disabled={downloadingQR}
+                className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 px-3 py-4 text-center transition-all hover:border-[#1857D6]/30 hover:bg-[#1857D6]/5 hover:shadow-sm disabled:cursor-wait disabled:opacity-60">
+                <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1857D6] shadow-sm">
+                  {downloadingQR ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                  {locked && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white"><Lock size={9} /></span>}
+                </span>
+                <span className="text-xs font-semibold text-slate-600">{locked ? 'Complete Profile' : downloadingQR ? 'Preparing PNG…' : 'Download QR'}</span>
+              </button>
+            )
             return (
               <Link
                 key={action.href}
@@ -626,6 +739,8 @@ const QUICK_ACTIONS = [
           })}
         </div>
       </div>
+
+
 
       {/* Floating scratch-card trigger + popup — MerchantScratchCard now
           checks for a pending card and shows a small icon button (bottom
@@ -662,13 +777,13 @@ function StatCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
+      className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5"
     >
       <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${accentClass}`}>
         {icon}
       </div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      <p className="mt-0.5 text-sm font-semibold text-slate-500">{label}</p>
+      <p className="break-words text-lg font-bold text-slate-900 sm:text-2xl">{value}</p>
+      <p className="mt-0.5 text-xs font-semibold text-slate-500 sm:text-sm">{label}</p>
       <p className="mt-1 text-xs text-slate-400">{sub}</p>
     </motion.div>
   )
@@ -688,17 +803,17 @@ function ChartStatCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm flex flex-col"
+      className="flex min-w-0 flex-col rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-5"
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
-          <span className="text-[#1857D6]">{icon}</span>
+        <span className="flex min-w-0 items-start gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:text-xs">
+          <span className="shrink-0 text-[#1857D6]">{icon}</span>
           {label}
         </span>
       </div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
+      <p className="break-words text-lg font-bold text-slate-900 sm:text-2xl">{value}</p>
       <p className="text-xs text-slate-400 mb-3">{sub}</p>
-      <div className="h-[90px] w-full mt-auto flex items-center justify-center">
+      <div className="mt-auto flex h-[90px] min-w-0 w-full shrink-0 items-center justify-center">
         {children}
       </div>
     </motion.div>

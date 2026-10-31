@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import ScanLegalPolicyModal from '@/components/ScanLegalPolicyModal'
 import {
   Store,
   Smartphone,
@@ -16,7 +17,6 @@ import {
   Frown,
   Ban,
   Download,
-  X,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -191,8 +191,7 @@ function ScanContent() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
-  const [showTermsModal, setShowTermsModal] = useState(false)
-  const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [activePolicy, setActivePolicy] = useState<'terms' | 'customer-agreement' | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   // Scan & Scratch Card States
@@ -242,6 +241,10 @@ function ScanContent() {
   // ── 2. Handle Customer Details Submit ────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms & Conditions and Customer Agreement to continue.')
+      return
+    }
     setSubmitting(true)
     setError(null)
 
@@ -648,9 +651,9 @@ function ScanContent() {
                         </div>
                         <span className="text-[10px] sm:text-xs text-slate-600 leading-snug">
                           I agree to the{' '}
-                          <button type="button" onClick={() => setShowTermsModal(true)} className="font-semibold text-[#1857D6] hover:underline">Terms & Conditions</button>
+                          <button type="button" onClick={() => setActivePolicy('terms')} className="font-semibold text-[#1857D6] hover:underline">Terms & Conditions</button>
                           {' '}and{' '}
-                          <button type="button" onClick={() => setShowAgreementModal(true)} className="font-semibold text-[#1857D6] hover:underline">Customer Agreement</button>.
+                          <button type="button" onClick={() => setActivePolicy('customer-agreement')} className="font-semibold text-[#1857D6] hover:underline">Customer Agreement</button>.
                         </span>
                       </label>
                     </div>
@@ -879,81 +882,12 @@ function ScanContent() {
         </div>
       </motion.div>
 
-      {/* Terms Modal */}
-      <AnimatePresence>
-        {showTermsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative p-6"
-            >
-              <button
-                onClick={() => setShowTermsModal(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Terms & Conditions</h3>
-              <div className="space-y-4 text-sm text-slate-600 max-h-[60vh] overflow-y-auto pr-2">
-                <p>Welcome to our rewards platform. By participating, you agree to these fundamental rules:</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li>Rewards and scratch cards are subject to availability and merchant-specific limits.</li>
-                  <li>A single user may only participate once per campaign unless specified otherwise by the merchant.</li>
-                  <li>Prizes cannot be exchanged for cash or transferred to other users.</li>
-                  <li>Any attempt to manipulate, exploit, or bypass the reward systems will result in immediate disqualification and account ban.</li>
-                  <li>We reserve the right to modify or terminate campaigns at any time without prior notice.</li>
-                </ul>
-              </div>
-              <button
-                onClick={() => setShowTermsModal(false)}
-                className="w-full mt-6 py-2.5 bg-slate-100 text-slate-900 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
-              >
-                Close
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {activePolicy && <ScanLegalPolicyModal
+        key={activePolicy}
+        slug={activePolicy}
+        onClose={() => setActivePolicy(null)}
+      />}
 
-      {/* Customer Agreement Modal */}
-      <AnimatePresence>
-        {showAgreementModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative p-6"
-            >
-              <button
-                onClick={() => setShowAgreementModal(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Customer Agreement</h3>
-              <div className="space-y-4 text-sm text-slate-600 max-h-[60vh] overflow-y-auto pr-2">
-                <p>This Customer Agreement outlines your rights and responsibilities when using our platform:</p>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Data Privacy:</strong> We only collect information necessary to track your rewards and ensure fair participation. Your data is not sold to third parties.</li>
-                  <li><strong>Communication:</strong> By participating, you agree to receive transactional notifications regarding your rewards and redemptions.</li>
-                  <li><strong>Fair Usage:</strong> You agree to use the platform fairly and respect merchant rules when claiming physical or digital goods in-store.</li>
-                  <li><strong>Accountability:</strong> Any fraudulent activity, including the use of automated bots or duplicate accounts, violates this agreement.</li>
-                  <li><strong>Updates:</strong> This agreement may be updated periodically to reflect new features and legal requirements.</li>
-                </ul>
-              </div>
-              <button
-                onClick={() => setShowAgreementModal(false)}
-                className="w-full mt-6 py-2.5 bg-slate-100 text-slate-900 font-semibold rounded-xl hover:bg-slate-200 transition-colors"
-              >
-                Close
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +78,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen flex bg-slate-50" style={{ fontFamily: 'var(--font-display)' }}>
-      
+
       {/* Left Branding Panel (Hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#0B0F19] via-[#0B2E7A] to-[#1857D6] p-12 flex-col justify-between">
         <div className="absolute top-0 right-0 -mt-20 -mr-20 h-80 w-80 rounded-full bg-[#7BC142]/20 blur-3xl" />
@@ -86,11 +86,12 @@ export default function AdminLoginPage() {
 
         <div className="relative z-10 flex items-center gap-3 text-white">
           <div className="relative h-10 w-28 overflow-hidden flex items-center justify-start">
-            <Image 
-              src="/homelg.png" 
-              alt="DAD Logo" 
-              fill 
-              className="object-contain" 
+            <Image
+              src="/homelg.png"
+              alt="DAD Logo"
+              fill
+              sizes="112px"
+              className="object-contain"
               priority
             />
           </div>
@@ -100,7 +101,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="relative z-10 text-white">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -108,7 +109,7 @@ export default function AdminLoginPage() {
           >
             Centralized Control. <br/> Seamless Management.
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -125,21 +126,22 @@ export default function AdminLoginPage() {
 
       {/* Right Login Form Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
           className="w-full max-w-md"
         >
-          
+
           {/* Mobile Logo (Visible on small screens) */}
           <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
             <div className="relative h-12 w-32 overflow-hidden flex items-center justify-center">
-              <Image 
-                src="/homelg.png" 
-                alt="DAD Logo" 
-                fill 
-                className="object-contain" 
+              <Image
+                src="/homelg.png"
+                alt="DAD Logo"
+                fill
+                sizes="128px"
+                className="object-contain"
                 priority
               />
             </div>
@@ -205,7 +207,7 @@ export default function AdminLoginPage() {
             </div>
 
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800"

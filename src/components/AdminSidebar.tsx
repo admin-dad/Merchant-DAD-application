@@ -17,7 +17,6 @@ import {
   Ticket,
   Trophy,
   Gift,
-  Award,
   Receipt,
   CreditCard,
   Coins,
@@ -63,7 +62,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/merchant-scratch-cards', label: 'Merchant Scratch Cards', icon: Sparkles },
   { href: '/winners', label: 'Winners', icon: Trophy },
   { href: '/gifts', label: 'Gifts', icon: Gift },
-  { href: '/abenefit', label: 'Merchant Benefits', icon: Award },
   { href: '/admin-billing', label: 'Merchant Billing', icon: Receipt },
   { href: '/admin-payments', label: 'QR Payment Collection', icon: CreditCard },
   { href: '/points', label: 'Points Ledger', icon: Coins },
@@ -117,6 +115,7 @@ export default function AdminSidebar({
               src="/homelg.png"
               alt="DAD Logo"
               fill
+              sizes="112px"
               className="object-contain object-left"
               priority
             />
@@ -224,6 +223,7 @@ function SidebarContent({
             src="/homelg.png"
             alt="DAD Logo"
             fill
+            sizes="112px"
             className="object-contain object-left"
             priority
           />

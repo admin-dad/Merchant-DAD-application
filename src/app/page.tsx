@@ -299,16 +299,16 @@ function HeroVisual({
       initial={reduce ? {} : { opacity: 0, scale: 0.92, y: 24 }}
       animate={reduce ? {} : { opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.9, delay: 0.3, ease: EASE }}
-      className="relative mx-auto flex min-h-[420px] w-full max-w-md items-center justify-center"
+      className="relative mx-auto flex min-h-[500px] w-full max-w-md items-center justify-center px-4 sm:min-h-[420px] sm:px-0"
     >
-      {!reduce &&
-        ORBIT_ICONS.map(({ Icon, top, left, size, delay }, i) => (
+      {ORBIT_ICONS.map(({ Icon, top, left, size, delay }, i) => (
           <motion.div
             key={i}
-            className="absolute hidden items-center justify-center rounded-2xl border border-[#0B2E7A]/10 bg-white text-[#1857D6] shadow-lg shadow-[#0B2E7A]/10 sm:flex"
+            aria-hidden="true"
+            className="pointer-events-none absolute z-20 flex items-center justify-center rounded-2xl border border-[#0B2E7A]/10 bg-white text-[#1857D6] shadow-lg shadow-[#0B2E7A]/10"
             style={{ top, left, width: size, height: size }}
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: 1, y: [0, -14, 0], rotate: [0, -4, 0] }}
+            initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+            animate={reduce ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, y: [0, -14, 0], rotate: [0, -4, 0] }}
             transition={{
               opacity: { duration: 0.6, delay: 0.6 + delay * 0.2 },
               scale: { duration: 0.6, delay: 0.6 + delay * 0.2 },

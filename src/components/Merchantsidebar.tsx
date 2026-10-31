@@ -89,6 +89,7 @@ export default function Merchantsidebar({
               src="/homelg.png"
               alt="Logo"
               fill
+              sizes="96px"
               className="object-contain object-left"
               priority
             />
@@ -198,7 +199,7 @@ function IconRailContent({
       {/* Logo */}
       <Link href="" className="flex items-center justify-center pt-6 pb-5">
         <div className="relative h-9 w-9 overflow-hidden rounded-lg">
-          <Image src="/homelg.png" alt="Logo" fill className="object-contain" priority />
+          <Image src="/homelg.png" alt="Logo" fill sizes="36px" className="object-contain" priority />
         </div>
       </Link>
 
@@ -298,6 +299,7 @@ function SidebarContent({
             src="/homelg.png"
             alt="Logo"
             fill
+            sizes="112px"
             className="object-contain object-left"
             priority
           />

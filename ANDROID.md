@@ -45,3 +45,20 @@ server-rendered Next.js deployment; no static export is required.
 
 Before distributing, test login, payments, QR scanning and downloads on a
 physical Android device. Native WebView behavior can differ from a browser.
+
+## Offline handling
+
+The Android app bundles `mobile/offline.html`, including an embedded DAD logo,
+styles and scripts. Capacitor's `server.errorPath` serves it when a main-document
+load fails (including network failures or a server error). Failed images or fonts
+do not replace the page. The Retry button loads the live Merchant DAD home URL.
+The existing native splash, back handling and safe-area spacing remain in place.
+
+The website's root layout also includes an offline banner for connection loss
+during client-side navigation. It appears on the browser's offline event and
+clears on its online event, preserving the current page and unsaved inputs.
+
+Deploy the website changes for the banner, and rebuild/reinstall the APK for the
+bundled fallback. Test opening in airplane mode, disconnecting mid-session,
+retrying while offline, and reconnecting. This is offline connection handling;
+it does not support offline login, purchases, payments, or database writes.

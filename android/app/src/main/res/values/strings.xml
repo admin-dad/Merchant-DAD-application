@@ -4,4 +4,5 @@
     <string name="title_activity_main">Merchant DAD</string>
     <string name="package_name">com.merchantdad.app</string>
     <string name="custom_url_scheme">com.merchantdad.app</string>
+    <string name="startup_loading">Loading…</string>
 </resources>

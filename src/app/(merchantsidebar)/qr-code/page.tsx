@@ -7,8 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import {
   QrCode,
   Download,
-  FileText,
-  Printer,
   Share2,
   RefreshCw,
   History,
@@ -25,7 +23,6 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { QRCodeCanvas } from 'qrcode.react'
-import jsPDF from 'jspdf'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types matching your exact database schema
@@ -124,6 +121,7 @@ export default function QRCodeManagementPage() {
   const [currentMonthPayment, setCurrentMonthPayment] = useState<MonthlyPaymentRecord | null>(null)
 
   const qrCanvasRef = useRef<HTMLDivElement>(null)
+  const [exporting, setExporting] = useState<'download' | 'share' | null>(null)
 
   const { startISO, endISO, monthLabel } = useMemo(() => getCurrentMonthBounds(), [])
 
@@ -235,7 +233,7 @@ export default function QRCodeManagementPage() {
   // monthly-plan merchants, the current month has been paid for.
   const isQrUnlocked = isProfileComplete && (!isMonthlyMerchant || isMonthlyPaid)
 
-  // Use one composition for PNG, PDF and print so the poster never stretches.
+  // Download and share the same PNG poster with the merchant QR code.
   const createQRPoster = async () => {
     const qrCanvas = qrCanvasRef.current?.querySelector('canvas')
     if (!merchant || !isQrUnlocked || !qrCanvas) {
@@ -267,95 +265,61 @@ export default function QRCodeManagementPage() {
     return canvas
   }
 
+  const createPNGFile = async () => {
+    if (!merchant) throw new Error('Merchant profile is not ready.')
+    const canvas = await createQRPoster()
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(value => value ? resolve(value) : reject(new Error('Could not create PNG.')), 'image/png')
+    })
+    return new File([blob], `${merchant.business_name.replace(/\s/g, '_')}_Promotional_QR.png`, { type: 'image/png' })
+  }
+
+  const savePNG = (file: File) => {
+    const url = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = file.name
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    // Let the browser begin the download before releasing the object URL.
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000)
+  }
+
   const downloadPNG = async () => {
-    if (!merchant || !isQrUnlocked) return
+    if (!merchant || !isQrUnlocked || exporting) return
+    setExporting('download')
     try {
-      const canvas = await createQRPoster()
-      const link = document.createElement('a')
-      link.href = canvas.toDataURL('image/png')
-      link.download = `${merchant.business_name.replace(/\s/g, '_')}_Promotional_QR.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      savePNG(await createPNGFile())
     } catch (err) {
       console.error('Failed to generate PNG:', err)
-      alert('Failed to generate PNG. Please try again.')
+      alert('Failed to download PNG. Please try again.')
+    } finally {
+      setExporting(null)
     }
   }
 
-  const downloadPDF = async () => {
-    if (!merchant || !isQrUnlocked) return
-    try {
-      const canvas = await createQRPoster()
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const scale = Math.min(pageWidth / canvas.width, pageHeight / canvas.height)
-      const width = canvas.width * scale
-      const height = canvas.height * scale
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG',
-        (pageWidth - width) / 2, (pageHeight - height) / 2, width, height)
-      pdf.save(`${merchant.business_name.replace(/\s/g, '_')}_QR.pdf`)
-    } catch (err) {
-      console.error('Failed to generate PDF:', err)
-      alert('Failed to generate PDF. Please try again.')
-    }
-  }
-
-  const printQR = async () => {
-    if (!merchant || !isQrUnlocked) return
-    // Open synchronously from the click so browsers do not block the popup.
-    const printWindow = window.open('', '_blank', 'width=800,height=1000')
-    if (!printWindow) {
-      alert('Please allow popups to print your QR poster.')
-      return
-    }
-    try {
-      const canvas = await createQRPoster()
-      printWindow.document.title = `Print QR - ${merchant.business_name}`
-      const style = printWindow.document.createElement('style')
-      style.textContent = `
-        @page { size: A4 portrait; margin: 0; }
-        body { margin: 0; display: flex; justify-content: center; }
-        img { display: block; max-width: 100%; max-height: 100vh; object-fit: contain; }
-        @media print { img { width: 100%; height: 297mm; max-height: none; } }
-      `
-      printWindow.document.head.appendChild(style)
-      const image = printWindow.document.createElement('img')
-      image.alt = 'Merchant scan and win QR poster'
-      image.onload = () => {
-        printWindow.focus()
-        printWindow.print()
-      }
-      image.src = canvas.toDataURL('image/png')
-      printWindow.document.body.appendChild(image)
-      printWindow.onafterprint = () => printWindow.close()
-    } catch (err) {
-      printWindow.close()
-      console.error('Failed to print QR:', err)
-      alert('Failed to prepare your QR poster. Please try again.')
-    }
-  }
-
-  // ── Share QR Code ───────────────────────────────────────────────────
   const shareQR = async () => {
-    if (!merchant || !isQrUnlocked) return
-    const origin = window.location.origin
-    const scanUrl = `${origin}/scan?merchant=${merchant.id}`
-
-    if (navigator.share) {
-      try {
+    if (!merchant || !isQrUnlocked || exporting) return
+    setExporting('share')
+    try {
+      const file = await createPNGFile()
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           title: `${merchant.business_name} QR Code`,
-          text: 'Scan this QR code to participate in campaigns and win rewards!',
-          url: scanUrl,
+          files: [file],
         })
-      } catch (error) {
-        console.error('Error sharing:', error)
+      } else {
+        savePNG(file)
+        alert('Image sharing is not available here. Your PNG has been downloaded so you can share it from your files.')
       }
-    } else {
-      navigator.clipboard.writeText(scanUrl)
-      alert('Share link copied to clipboard!')
+    } catch (err) {
+      // Closing the device share sheet is a normal user action.
+      if (err instanceof Error && err.name === 'AbortError') return
+      console.error('Failed to share PNG:', err)
+      alert('Could not share your PNG. Please use Download and share the image from your files.')
+    } finally {
+      setExporting(null)
     }
   }
 
@@ -554,7 +518,7 @@ export default function QRCodeManagementPage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Your Custom Code</h2>
-                <p className="text-xs font-medium text-slate-500">Ready to print or share instantly.</p>
+                <p className="text-xs font-medium text-slate-500">Download or share your QR poster as a PNG image.</p>
               </div>
             </div>
 
@@ -603,10 +567,8 @@ export default function QRCodeManagementPage() {
 
             {/* Action Buttons Grid */}
             <div className="grid grid-cols-2 gap-4 relative z-10">
-              <ActionButton icon={<Download size={20} />} label="PNG" onClick={downloadPNG} variant="green" />
-              <ActionButton icon={<FileText size={20} />} label="PDF" onClick={downloadPDF} variant="blue" />
-              <ActionButton icon={<Printer size={20} />} label="Print" onClick={printQR} variant="slate" />
-              <ActionButton icon={<Share2 size={20} />} label="Share" onClick={shareQR} variant="slate" />
+              <ActionButton icon={exporting === 'download' ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />} label={exporting === 'download' ? 'Preparing…' : 'Download'} onClick={downloadPNG} variant="green" disabled={exporting !== null} />
+              <ActionButton icon={exporting === 'share' ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />} label={exporting === 'share' ? 'Preparing…' : 'Share'} onClick={shareQR} variant="blue" disabled={exporting !== null} />
             </div>
           </motion.div>
 
@@ -705,12 +667,13 @@ export default function QRCodeManagementPage() {
 // Reusable Action Button
 // ─────────────────────────────────────────────────────────────────────────
 function ActionButton({
-  icon, label, onClick, variant
+  icon, label, onClick, variant, disabled = false
 }: {
   icon: React.ReactNode
   label: string
   onClick: () => void
   variant: 'green' | 'blue' | 'slate'
+  disabled?: boolean
 }) {
   const variantClasses = {
     green: 'bg-gradient-to-tr from-[#7BC142] to-[#3E7A1C] text-white shadow-lg shadow-emerald-500/30 border border-emerald-400/20 hover:shadow-emerald-500/40',
@@ -721,7 +684,8 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`group relative overflow-hidden flex flex-col items-center justify-center gap-3 py-5 rounded-2xl transition-all duration-300 hover:scale-[1.03] cursor-pointer ${variantClasses[variant]}`}
+      disabled={disabled}
+      className={`disabled:cursor-wait disabled:opacity-60 group relative overflow-hidden flex flex-col items-center justify-center gap-3 py-5 rounded-2xl transition-all duration-300 hover:scale-[1.03] cursor-pointer ${variantClasses[variant]}`}
     >
       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <span className="relative z-10 transition-transform duration-300 group-hover:-translate-y-1">{icon}</span>

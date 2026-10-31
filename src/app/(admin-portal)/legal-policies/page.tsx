@@ -1,11 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ExternalLink, FileText, Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import MerchantBenefitsManager from '@/components/admin/MerchantBenefitsManager'
+import { Award, ExternalLink, FileText, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/client'
 import { DEFAULT_POLICIES, POLICY_SLUGS, type LegalPolicy, type PolicySlug } from '@/lib/legal-policies'
 
-export default function LegalPoliciesAdminPage() {
+function LegalPoliciesContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const showBenefits = searchParams.get('section') === 'benefits'
   const [policies, setPolicies] = useState<Record<PolicySlug, LegalPolicy>>(DEFAULT_POLICIES)
   const [selected, setSelected] = useState<PolicySlug>('terms')
   const [loading, setLoading] = useState(true)
@@ -52,6 +57,7 @@ export default function LegalPoliciesAdminPage() {
   }
 
   const selectPolicy = (slug: PolicySlug) => {
+    if (showBenefits) router.replace('/legal-policies', { scroll: false })
     if (slug === selected) return
     setSelected(slug)
     setNotice(null)
@@ -94,25 +100,34 @@ export default function LegalPoliciesAdminPage() {
           </div>
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Legal Policies</h1>
-            <p className="mt-1 text-sm leading-relaxed text-slate-500">Edit your website policies. Save and publish updates the corresponding public page.</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500">Manage website policies and merchant benefits in one place. Publish policies or create and manage merchant offers.</p>
           </div>
         </div>
       </header>
       <section aria-labelledby="policy-selector-heading" className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <h2 id="policy-selector-heading" className="text-base font-semibold text-slate-900">Choose a policy</h2>
-        <p className="mt-1 text-sm text-slate-500">Select a page to manage its content.</p>
-        <nav aria-label="Choose policy" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {POLICY_SLUGS.map(slug => <button key={slug} type="button" disabled={saving} onClick={() => selectPolicy(slug)} aria-pressed={selected === slug}
-            className={`group flex min-w-0 items-start gap-3 rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6]/50 disabled:opacity-50 ${selected === slug ? 'border-[#1857D6] bg-blue-50 shadow-sm shadow-blue-500/10' : 'border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/50'}`}>
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${selected === slug ? 'bg-[#1857D6] text-white' : 'bg-white text-slate-500 shadow-sm'}`}><FileText size={19} aria-hidden="true" /></span>
+        <h2 id="policy-selector-heading" className="text-base font-semibold text-slate-900">Choose what to manage</h2>
+        <p className="mt-1 text-sm text-slate-500">Select a policy or manage merchant benefits below.</p>
+        <nav aria-label="Choose policy" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {POLICY_SLUGS.map(slug => <button key={slug} type="button" disabled={saving} onClick={() => selectPolicy(slug)} aria-pressed={!showBenefits && selected === slug}
+            className={`group flex min-w-0 items-start gap-3 rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6]/50 disabled:opacity-50 ${!showBenefits && selected === slug ? 'border-[#1857D6] bg-blue-50 shadow-sm shadow-blue-500/10' : 'border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/50'}`}>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${!showBenefits && selected === slug ? 'bg-[#1857D6] text-white' : 'bg-white text-slate-500 shadow-sm'}`}><FileText size={19} aria-hidden="true" /></span>
             <span className="min-w-0">
-              <span className={`block text-sm font-semibold leading-5 ${selected === slug ? 'text-[#0B2E7A]' : 'text-slate-700'}`}>{DEFAULT_POLICIES[slug].title}</span>
+              <span className={`block text-sm font-semibold leading-5 ${!showBenefits && selected === slug ? 'text-[#0B2E7A]' : 'text-slate-700'}`}>{DEFAULT_POLICIES[slug].title}</span>
               <span className="mt-1 block break-all text-xs text-slate-500">/{slug}</span>
               {dirtySlugs.includes(slug) && <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Unsaved changes</span>}
             </span>
           </button>)}
+          <button type="button" disabled={saving} onClick={() => router.replace('/legal-policies?section=benefits', { scroll: false })} aria-pressed={showBenefits}
+            className={`flex min-w-0 items-start gap-3 rounded-2xl border p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6]/50 disabled:opacity-50 ${showBenefits ? 'border-[#1857D6] bg-blue-50 shadow-sm shadow-blue-500/10' : 'border-slate-200 bg-slate-50/50 hover:border-blue-300 hover:bg-blue-50/50'}`}>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${showBenefits ? 'bg-[#1857D6] text-white' : 'bg-white text-slate-500 shadow-sm'}`}><Award size={19} aria-hidden="true" /></span>
+            <span className="min-w-0">
+              <span className={`block text-sm font-semibold leading-5 ${showBenefits ? 'text-[#0B2E7A]' : 'text-slate-700'}`}>Merchant Benefits</span>
+              <span className="mt-1 block text-xs text-slate-500">Offers, discounts & rewards</span>
+            </span>
+          </button>
         </nav>
       </section>
+      {showBenefits ? <MerchantBenefitsManager embedded /> : <>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">{notice}</p>}
       <form onSubmit={save} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
@@ -146,6 +161,15 @@ export default function LegalPoliciesAdminPage() {
           </div>
         </fieldset>
       </form>
+      </>}
     </div>
+  )
+}
+
+export default function LegalPoliciesAdminPage() {
+  return (
+    <Suspense fallback={<div role="status" className="py-20 text-center text-slate-500">Loading management page…</div>}>
+      <LegalPoliciesContent />
+    </Suspense>
   )
 }

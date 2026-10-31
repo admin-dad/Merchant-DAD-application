@@ -37,6 +37,7 @@ export default function Header() {
                   src="/homelg.png"
                   alt="DAD Logo"
                   fill
+                  sizes="112px"
                   className="object-contain"
                   priority
                 />

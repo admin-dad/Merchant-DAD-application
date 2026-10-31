@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import LegalPolicyModal from '@/components/ScanLegalPolicyModal'
 import {
   Ticket as TicketIcon,
   Building2 as BuildingIcon,
@@ -31,7 +32,6 @@ interface CouponRow {
   id: string
   title: string
   description: string | null
-  terms_and_conditions: string | null
   company_name: string
   image_url: string | null
   code: string | null
@@ -214,7 +214,7 @@ function CouponCard({ coupon, onOpen }: { coupon: CouponRow; onOpen: () => void 
 // ─────────────────────────────────────────────────────────────────────────
 // Coupon detail modal with Terms & Conditions
 // ─────────────────────────────────────────────────────────────────────────
-function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onClose: () => void }) {
+function CouponDetailModal({ coupon, onClose, onOpenTerms }: { coupon: CouponRow | null; onClose: () => void; onOpenTerms: () => void }) {
   const status = coupon ? statusInfo(coupon) : null
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
@@ -314,10 +314,9 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
                     <FileTextIcon size={14} className="text-[#1857D6]" />
                     Terms & Conditions
                   </div>
-                  <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
-                    {coupon.terms_and_conditions ||
-                      "1. This coupon is valid for a single redemption per user unless specified otherwise.\n2. Cannot be clubbed with other running promotions or corporate discounts.\n3. Standard platform terms of service apply to all transactions."}
-                  </p>
+                  <button type="button" onClick={onOpenTerms} className="text-left text-xs font-semibold leading-relaxed text-[#1857D6] underline underline-offset-2 hover:text-blue-800">
+                    Read the current platform Terms & Conditions
+                  </button>
                 </div>
               </div>
 
@@ -339,61 +338,6 @@ function CouponDetailModal({ coupon, onClose }: { coupon: CouponRow | null; onCl
     </>
   )
 }
-// ─────────────────────────────────────────────────────────────────────────
-// Global Terms & Conditions Modal (triggered from the top header)
-// ─────────────────────────────────────────────────────────────────────────
-function GlobalTermsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4 py-8"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl p-6 space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]">
-                  <FileTextIcon size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Platform Terms & Conditions</h3>
-              </div>
-              <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
-                <XIcon size={18} />
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] overflow-y-auto space-y-3 text-xs text-slate-600 leading-relaxed pr-2">
-              <p><strong>1. General Usage:</strong> All coupon codes and promotional offers listed on this portal are governed by partner merchant policies and platform guidelines.</p>
-              <p><strong>2. Validity & Expiry:</strong> Offers are strictly valid between the specified start and expiry dates. Expired codes will not be honored under any circumstances.</p>
-              <p><strong>3. Redemption Limits:</strong> Usage limits apply per merchant/user account. Any fraudulent attempts or automated abuse of coupon generation will result in suspension of merchant access privileges.</p>
-              <p><strong>4. Non-Transferable:</strong> Coupons hold no cash value, are non-transferable, and cannot be exchanged for cash or credit equivalents unless explicitly stated by the partner business.</p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={onClose}
-                className="rounded-xl bg-[#1857D6] px-5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 transition-all cursor-pointer"
-              >
-                I Understand
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────
@@ -631,8 +575,8 @@ export default function MerchantCouponsPage() {
       )}
 
       {/* Modals */}
-      <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} />
-      <GlobalTermsModal isOpen={showGlobalTerms} onClose={() => setShowGlobalTerms(false)} />
+      <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} onOpenTerms={() => setShowGlobalTerms(true)} />
+      {showGlobalTerms && <LegalPolicyModal slug="terms" onClose={() => setShowGlobalTerms(false)} />}
     </div>
   )
 }

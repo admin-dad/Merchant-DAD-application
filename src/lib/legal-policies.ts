@@ -1,4 +1,4 @@
-export const POLICY_SLUGS = ['terms', 'privacy', 'refund-policy', 'merchant-agreement'] as const
+export const POLICY_SLUGS = ['terms', 'privacy', 'refund-policy', 'merchant-agreement', 'customer-agreement'] as const
 export type PolicySlug = (typeof POLICY_SLUGS)[number]
 export interface PolicySection { title: string; body: string }
 export interface LegalPolicy {
@@ -134,6 +134,34 @@ export const DEFAULT_POLICIES: Record<PolicySlug, LegalPolicy> = {
       {
         "title": "6. Agreement Modifications",
         "body": "We reserve the right to update or modify these merchant agreement terms as the ecosystem evolves. Continued participation on the platform signifies ongoing acceptance of updated terms."
+      }
+    ],
+    "updated_at": null
+  },
+  "customer-agreement": {
+    "slug": "customer-agreement",
+    "title": "Customer Agreement",
+    "description": "This Customer Agreement outlines your rights and responsibilities when using our platform:",
+    "sections": [
+      {
+        "title": "1. Data Privacy",
+        "body": "We only collect information necessary to track your rewards and ensure fair participation. Your data is not sold to third parties."
+      },
+      {
+        "title": "2. Communication",
+        "body": "By participating, you agree to receive transactional notifications regarding your rewards and redemptions."
+      },
+      {
+        "title": "3. Fair Usage",
+        "body": "You agree to use the platform fairly and respect merchant rules when claiming physical or digital goods in-store."
+      },
+      {
+        "title": "4. Accountability",
+        "body": "Any fraudulent activity, including the use of automated bots or duplicate accounts, violates this agreement."
+      },
+      {
+        "title": "5. Updates",
+        "body": "This agreement may be updated periodically to reflect new features and legal requirements."
       }
     ],
     "updated_at": null

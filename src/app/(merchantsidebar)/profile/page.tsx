@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import MerchantScratchCard from '@/components/MerchantScratchCard'
+import MerchantShopMedia from '@/components/MerchantShopMedia'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Store,
@@ -872,6 +873,8 @@ useEffect(() => {
           </button>
         </div>
       </motion.form>
+
+      <MerchantShopMedia key={merchant.id} merchantId={merchant.id} />
 
       {/* ── Change Password Popup ─────────────────────────────────────── */}
       <AnimatePresence>
