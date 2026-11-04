@@ -1,5 +1,7 @@
 'use client'
 
+import { productAudienceLabel } from '@/lib/product-audiences'
+
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -23,6 +25,7 @@ import {
 // Types
 // ─────────────────────────────────────────────────────────────────────────
 interface Product {
+  target_audience?: string | null
   id: string
   name: string
   description: string | null
@@ -185,6 +188,8 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
             ) : (
               <Package size={80} className="text-slate-300" />
             )}
+
+            <span className="pointer-events-none absolute right-4 top-4 z-10 rounded-full border border-blue-100 bg-white/95 px-3 py-1.5 text-xs font-bold text-[#0B2E7A] shadow-sm backdrop-blur-sm">{productAudienceLabel(product.target_audience)}</span>
 
             {/* Stock Badge on Image */}
             {product.stock <= 0 && (

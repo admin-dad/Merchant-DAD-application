@@ -1,5 +1,7 @@
 'use client'
 
+import { PRODUCT_AUDIENCES } from '@/lib/product-audiences'
+
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -24,6 +26,7 @@ import {
 // Types
 // ─────────────────────────────────────────────────────────────────────────
 interface Product {
+  target_audience?: string | null
   id: string
   vendor_id: string | null
   name: string
@@ -61,6 +64,7 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [uploadingEditImage, setUploadingEditImage] = useState(false)
   const [editForm, setEditForm] = useState({
+    target_audience: 'other',
     name: '',
     description: '',
     price: '0',
@@ -144,6 +148,7 @@ export default function AdminProductsPage() {
       description: product.description || '',
       price: String(product.price),
       stock: String(product.stock),
+      target_audience: product.target_audience || 'other',
       category: product.category || '',
       sub_category: product.sub_category || '',
       image_url: product.image_url || '', // Populate existing image
@@ -189,6 +194,7 @@ export default function AdminProductsPage() {
     const { data, error } = await supabase
       .from('products')
       .update({
+        target_audience: editForm.target_audience,
         name: editForm.name,
         description: editForm.description || null,
         price: parseInt(editForm.price) || 0,
@@ -553,6 +559,12 @@ export default function AdminProductsPage() {
                       className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 resize-none"
                     />
                   </div>
+
+                  <label className="block text-sm font-semibold text-slate-700">Product audience
+                    <select required value={editForm.target_audience} onChange={event => setEditForm({ ...editForm, target_audience: event.target.value })} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                      {PRODUCT_AUDIENCES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
