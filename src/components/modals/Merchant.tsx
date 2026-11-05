@@ -466,7 +466,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6">
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -474,46 +474,48 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={resetAndClose}
-            className="absolute inset-0 bg-[#090D16]/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#0B2E7A]/40 backdrop-blur-md"
           />
 
           {/* Modal card — light mode */}
           <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="merchant-modal-title"
-            className={`relative z-10 w-full ${newMerchant ? 'max-w-2xl' : 'max-w-lg'
-              } max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-[0_24px_70px_rgba(9,13,22,0.35)] border border-slate-200`}
+            className={`relative z-10 w-full ${newMerchant ? 'max-w-2xl' : showResult ? 'max-w-lg' : 'max-w-lg md:max-w-4xl'
+              } flex max-h-[94dvh] overflow-hidden rounded-t-[28px] border border-white/60 bg-white shadow-[0_30px_80px_rgba(11,46,122,0.35)] sm:max-h-[90vh] sm:rounded-[28px]`}
             style={{ fontFamily: 'var(--font-display)' }}
           >
-            {/* Top accent bar */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#1857D6] via-[#4F8CFF] to-[#7BC142]" />
+            {/* Brand side panel (desktop, form only) */}
+            {!showResult && <PartnerPanel />}
 
             {/* Close button */}
             <button
               onClick={resetAndClose}
               aria-label="Close"
-              className="absolute right-4 top-5 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-800 cursor-pointer"
             >
               <X size={20} />
             </button>
 
-            <div className="max-h-[calc(90vh-6px)] overflow-y-auto px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
+            <div className="min-w-0 flex-1 overflow-y-auto px-5 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-7">
+              {/* Mobile grab handle */}
+              <div aria-hidden="true" className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-200 sm:hidden" />
               {!showResult ? (
                 <>
                   {/* Header */}
                   <div className="mb-5 pr-8">
-                    <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7BC142]/10 to-[#1857D6]/10 px-3 py-1 text-xs font-semibold text-[#3E7A1C]">
+                    <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#3E7A1C]/20 bg-[#3E7A1C]/10 px-3 py-1 text-xs font-semibold text-[#3E7A1C]">
                       <Sparkles size={13} />
                       <span>Merchant Partner {mode === 'register' ? 'Registration' : 'Login'}</span>
                     </div>
                     <h2
                       id="merchant-modal-title"
-                      className="text-2xl font-semibold text-[#0B0F19] sm:text-[28px]"
+                      className="text-2xl font-semibold text-[#0B2E7A] sm:text-[30px]"
                     >
                       {mode === 'register' ? 'Become a Merchant Partner' : 'Welcome back'}
                     </h2>
@@ -525,7 +527,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                   </div>
 
                   {/* Mode switcher */}
-                  <div className="relative mb-6 flex rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+                  <div className="relative mb-6 flex rounded-2xl border border-[#0B2E7A]/10 bg-[#FAFCFF] p-1.5">
                     <button
                       type="button"
                       onClick={() => switchMode('register')}
@@ -543,7 +545,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                       Login
                     </button>
                     <motion.div
-                      className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] shadow-sm"
+                      className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl bg-gradient-to-r from-[#3E7A1C] to-[#5E9E2E] shadow-md shadow-[#3E7A1C]/25"
                       animate={{ left: mode === 'register' ? '6px' : 'calc(50% + 0px)' }}
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
@@ -560,6 +562,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                           transition={{ duration: 0.2 }}
                           className="space-y-4"
                         >
+                          <div className="grid gap-4 sm:grid-cols-2">
                           {/* Business Name */}
                           <Field
                             label="Business Name"
@@ -586,6 +589,8 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                             />
                           </Field>
 
+                          </div>
+                          <div className="grid gap-4 sm:grid-cols-2">
                           {/* Mobile */}
                           <Field label="Mobile Number" icon={<Phone size={16} />} error={errors.mobile}>
                             <input
@@ -610,6 +615,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                             />
                           </Field>
 
+                          </div>
                           {/* Referral Code */}
                           <Field label="Referral Code (optional)" icon={<Gift size={16} />}>
                             <input
@@ -698,7 +704,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
 
                     {mode === 'login' && (
                       <div className="flex justify-end">
-                        <a href="/forgot-password" className="text-xs font-medium text-[#1857D6] hover:underline">
+                        <a href="/forgot-password" className="text-xs font-medium text-[#3E7A1C] hover:underline">
                           Forgot password?
                         </a>
                       </div>
@@ -714,15 +720,15 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                             setAgreed(e.target.checked)
                             if (serverError) setServerError(null)
                           }}
-                          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-[#1857D6] focus:ring-[#1857D6]/40"
+                          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 accent-[#3E7A1C] focus:ring-[#3E7A1C]/40"
                         />
                         <span>
                           I agree to the{' '}
-                          <a href="/terms" className="font-medium text-[#1857D6] hover:underline">
+                          <a href="/terms" className="font-medium text-[#3E7A1C] hover:underline">
                             Terms &amp; Conditions
                           </a>{' '}
                           and{' '}
-                          <a href="/merchant-agreement" className="font-medium text-[#1857D6] hover:underline">
+                          <a href="/merchant-agreement" className="font-medium text-[#3E7A1C] hover:underline">
                             Merchant Agreement
                           </a>
                           .
@@ -742,7 +748,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(62,122,28,0.35)] cursor-pointer"
+                      className="group relative mt-2 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#3E7A1C] to-[#5E9E2E] px-6 py-4 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_16px_rgba(62,122,28,0.35)] cursor-pointer"
                     >
                       <span className="absolute inset-0 h-full w-full -translate-x-full bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
                       {submitting ? (
@@ -767,7 +773,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                           <button
                             type="button"
                             onClick={() => switchMode('login')}
-                            className="font-medium text-[#1857D6] hover:underline cursor-pointer"
+                            className="font-medium text-[#3E7A1C] hover:underline cursor-pointer"
                           >
                             Log in here
                           </button>
@@ -778,7 +784,7 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
                           <button
                             type="button"
                             onClick={() => switchMode('register')}
-                            className="font-medium text-[#1857D6] hover:underline cursor-pointer"
+                            className="font-medium text-[#3E7A1C] hover:underline cursor-pointer"
                           >
                             Register as a Merchant Partner
                           </button>
@@ -820,6 +826,38 @@ export default function AuthModal({ isOpen, initialMode = 'register', onClose }:
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────
 
+// Green brand panel shown beside the form on desktop.
+function PartnerPanel() {
+  const perks = [
+    { icon: <Gift size={16} />, title: '200 joining points', body: 'Credited the moment you are approved' },
+    { icon: <Sparkles size={16} />, title: '100 pts per referral', body: 'Your own referral code & link' },
+    { icon: <Store size={16} />, title: 'Your shop QR code', body: 'Customers scan & win scratch cards' },
+    { icon: <Clock3 size={16} />, title: 'Approval in 24–48 hrs', body: 'Zero setup cost, no hardware' },
+  ]
+  return (
+    <div className="relative hidden w-[38%] shrink-0 flex-col overflow-hidden bg-gradient-to-br from-[#3E7A1C] via-[#4C8A22] to-[#6BAF38] p-8 text-white md:flex">
+      <div aria-hidden="true" className="absolute -right-20 -top-20 h-64 w-64 rounded-full border-[32px] border-white/10" />
+      <div aria-hidden="true" className="absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-white/10 blur-2xl" />
+      <p className="relative text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">Merchant partner network</p>
+      <h3 className="relative mt-3 text-[28px] font-semibold leading-tight">Turn your counter into a growth engine.</h3>
+      <ul className="relative mt-8 space-y-3">
+        {perks.map((p) => (
+          <li key={p.title} className="flex items-start gap-3 rounded-2xl bg-white/10 p-3 backdrop-blur">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">{p.icon}</span>
+            <div>
+              <p className="text-sm font-semibold">{p.title}</p>
+              <p className="text-xs text-white/75">{p.body}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="relative mt-auto flex items-center gap-2 pt-8 text-xs text-white/80">
+        <CheckCircle2 size={14} /> Trusted by local shops across 20+ categories
+      </p>
+    </div>
+  )
+}
+
 function Field({
   label,
   icon,
@@ -833,8 +871,8 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-        <span className="text-[#1857D6]">{icon}</span>
+      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[#0B2E7A]/70">
+        <span className="text-[#3E7A1C]">{icon}</span>
         {label}
       </label>
       {children}
@@ -845,12 +883,12 @@ function Field({
 
 function inputClass(hasError: boolean) {
   return [
-    'w-full rounded-xl border bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800',
+    'w-full rounded-xl border bg-[#FAFCFF] px-3.5 py-3 text-sm text-[#0B2E7A]',
     'placeholder:text-slate-400 transition-colors duration-200',
-    'focus:bg-white focus:outline-none focus:ring-2',
+    'focus:bg-white focus:outline-none focus:ring-4',
     hasError
       ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
-      : 'border-slate-200 focus:border-[#1857D6] focus:ring-[#1857D6]/15',
+      : 'border-[#0B2E7A]/15 focus:border-[#3E7A1C] focus:ring-[#3E7A1C]/10',
   ].join(' ')
 }
 

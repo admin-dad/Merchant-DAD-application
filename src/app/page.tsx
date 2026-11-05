@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SocialLinks from "@/components/SocialLinks";
 // NOTE: assumed prop shape { isOpen, onClose } to match the AuthModal
 // pattern already used elsewhere in this project. Adjust the two usages
 // below (near the bottom of this file, and the "Become a partner" button)
@@ -135,16 +136,39 @@ function StaggerItem({
   );
 }
 
-/* --- Ledger Divider (shared structural device) --- */
-function LedgerRule({ label }: { label: string }) {
+/* --- Shared typography helpers --- */
+const DISPLAY: React.CSSProperties = { fontFamily: "var(--font-display), Georgia, serif" };
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-6">
-      <span className="font-mono text-[11px] font-semibold tracking-[0.3em] text-[#0B2E7A]/60 flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-ping" />
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-gradient-to-r from-[#0B2E7A]/20 via-[#0B2E7A]/5 to-transparent" />
-    </div>
+    <span className="inline-flex items-center gap-2 rounded-full border border-[#3E7A1C]/20 bg-white px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3E7A1C] shadow-sm">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#7BC142]" />
+      {children}
+    </span>
+  );
+}
+
+function Accent({ children }: { children: React.ReactNode }) {
+  return <span className="text-[#3E7A1C]">{children}</span>;
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  desc,
+}: {
+  eyebrow: string;
+  title: React.ReactNode;
+  desc?: string;
+}) {
+  return (
+    <FadeUp className="mx-auto mb-7 max-w-2xl text-center">
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-4 text-3xl font-semibold leading-tight tracking-tight text-[#0B2E7A] sm:text-[2.6rem]" style={DISPLAY}>
+        {title}
+      </h2>
+      {desc && <p className="mx-auto mt-3 max-w-xl text-base text-[#0B2E7A]/65">{desc}</p>}
+    </FadeUp>
   );
 }
 
@@ -228,12 +252,6 @@ function getFeatures(referralPoints: number) {
       accent: "blue" as const,
     },
     {
-      icon: ShoppingBag,
-      title: "Unified B2B & B2C Commerce",
-      body: "Merchants can restock inventory or redeem points for products on the exact same storefront their customers shop from.",
-      accent: "green" as const,
-    },
-    {
       icon: TrendingUp,
       title: "Benefits & Transparent Billing",
       body: "Category-based benefits, transparent per-customer billing, and full visibility into exactly what's owed and what's paid.",
@@ -273,105 +291,106 @@ const ONBOARDING_TIMELINE = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Hero visual — ledger-styled network card with orbiting motifs     */
+/*  Hero banner visual — phone mockup with live reward flow           */
 /* ------------------------------------------------------------------ */
 
-const ORBIT_ICONS = [
-  { Icon: QrCode, top: "4%", left: "2%", size: 46, delay: 0 },
-  { Icon: Wallet, top: "10%", left: "80%", size: 40, delay: 0.6 },
-  { Icon: Users, top: "70%", left: "0%", size: 42, delay: 1.2 },
-  { Icon: Sparkles, top: "84%", left: "78%", size: 38, delay: 0.3 },
-  { Icon: ShoppingBag, top: "42%", left: "90%", size: 36, delay: 0.9 },
-];
-
-function HeroVisual({
-  merchantDisplayCount,
+function HeroPhone({
   referralPoints,
   joiningBonusPoints,
 }: {
-  merchantDisplayCount: number | null;
   referralPoints: number;
   joiningBonusPoints: number;
 }) {
   const reduce = useReducedMotion();
+  const float = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          animate: { y: [0, -10, 0] },
+          transition: { duration: 5, repeat: Infinity, ease: "easeInOut" as const, delay },
+        };
+
   return (
     <motion.div
-      initial={reduce ? {} : { opacity: 0, scale: 0.92, y: 24 }}
-      animate={reduce ? {} : { opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.9, delay: 0.3, ease: EASE }}
-      className="relative mx-auto flex min-h-[500px] w-full max-w-md items-center justify-center px-4 sm:min-h-[420px] sm:px-0"
+      initial={reduce ? false : { opacity: 0, y: 40, rotate: -2 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={{ duration: 1, delay: 0.25, ease: EASE }}
+      className="relative mx-auto mt-4 flex w-full max-w-[440px] items-center justify-center py-2 lg:mt-14"
     >
-      {ORBIT_ICONS.map(({ Icon, top, left, size, delay }, i) => (
-          <motion.div
-            key={i}
-            aria-hidden="true"
-            className="pointer-events-none absolute z-20 flex items-center justify-center rounded-2xl border border-[#0B2E7A]/10 bg-white text-[#1857D6] shadow-lg shadow-[#0B2E7A]/10"
-            style={{ top, left, width: size, height: size }}
-            initial={reduce ? false : { opacity: 0, scale: 0.6 }}
-            animate={reduce ? { opacity: 1, scale: 1 } : { opacity: 1, scale: 1, y: [0, -14, 0], rotate: [0, -4, 0] }}
-            transition={{
-              opacity: { duration: 0.6, delay: 0.6 + delay * 0.2 },
-              scale: { duration: 0.6, delay: 0.6 + delay * 0.2 },
-              y: { duration: 6, repeat: Infinity, ease: "easeInOut", delay },
-              rotate: { duration: 6, repeat: Infinity, ease: "easeInOut", delay },
-            }}
-          >
-            <Icon size={Math.round(size * 0.42)} strokeWidth={2} />
-          </motion.div>
-        ))}
+      {/* Glow + rings */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7BC142]/25 blur-[90px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[105%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#0B2E7A]/10" />
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#3E7A1C]/25" />
 
-      <motion.div
-        animate={reduce ? {} : { scale: [1, 1.08, 1], opacity: [0.25, 0.4, 0.25] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="pointer-events-none absolute h-80 w-80 rounded-full blur-[90px]"
-        style={{ background: "#7BC142" }}
-      />
-
-      <motion.div
-        whileHover={reduce ? {} : { y: -6 }}
-        transition={{ duration: 0.4, ease: EASE }}
-        className="relative z-10 w-full max-w-[300px] rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-xl shadow-[#0B2E7A]/10"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B2E7A] text-white">
-            <Users size={17} strokeWidth={2.25} />
+      {/* Phone */}
+      <div className="relative z-10 w-[250px] rounded-[42px] border border-white/20 bg-[#06194A] p-2.5 shadow-[0_40px_80px_-20px_rgba(11,46,122,0.45)] sm:w-[270px]">
+        <div className="absolute left-1/2 top-4 z-20 h-5 w-20 -translate-x-1/2 rounded-full bg-[#06194A]" />
+        <div className="overflow-hidden rounded-[34px] bg-[#FAFCFF]">
+          {/* Screen header */}
+          <div className="bg-gradient-to-br from-[#1857D6] to-[#0B2E7A] px-5 pb-6 pt-10 text-white">
+            <p className="font-mono text-[10px] tracking-[0.25em] text-blue-100/80">SHARMA KIRANA</p>
+            <p className="mt-1 text-lg font-semibold leading-tight" style={{ fontFamily: "var(--font-display), Georgia, serif" }}>
+              Scan. Verify. Win.
+            </p>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-[#0B2E7A]">Merchant network</span>
-            <span className="text-xs text-[#0B2E7A]/55">Live partner count</span>
+
+          <div className="-mt-4 px-4 pb-5">
+            {/* QR tile */}
+            <div className="relative rounded-2xl border border-slate-100 bg-white p-4 shadow-lg shadow-[#0B2E7A]/10">
+              <div className="relative mx-auto flex h-28 w-28 items-center justify-center rounded-xl bg-[#F2F8EB]">
+                <QrCode size={84} strokeWidth={1.3} className="text-[#0B2E7A]" />
+                {!reduce && (
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute left-2 right-2 h-0.5 rounded-full bg-[#7BC142] shadow-[0_0_12px_2px_rgba(123,193,66,0.7)]"
+                    animate={{ top: ["12%", "88%", "12%"] }}
+                    transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                )}
+              </div>
+              <p className="mt-3 text-center text-[11px] font-medium text-slate-500">Point camera at counter QR</p>
+            </div>
+
+            {/* Scratch card */}
+            <motion.div
+              initial={reduce ? false : { opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 1.1, ease: EASE }}
+              className="relative mt-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#3E7A1C] to-[#7BC142] p-4 text-white"
+            >
+              <div aria-hidden="true" className="absolute -right-6 -top-6 h-20 w-20 rounded-full border-[10px] border-white/15" />
+              <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.2em] text-white/80">
+                <Sparkles size={12} /> SCRATCH CARD
+              </p>
+              <p className="mt-1 text-2xl font-semibold" style={{ fontFamily: "var(--font-display), Georgia, serif" }}>
+                ₹25 cashback
+              </p>
+              <p className="text-[11px] text-white/80">Credited to your wallet</p>
+            </motion.div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-6 flex flex-col">
-          <span
-            className="text-4xl font-light tracking-tight text-[#0B2E7A]"
-            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-          >
-            {merchantDisplayCount !== null ? `${merchantDisplayCount}+` : "—"}
-          </span>
-          <span className="mt-1 text-xs font-medium text-[#0B2E7A]/55">merchants already onboard</span>
+      {/* Floating chips */}
+      <motion.div {...float(0)} className="absolute left-0 top-10 z-20 flex items-center gap-2.5 rounded-2xl border border-[#0B2E7A]/10 bg-white px-3.5 py-2.5 shadow-xl shadow-[#0B2E7A]/10 sm:-left-4">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#3E7A1C]/10 text-[#3E7A1C]"><Gift size={16} /></span>
+        <div>
+          <p className="text-xs font-semibold text-[#0B2E7A]">+{joiningBonusPoints} pts</p>
+          <p className="text-[10px] text-slate-500">Joining bonus</p>
         </div>
+      </motion.div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7BC142]/15 px-3 py-1.5 font-mono text-[11px] font-semibold text-[#4C8A22]">
-            <Gift size={12} strokeWidth={2.5} /> +{joiningBonusPoints} pts joining bonus
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3E7A1C]/10 px-3 py-1.5 font-mono text-[11px] font-semibold text-[#3E7A1C]">
-            <Sparkles size={12} strokeWidth={2.5} /> +{referralPoints} pts referral
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1857D6]/10 px-3 py-1.5 font-mono text-[11px] font-semibold text-[#1857D6]">
-            <ShieldCheck size={12} strokeWidth={2.5} /> OTP verified
-          </span>
+      <motion.div {...float(1.2)} className="absolute right-0 top-1/3 z-20 flex items-center gap-2.5 rounded-2xl border border-[#0B2E7A]/10 bg-white px-3.5 py-2.5 shadow-xl shadow-[#0B2E7A]/10 sm:-right-6">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1857D6]/10 text-[#1857D6]"><Users size={16} /></span>
+        <div>
+          <p className="text-xs font-semibold text-[#0B2E7A]">+{referralPoints} pts</p>
+          <p className="text-[10px] text-slate-500">Per referral</p>
         </div>
+      </motion.div>
 
-        <div className="mt-6 flex items-center gap-2.5 border-t border-[#0B2E7A]/10 pt-5">
-          <div className="flex">
-            <span className="-ml-0 h-5 w-5 rounded-full border-2 border-white bg-[#1857D6]" />
-            <span className="-ml-2 h-5 w-5 rounded-full border-2 border-white bg-[#3E7A1C]" />
-            <span className="-ml-2 h-5 w-5 rounded-full border-2 border-white bg-[#7BC142]" />
-          </div>
-          <span className="font-mono text-[11px] text-[#0B2E7A]/55">20+ categories on network</span>
-        </div>
+      <motion.div {...float(0.6)} className="absolute bottom-8 left-2 z-20 flex items-center gap-2 rounded-full border border-[#0B2E7A]/10 bg-white px-3.5 py-2 shadow-xl shadow-[#0B2E7A]/10 sm:-left-2">
+        <ShieldCheck size={15} className="text-[#3E7A1C]" />
+        <p className="text-[11px] font-semibold text-[#0B2E7A]">OTP verified · &lt;30s</p>
       </motion.div>
     </motion.div>
   );
@@ -415,7 +434,7 @@ function RegisterDemo() {
         </motion.div>
         <h3
           className="mt-4 text-2xl text-[#0B2E7A]"
-          style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+          style={DISPLAY}
         >
           Application received
         </h3>
@@ -450,7 +469,7 @@ function RegisterDemo() {
     <form onSubmit={submit} className="flex h-full flex-col rounded-3xl bg-white p-8 shadow-xl">
       <h3
         className="text-2xl text-[#0B2E7A]"
-        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+        style={DISPLAY}
       >
         Apply as a Merchant Partner
       </h3>
@@ -600,122 +619,174 @@ export default function RakvihLanding() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#FAFCFF] font-sans text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A]">
  <Header />
       {/* ---------------------------------------------------------- */}
-      {/* HERO                                                        */}
+      {/* HERO BANNER                                                 */}
       {/* ---------------------------------------------------------- */}
-      <section
-        ref={containerRef}
-        className="relative flex min-h-[80vh] flex-col justify-center overflow-hidden border-b border-[#0B2E7A]/10 px-6 pb-16 pt-20"
-      >
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full blur-[100px]"
-          style={{ background: "#7BC142" }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="pointer-events-none absolute -left-20 bottom-0 h-96 w-96 rounded-full blur-[120px]"
-          style={{ background: "#1857D6" }}
-        />
-
-        <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-          <motion.div style={{ y: heroTextY, opacity: heroOpacity }}>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, ease: EASE }}
-              className="mb-5 inline-flex items-center gap-2.5 rounded-full border border-[#3E7A1C]/20 bg-[#3E7A1C]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#3E7A1C] shadow-sm"
-            >
-              <Store size={15} strokeWidth={2} />
-              <span>MERCHANT PARTNER NETWORK</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-              className="max-w-xl text-4xl font-light leading-tight tracking-tight sm:text-5xl md:text-6xl"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              Every shop counter is a{" "}
-              <span className="font-normal italic text-[#3E7A1C] underline decoration-[#7BC142]/40 underline-offset-8">
-                growth engine
-              </span>
-              .
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 25 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-              className="mt-6 max-w-lg text-base leading-relaxed text-[#0B2E7A]/80 sm:text-lg"
-            >
-              One QR code turns walk-in customers into rewards, referrals into revenue,
-              and every sale into a tracked, redeemable point — built for Kirana stores,
-              salons, electronics shops, and 20+ business categories.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.42, ease: EASE }}
-              className="mt-9 flex flex-wrap gap-4"
-            >
-              <motion.button
-                type="button"
-                onClick={() => setIsMerchantModalOpen(true)}
-                whileHover={{ y: -3 }}
-                whileTap={{ y: 0, scale: 0.98 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-8 py-4 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_8px_25px_rgba(62,122,28,0.4)] transition-shadow duration-300 hover:shadow-[0_12px_30px_rgba(62,122,28,0.55)]"
-              >
-                <span className="absolute inset-0 h-full w-full -translate-x-full skew-x-12 transform bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
-                <span>Become a partner</span>
-                <ArrowUpRight size={17} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </motion.button>
-              <motion.a
-                href="/how-it-works"
-                whileHover={{ y: -3 }}
-                whileTap={{ y: 0, scale: 0.98 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-[#0B2E7A]/20 px-7 py-4 font-mono text-sm font-semibold tracking-wide text-[#0B2E7A] transition-colors hover:bg-[#0B2E7A]/5"
-              >
-                See how it works
-              </motion.a>
-            </motion.div>
-
-            <StaggerGroup className="mt-10 flex flex-wrap gap-x-7 gap-y-3">
-              {["QR-linked in real time", "Unified wallet & commerce", "Audited transactions"].map((t) => (
-                <StaggerItem key={t} className="flex items-center gap-2 text-sm font-medium text-[#0B2E7A]/70">
-                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#3E7A1C] shadow-[0_0_0_3px_rgba(62,122,28,0.15)]" />
-                  {t}
-                </StaggerItem>
-              ))}
-            </StaggerGroup>
-          </motion.div>
-
-          <HeroVisual
-            merchantDisplayCount={merchantDisplayCount}
-            referralPoints={activePointsConfig.points_per_referral}
-            joiningBonusPoints={activePointsConfig.joining_bonus_points}
+      <section ref={containerRef} className="relative">
+        <div className="relative overflow-hidden border-b border-[#0B2E7A]/10 bg-gradient-to-br from-[#F3F9EC] via-white to-[#EAF2FD]">
+          {/* Background layers */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(24,87,214,0.10),transparent_60%)]" />
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -left-32 h-[420px] w-[420px] rounded-full bg-[#7BC142]/25 blur-[120px]" />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-[0.05]"
+            style={{
+              backgroundImage:
+                "linear-gradient(#0B2E7A 1px, transparent 1px), linear-gradient(90deg, #0B2E7A 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+              maskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
+              WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 75%)",
+            }}
           />
+
+          <div className="relative z-10 mx-auto grid max-w-7xl items-start gap-6 px-5 pb-4 pt-3 sm:px-8 sm:pt-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-6 lg:px-10 lg:pb-6 lg:pt-4">
+            <motion.div style={{ y: heroTextY, opacity: heroOpacity }}>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: EASE }}
+                className="inline-flex items-center gap-2.5 rounded-full border border-[#3E7A1C]/20 bg-white py-1.5 pl-1.5 pr-4 shadow-sm"
+              >
+                <span className="rounded-full bg-[#3E7A1C] px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.15em] text-white">
+                  NEW
+                </span>
+                <span className="font-mono text-[11px] font-medium tracking-[0.2em] text-[#3E7A1C]">
+                  MERCHANT PARTNER NETWORK
+                </span>
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
+                className="mt-5 max-w-xl text-[2.6rem] font-medium leading-[1.05] tracking-tight text-[#0B2E7A] sm:text-6xl xl:text-7xl"
+                style={{ fontFamily: "var(--font-display), Georgia, serif" }}
+              >
+                Turn every counter into a{" "}
+                <span className="relative inline-block text-[#3E7A1C]">
+                  growth engine
+                  <svg aria-hidden="true" viewBox="0 0 300 12" preserveAspectRatio="none" className="absolute -bottom-2 left-0 h-3 w-full text-[#7BC142]">
+                    <path d="M2 9 C 80 2, 200 2, 298 7" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                  </svg>
+                </span>
+                .
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 25 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
+                className="mt-6 max-w-lg text-base leading-relaxed text-[#0B2E7A]/75 sm:text-lg"
+              >
+                One QR code turns walk-in customers into rewards, referrals into revenue,
+                and every sale into a redeemable point — for Kirana stores, salons,
+                electronics shops and 20+ categories.
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.42, ease: EASE }}
+                className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4"
+              >
+                <motion.button
+                  type="button"
+                  onClick={() => setIsMerchantModalOpen(true)}
+                  whileHover={{ y: -3 }}
+                  whileTap={{ y: 0, scale: 0.98 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-8 py-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(62,122,28,0.35)] transition-shadow duration-300 hover:shadow-[0_14px_36px_rgba(62,122,28,0.5)]"
+                >
+                  <span className="absolute inset-0 -translate-x-full skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
+                  <span className="relative">Become a partner — it&apos;s free</span>
+                  <ArrowUpRight size={17} className="relative transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" />
+                </motion.button>
+                <motion.a
+                  href="/how-it-works"
+                  whileHover={{ y: -3 }}
+                  whileTap={{ y: 0, scale: 0.98 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-[#0B2E7A]/20 bg-white px-7 py-4 text-sm font-semibold text-[#0B2E7A] transition-colors hover:bg-[#0B2E7A]/5"
+                >
+                  See how it works
+                  <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                </motion.a>
+              </motion.div>
+
+              {/* Social proof */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="mt-7 flex items-center gap-4"
+              >
+                <div aria-hidden="true" className="flex -space-x-2.5">
+                  {[Store, ShoppingBag, Smartphone, Gift].map((Icon, i) => (
+                    <span key={i} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#F2F8EB] text-[#3E7A1C] shadow-sm">
+                      <Icon size={15} strokeWidth={2} />
+                    </span>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#0B2E7A]">
+                    {merchantDisplayCount !== null ? `${merchantDisplayCount}+ merchants` : "Merchants"} already onboard
+                  </p>
+                  <p className="flex items-center gap-1.5 text-xs text-[#0B2E7A]/60">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-pulse" />
+                    Approval in 24–48 hours
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            <HeroPhone
+              referralPoints={activePointsConfig.points_per_referral}
+              joiningBonusPoints={activePointsConfig.joining_bonus_points}
+            />
+          </div>
+
+          {/* Stats strip */}
+          <StaggerGroup className="relative z-10 mx-auto grid max-w-7xl grid-cols-2 border-t border-[#0B2E7A]/10 lg:grid-cols-4">
+            {CAPABILITY_STATS.map((s, i) => (
+              <StaggerItem
+                key={s.label}
+                className={`px-5 py-5 sm:px-8 ${i % 2 === 1 ? "border-l border-[#0B2E7A]/10" : ""} ${i >= 2 ? "border-t border-[#0B2E7A]/10 lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}
+              >
+                <p className="text-2xl font-semibold text-[#0B2E7A] sm:text-3xl" style={{ fontFamily: "var(--font-display), Georgia, serif" }}>
+                  {s.value}
+                </p>
+                <p className="mt-1 text-xs text-[#0B2E7A]/60 sm:text-sm">{s.label}</p>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+        </div>
+      </section>
+
+      <section aria-labelledby="home-social-heading" className="border-b border-[#0B2E7A]/10 bg-white px-5 py-6 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="home-social-heading" className="text-sm font-semibold text-[#0B2E7A]">Follow us</h2>
+          <SocialLinks />
         </div>
       </section>
 
       {/* ---------------------------------------------------------- */}
       {/* CATEGORY MARQUEE                                            */}
       {/* ---------------------------------------------------------- */}
-      <div className="overflow-hidden border-b border-[#0B2E7A]/10 bg-[#0B2E7A]/[0.03] py-5">
+      <div
+        className="relative overflow-hidden border-b border-[#0B2E7A]/10 bg-white py-4"
+        style={{
+          maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)",
+        }}
+      >
         <motion.div
-          className="flex w-max gap-10 whitespace-nowrap"
+          className="flex w-max gap-3"
           animate={{ x: ["0%", "-50%"] }}
-          transition={{ duration: 32, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
         >
           {[...CATEGORIES, ...CATEGORIES].map((c, i) => (
             <span
               key={i}
-              className="flex items-center gap-2.5 font-mono text-xs font-medium tracking-wide text-[#0B2E7A]/55"
+              className="flex items-center gap-2 whitespace-nowrap rounded-full border border-[#0B2E7A]/10 bg-[#FAFCFF] px-4 py-2 text-xs font-medium text-[#0B2E7A]/75"
             >
               <Store size={13} strokeWidth={2} className="text-[#3E7A1C]" />
               {c}
@@ -727,246 +798,213 @@ export default function RakvihLanding() {
       {/* ---------------------------------------------------------- */}
       {/* HOW IT WORKS — FIVE-STEP FLOW                               */}
       {/* ---------------------------------------------------------- */}
-      <section id="how" className="relative px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp className="mb-12 text-center">
-            <span className="rounded-full border border-[#1857D6]/20 bg-[#1857D6]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6]">
-              THE FIVE-STEP FLOW
-            </span>
-            <h2
-              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              From registration to reward, tracked at every step
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-[#0B2E7A]/70">
-              No apps for your customers to download, no hardware to buy — just a simple flow that benefits everyone.
-            </p>
-          </FadeUp>
+      <section id="how" className="relative px-5 pt-6 pb-10 sm:px-8 sm:pt-8 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeading
+            eyebrow="How it works"
+            title={<>From registration to reward, <Accent>tracked at every step</Accent></>}
+            desc="No apps for your customers to download, no hardware to buy — just a simple flow that benefits everyone."
+          />
 
-          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-            {STEPS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <StaggerItem key={item.step}>
-                  <motion.div
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    className="group relative flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-6 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
-                  >
-                    <div className="mb-5 flex items-center justify-between">
-                      <span className="rounded-full bg-[#1857D6]/10 px-3 py-1 font-mono text-xs font-bold text-[#1857D6]">
-                        STEP {item.step}
-                      </span>
-                      <div className="rounded-xl border border-[#0B2E7A]/10 bg-[#FAFCFF] p-2.5 transition-transform group-hover:scale-110">
-                        <Icon size={18} className="text-[#0B2E7A]" />
+          <div className="relative">
+            {/* connector line (desktop) */}
+            <div aria-hidden="true" className="absolute left-[10%] right-[10%] top-7 hidden h-px bg-gradient-to-r from-[#1857D6]/30 via-[#3E7A1C]/40 to-[#7BC142]/30 lg:block" />
+            <StaggerGroup className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-5 lg:grid-cols-5 lg:gap-4">
+              {STEPS.map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <StaggerItem key={item.step} className={i === 4 ? "col-span-2 lg:col-span-1" : ""}>
+                    <div className="group relative flex h-full flex-col items-start lg:items-center lg:text-center">
+                      <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl border sm:h-14 sm:w-14 border-[#0B2E7A]/10 bg-white text-[#3E7A1C] shadow-lg shadow-[#0B2E7A]/10 transition-all duration-300 group-hover:-translate-y-1 group-hover:bg-[#3E7A1C] group-hover:text-white">
+                        <Icon size={22} strokeWidth={1.9} />
+                        <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#1857D6] text-[10px] font-bold text-white ring-4 ring-[#FAFCFF]">
+                          {i + 1}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-1 flex-col lg:mt-5 lg:items-center">
+                        <h3 className="text-[15px] font-semibold leading-snug text-[#0B2E7A] sm:text-lg" style={DISPLAY}>
+                          {item.title}
+                        </h3>
+                        <p className="mt-1.5 flex-1 text-xs leading-relaxed text-[#0B2E7A]/70 sm:mt-2 sm:text-sm">{item.desc}</p>
+                        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#3E7A1C]/10 px-2.5 py-1 text-[10px] sm:mt-4 sm:px-3 sm:text-[11px] font-semibold text-[#3E7A1C]">
+                          <CheckCircle2 size={12} /> {item.detail}
+                        </span>
                       </div>
                     </div>
-                    <h3
-                      className="mb-2.5 text-xl font-normal text-[#0B2E7A]"
-                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                    >
-                      {item.title}
-                    </h3>
-                    <p className="flex-1 text-xs leading-relaxed text-[#0B2E7A]/75 sm:text-[13px]">
-                      {item.desc}
-                    </p>
-                    <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-[#3E7A1C]/10 px-3 py-1 font-mono text-[11px] font-semibold text-[#3E7A1C]">
-                      {item.detail}
-                    </span>
-                  </motion.div>
-                </StaggerItem>
-              );
-            })}
-          </StaggerGroup>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerGroup>
+          </div>
         </div>
       </section>
 
-      <LedgerRule label="PLATFORM MODULES" />
-
       {/* ---------------------------------------------------------- */}
-      {/* FEATURES                                                    */}
+      {/* FEATURES — BENTO GRID                                       */}
       {/* ---------------------------------------------------------- */}
-      <section className="bg-gradient-to-b from-transparent via-[#1857D6]/[0.02] to-transparent px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp className="mb-12 text-center">
-            <span className="rounded-full border border-[#3E7A1C]/20 bg-[#3E7A1C]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#3E7A1C]">
-              PLATFORM MODULES
-            </span>
-            <h2
-              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              Everything a merchant partner needs
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-[#0B2E7A]/70">
-              A complete toolkit to acquire, engage, and retain customers while building a peer network.
-            </p>
-          </FadeUp>
+      <section className="relative bg-gradient-to-b from-[#F3F9EC] to-[#FAFCFF] px-5 pt-6 pb-10 sm:px-8 sm:pt-8 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeading
+            eyebrow="Platform modules"
+            title={<>Everything a merchant partner <Accent>needs</Accent></>}
+            desc="A complete toolkit to acquire, engage, and retain customers while building a peer network."
+          />
 
-          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((f) => {
+          <StaggerGroup className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+            {FEATURES.map((f, i) => {
               const c = ACCENT_CLASSES[f.accent];
+              const featured = i === 0;
               return (
-                <StaggerItem key={f.title}>
+                <StaggerItem key={f.title} className={featured ? "col-span-2 lg:col-span-1 lg:row-span-2" : ""}>
                   <motion.div
-                    whileHover={{ y: -8 }}
+                    whileHover={{ y: -6 }}
                     transition={{ duration: 0.3, ease: EASE }}
-                    className="flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
+                    className={
+                      featured
+                        ? "relative flex h-full flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-[#3E7A1C] to-[#5E9E2E] p-6 text-white sm:p-8 shadow-xl shadow-[#3E7A1C]/20"
+                        : "group flex h-full flex-col rounded-2xl border border-[#0B2E7A]/10 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-7 transition-shadow hover:border-[#3E7A1C]/30 hover:shadow-xl hover:shadow-[#0B2E7A]/5"
+                    }
                   >
-                    <div className={`mb-5 inline-flex w-fit rounded-2xl border ${c.border} ${c.bg} p-3 ${c.text}`}>
-                      <f.icon size={22} strokeWidth={2} />
+                    {featured && (
+                      <>
+                        <div aria-hidden="true" className="absolute -right-16 -top-16 h-56 w-56 rounded-full border-[28px] border-white/10" />
+                        <div aria-hidden="true" className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+                      </>
+                    )}
+                    <div
+                      className={
+                        featured
+                          ? "relative mb-6 inline-flex w-fit rounded-2xl bg-white/15 p-3.5 text-white"
+                          : `mb-3 inline-flex w-fit rounded-xl border ${c.border} ${c.bg} p-2.5 ${c.text} sm:mb-5 sm:rounded-2xl sm:p-3`
+                      }
+                    >
+                      <f.icon size={featured ? 26 : 22} strokeWidth={2} />
                     </div>
                     <h3
-                      className="mb-2 text-xl font-normal text-[#0B2E7A]"
-                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                      className={featured ? "relative text-2xl font-semibold sm:text-3xl" : "mb-1.5 text-[15px] font-semibold leading-snug text-[#0B2E7A] sm:mb-2 sm:text-xl"}
+                      style={DISPLAY}
                     >
                       {f.title}
                     </h3>
-                    <p className="text-sm leading-relaxed text-[#0B2E7A]/75">{f.body}</p>
+                    <p className={featured ? "relative mt-3 text-base leading-relaxed text-white/85" : "text-xs leading-relaxed text-[#0B2E7A]/70 sm:text-sm"}>
+                      {f.body}
+                    </p>
+                    {featured && (
+                      <div className="relative mt-auto pt-8">
+                        <div className="rounded-2xl bg-white/15 p-4 backdrop-blur">
+                          <p className="text-xs font-medium text-white/75">Earned per approved referral</p>
+                          <p className="mt-1 text-4xl font-semibold" style={DISPLAY}>
+                            +{activePointsConfig.points_per_referral} pts
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsMerchantModalOpen(true)}
+                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-white hover:underline"
+                        >
+                          Start referring <ArrowRight size={15} />
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 </StaggerItem>
               );
             })}
           </StaggerGroup>
 
-          {/* Ecosystem strip — items stagger in individually */}
-          <FadeUp delay={0.1} className="mt-10">
-            <StaggerGroup className="grid gap-5 rounded-3xl border border-[#0B2E7A]/10 bg-white p-8 shadow-lg shadow-[#0B2E7A]/5 sm:grid-cols-2 sm:p-10">
-              {ECOSYSTEM.map((e) => (
-                <StaggerItem key={e.title} className="flex items-start gap-4">
-                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-[#0B2E7A]/10 bg-[#FAFCFF] text-[#0B2E7A]">
+          {/* Ecosystem tiles */}
+          <StaggerGroup className="mt-3 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-5 lg:grid-cols-4">
+            {ECOSYSTEM.map((e) => (
+              <StaggerItem key={e.title}>
+                <div className="flex h-full flex-col rounded-2xl border border-[#0B2E7A]/10 bg-white/70 p-4 backdrop-blur sm:rounded-3xl sm:p-6">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1857D6]/10 text-[#1857D6]">
                     <e.icon size={19} strokeWidth={2} />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0B2E7A]">{e.title}</h4>
-                    <p className="mt-1 text-[13px] leading-relaxed text-[#0B2E7A]/70">{e.body}</p>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerGroup>
-          </FadeUp>
-        </div>
-      </section>
-
-      <LedgerRule label="NETWORK AT SCALE" />
-
-      {/* ---------------------------------------------------------- */}
-      {/* STATS BAND                                                  */}
-      {/* ---------------------------------------------------------- */}
-      <section className="px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp>
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0B2E7A] to-[#1857D6] p-8 text-white shadow-xl sm:p-12">
-              <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 -translate-y-12 translate-x-12 rounded-full bg-white/10 blur-3xl" />
-              <div className="relative z-10 max-w-xl">
-                <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#7BC142]">
-                  Built for scale
-                </span>
-                <h3
-                  className="mt-3 text-2xl font-light leading-tight sm:text-3xl"
-                  style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                >
-                  Fast, trackable, and mutually beneficial for merchant and customer alike.
-                </h3>
-              </div>
-              <StaggerGroup className="relative z-10 mt-10 grid grid-cols-2 gap-8 sm:grid-cols-4">
-                {CAPABILITY_STATS.map((s) => (
-                  <StaggerItem key={s.label}>
-                    <div className="font-mono text-3xl font-bold text-[#7BC142] sm:text-4xl">{s.value}</div>
-                    <div className="mt-1.5 text-xs leading-snug text-slate-200 sm:text-sm">{s.label}</div>
-                  </StaggerItem>
-                ))}
-              </StaggerGroup>
-            </div>
-          </FadeUp>
+                  <h4 className="mt-3 text-sm font-semibold text-[#0B2E7A] sm:mt-4 sm:text-base">{e.title}</h4>
+                  <p className="mt-1 text-xs leading-relaxed text-[#0B2E7A]/65 sm:mt-1.5 sm:text-[13px]">{e.body}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
         </div>
       </section>
 
       {/* ---------------------------------------------------------- */}
       {/* SCENARIO — A DAY AT THE COUNTER                             */}
       {/* ---------------------------------------------------------- */}
-      <section className="px-6 pb-20">
-        <div className="mx-auto max-w-6xl">
+      <section className="px-5 pt-6 pb-10 sm:px-8 sm:pt-8 sm:pb-12">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <FadeUp>
-            <div className="grid gap-10 rounded-3xl border border-[#0B2E7A]/10 bg-white p-8 shadow-lg shadow-[#0B2E7A]/5 sm:p-12 lg:grid-cols-[0.42fr_0.58fr]">
-              <div>
-                <span className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-[#3E7A1C]">
-                  A day at the counter
+            <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#EAF2FD] via-white to-[#F3F9EC] p-8 ring-1 ring-[#0B2E7A]/10 sm:p-12">
+              <span aria-hidden="true" className="absolute -top-6 left-6 text-[160px] leading-none text-[#7BC142]/25" style={DISPLAY}>
+                &ldquo;
+              </span>
+              <p className="relative text-2xl font-medium leading-snug text-[#0B2E7A] sm:text-3xl" style={DISPLAY}>
+                The QR sits by the billing counter. A customer scans it while I pack their
+                order — by the time they&apos;ve paid, they&apos;ve already scratched a card.
+              </p>
+              <div className="relative mt-8 flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#3E7A1C] text-white">
+                  <Store size={19} />
                 </span>
-                <p
-                  className="mt-4 text-2xl font-light leading-snug text-[#0B2E7A] sm:text-[26px]"
-                  style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                >
-                  "The QR sits by the billing counter. A customer scans it while I pack their
-                  order — by the time they've paid, they've already scratched a card."
-                </p>
-                <div className="mt-5 font-mono text-xs text-[#0B2E7A]/50">
-                  Illustrative example — Kirana Store, daily engagement flow
+                <div>
+                  <p className="text-sm font-semibold text-[#0B2E7A]">Kirana store owner</p>
+                  <p className="text-xs text-[#0B2E7A]/55">Illustrative example — daily engagement flow</p>
                 </div>
               </div>
-              <StaggerGroup className="flex flex-col gap-4">
-                {[
-                  "Customer scans the shop's unique QR at checkout.",
-                  "Mobile number verified instantly via secure OTP.",
-                  "Digital scratch card delivered to their browser.",
-                  "Win or not, the interaction is logged to your dashboard.",
-                  "Merchant earns engagement credit and points automatically.",
-                ].map((s, i) => (
-                  <StaggerItem key={i} className="flex items-start gap-3.5 text-sm leading-relaxed text-[#0B2E7A]/80">
-                    <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-[#0B2E7A]/15 bg-[#FAFCFF] font-mono text-[11px] font-semibold text-[#1857D6]">
-                      {i + 1}
-                    </span>
-                    {s}
-                  </StaggerItem>
-                ))}
-              </StaggerGroup>
             </div>
           </FadeUp>
+
+          <div>
+            <FadeUp>
+              <Eyebrow>A day at the counter</Eyebrow>
+              <h2 className="mt-4 text-3xl font-semibold leading-tight text-[#0B2E7A] sm:text-4xl" style={DISPLAY}>
+                Every scan is a <Accent>logged, rewarded</Accent> moment
+              </h2>
+            </FadeUp>
+            <StaggerGroup className="mt-6 flex flex-col">
+              {[
+                "Customer scans the shop's unique QR at checkout.",
+                "Mobile number verified instantly via secure OTP.",
+                "Digital scratch card delivered to their browser.",
+                "Win or not, the interaction is logged to your dashboard.",
+                "Merchant earns engagement credit and points automatically.",
+              ].map((s, i, arr) => (
+                <StaggerItem key={i} className="relative flex gap-4 pb-5 last:pb-0">
+                  {i < arr.length - 1 && (
+                    <span aria-hidden="true" className="absolute left-[15px] top-8 h-[calc(100%-24px)] w-px bg-[#0B2E7A]/10" />
+                  )}
+                  <span className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3E7A1C]/10 text-xs font-bold text-[#3E7A1C] ring-4 ring-[#FAFCFF]">
+                    {i + 1}
+                  </span>
+                  <p className="pt-1 text-[15px] leading-relaxed text-[#0B2E7A]/80">{s}</p>
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
+          </div>
         </div>
       </section>
-
-      <LedgerRule label="ONBOARDING TIMELINE" />
 
       {/* ---------------------------------------------------------- */}
       {/* ONBOARDING TIMELINE                                         */}
       {/* ---------------------------------------------------------- */}
-      <section className="bg-gradient-to-b from-transparent via-[#3E7A1C]/[0.02] to-transparent px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp className="mb-12 text-center">
-            <span className="rounded-full border border-[#1857D6]/20 bg-[#1857D6]/10 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6]">
-              GO LIVE IN 4 DAYS
-            </span>
-            <h2
-              className="mt-4 text-3xl font-light text-[#0B2E7A] sm:text-4xl"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              A streamlined path to earning
-            </h2>
-          </FadeUp>
+      <section className="border-y border-[#0B2E7A]/10 bg-white px-5 pt-6 pb-10 sm:px-8 sm:pt-8 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeading
+            eyebrow="Go live in 4 days"
+            title={<>A streamlined path to <Accent>earning</Accent></>}
+          />
 
-          <StaggerGroup className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {ONBOARDING_TIMELINE.map((item) => (
-              <StaggerItem key={item.phase}>
-                <motion.div
-                  whileHover={{ y: -8 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                  className="group relative flex h-full flex-col rounded-3xl border border-[#0B2E7A]/10 bg-white p-7 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl"
-                >
-                  <div className="mb-6 flex items-center justify-between">
-                    <span className="rounded-full bg-[#1857D6]/10 px-3 py-1 font-mono text-xs font-bold text-[#1857D6]">
-                      {item.phase}
-                    </span>
-                    <CheckCircle2 size={20} className="text-[#3E7A1C]" />
-                  </div>
-                  <h3
-                    className="mb-3 text-2xl font-normal text-[#0B2E7A]"
-                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="text-xs leading-relaxed text-[#0B2E7A]/75 sm:text-sm">{item.desc}</p>
-                </motion.div>
+          <StaggerGroup className="relative grid grid-cols-2 gap-x-4 gap-y-7 sm:gap-8 lg:grid-cols-4 lg:gap-6">
+            <div aria-hidden="true" className="absolute left-0 right-0 top-[9px] hidden h-1 rounded-full bg-gradient-to-r from-[#1857D6]/20 via-[#3E7A1C]/30 to-[#7BC142] lg:block" />
+            {ONBOARDING_TIMELINE.map((item, i) => (
+              <StaggerItem key={item.phase} className="relative">
+                <span className={`relative z-10 block h-5 w-5 rounded-full border-4 border-white shadow ${i === ONBOARDING_TIMELINE.length - 1 ? "bg-[#7BC142]" : "bg-[#3E7A1C]"}`} />
+                <p className="mt-5 text-xs font-bold tracking-[0.2em] text-[#1857D6]">{item.phase}</p>
+                <h3 className="mt-1.5 text-base font-semibold text-[#0B2E7A] sm:mt-2 sm:text-xl" style={DISPLAY}>
+                  {item.title}
+                </h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#0B2E7A]/70 sm:mt-2 sm:text-sm">{item.desc}</p>
               </StaggerItem>
             ))}
           </StaggerGroup>
@@ -976,34 +1014,32 @@ export default function RakvihLanding() {
       {/* ---------------------------------------------------------- */}
       {/* APPLY — CLOSING CTA + REGISTRATION FORM                     */}
       {/* ---------------------------------------------------------- */}
-      <section id="apply" className="relative overflow-hidden px-6 py-20">
-        <div className="mx-auto max-w-6xl">
+      <section id="apply" className="relative px-5 pt-6 pb-10 sm:px-8 sm:pt-8 sm:pb-12">
+        <div className="mx-auto max-w-7xl">
           <FadeUp>
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B2E7A] to-[#0B2E7A]/90 p-8 shadow-xl sm:p-12">
-              <div className="pointer-events-none absolute -left-16 -top-16 h-72 w-72 rounded-full bg-[#7BC142]/20 blur-3xl" />
-              <div className="relative z-10 grid gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#3E7A1C] via-[#4C8A22] to-[#6BAF38] p-7 shadow-2xl shadow-[#3E7A1C]/25 sm:p-12">
+              <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full border-[40px] border-white/10" />
+              <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 left-1/3 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+              <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
                 <div>
-                  <span className="font-mono text-xs font-semibold uppercase tracking-widest text-[#7BC142]">
-                    Joining Privilege
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-semibold tracking-[0.15em] text-white">
+                    <Gift size={14} /> JOINING PRIVILEGE
                   </span>
-                  <h2
-                    className="mt-3 text-3xl font-light leading-tight text-white sm:text-4xl"
-                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                  >
+                  <h2 className="mt-5 text-3xl font-semibold leading-tight text-white sm:text-5xl" style={DISPLAY}>
                     Ready to put a QR on your counter?
                   </h2>
-                  <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">
+                  <p className="mt-4 max-w-md text-base leading-relaxed text-white/85">
                     Applications are reviewed within 24–48 hours. Once approved, your Merchant ID,
                     referral code, and shop QR are generated automatically.
                   </p>
-                  <StaggerGroup as="ul" className="mt-7 flex flex-col gap-3">
+                  <StaggerGroup as="ul" className="mt-7 grid grid-cols-2 gap-2 sm:gap-3">
                     {applyBenefits.map((li) => (
                       <StaggerItem
                         key={li}
                         as="li"
-                        className="flex items-center gap-2.5 text-sm font-normal text-white/90"
+                        className="flex items-start gap-2 rounded-2xl bg-white/10 p-3 text-xs text-white sm:gap-2.5 sm:p-3.5 sm:text-sm"
                       >
-                        <CheckCircle2 size={17} className="flex-shrink-0 text-[#7BC142]" strokeWidth={2} />
+                        <CheckCircle2 size={17} className="mt-0.5 flex-shrink-0 text-[#D7F5B8]" strokeWidth={2} />
                         {li}
                       </StaggerItem>
                     ))}
@@ -1015,7 +1051,6 @@ export default function RakvihLanding() {
           </FadeUp>
         </div>
       </section>
-
 
          <Footer />
 

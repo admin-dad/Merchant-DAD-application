@@ -1,332 +1,219 @@
 'use client'
 
-import { useRef } from "react";
 import {
-  motion,
-  useScroll,
-  useTransform,
-  useReducedMotion,
-} from "framer-motion";
-import { 
-  Gift, 
-  Sparkles, 
-  ShieldCheck, 
-  ArrowUpRight, 
-  Tag, 
-  TrendingUp, 
-  Megaphone, 
-  Award,
+  Gift,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  Megaphone,
   Crown,
   Percent,
-  Zap
+  Zap,
+  Tags,
+  BadgeCheck,
+  BarChart3,
+  CalendarCheck,
+  Store,
 } from "lucide-react";
-
-/* ------------------------------------------------------------------ */
-/*  DAP Brand Palette & Motion Tokens                                 */
-/*  paper      #FAFCFF  – clean, crisp off-white                      */
-/*  deepBlue   #0B2E7A  – profound structural backgrounds             */
-/*  linkBlue   #1857D6  – electric vibrant blue accents               */
-/*  deepGreen  #3E7A1C  – rich ribbon green for primary actions       */
-/*  leafGreen  #7BC142  – luminous highlight green                    */
-/* ------------------------------------------------------------------ */
-
-const EASE = [0.16, 1, 0.3, 1] as const;
-
-function FadeUp({
-  children,
-  delay = 0,
-  className = "",
-  yOffset = 30,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-  yOffset?: number;
-}) {
-  const reduce = useReducedMotion();
-  return (
-    <motion.div
-      initial={reduce ? {} : { opacity: 0, y: yOffset, filter: "blur(6px)" }}
-      whileInView={reduce ? {} : { opacity: 1, y: 0, filter: "blur(0px)" }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.8, delay, ease: EASE }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/* --- Ledger Divider --- */
-function LedgerRule({ label }: { label: string }) {
-  return (
-    <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-6">
-      <span className="font-mono text-[11px] font-semibold tracking-[0.3em] text-[#0B2E7A]/60 flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-ping" />
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-gradient-to-r from-[#0B2E7A]/20 via-[#0B2E7A]/5 to-transparent" />
-    </div>
-  );
-}
+import {
+  PageShell,
+  PageHero,
+  Highlight,
+  Section,
+  SectionHeading,
+  Accent,
+  Stagger,
+  StaggerItem,
+  FadeUp,
+  BecomePartnerButton,
+  SecondaryButton,
+  CtaBand,
+  IconCard,
+  DISPLAY,
+} from "@/components/site/ui";
 
 const merchantBenefitsList = [
   {
-    title: "E-Commerce Reward Points",
-    desc: "Earn and accumulate redeemable reward points that can be utilized to purchase eligible products across the B2B and B2C e-commerce platform[cite: 1].",
+    title: "E-commerce reward points",
+    desc: "Earn and accumulate redeemable points to buy eligible products across the B2B and B2C e-commerce platform.",
     icon: Gift,
-    tag: "REWARDS",
+    tag: "Rewards",
   },
   {
-    title: "Exclusive Business Discounts",
-    desc: "Access special promotional pricing and commercial discounts tailored specifically to your merchant category and membership level[cite: 1].",
+    title: "Exclusive business discounts",
+    desc: "Special promotional pricing and commercial discounts tailored to your merchant category and membership level.",
     icon: Percent,
-    tag: "SAVINGS",
+    tag: "Savings",
   },
   {
-    title: "Promotional & Marketing Support",
-    desc: "Leverage digital marketing offers, promotional tools, and campaign-specific support to drive walk-in customer footfall[cite: 1].",
+    title: "Promotional & marketing support",
+    desc: "Digital marketing offers, promotional tools and campaign support to drive walk-in customer footfall.",
     icon: Megaphone,
-    tag: "GROWTH",
+    tag: "Growth",
   },
   {
-    title: "Priority Campaign Access",
-    desc: "Get early access to digital scratch card campaigns, lucky number contests, and high-engagement promotional events[cite: 1].",
+    title: "Priority campaign access",
+    desc: "Early access to digital scratch card campaigns, lucky number contests and high-engagement promotional events.",
     icon: Zap,
-    tag: "CAMPAIGNS",
+    tag: "Campaigns",
   },
   {
-    title: "Partner Offers & Business Services",
-    desc: "Unlock exclusive deals, corporate partnerships, and professional business services integrated directly within your merchant dashboard[cite: 1].",
+    title: "Partner offers & business services",
+    desc: "Exclusive deals, corporate partnerships and business services integrated directly within your merchant dashboard.",
     icon: Crown,
-    tag: "PARTNERSHIPS",
+    tag: "Partnerships",
   },
   {
-    title: "Referral Incentives",
-    desc: "Earn 100 referral points for every successful merchant partner you bring into the ecosystem, tracked securely via your dashboard[cite: 1].",
+    title: "Referral incentives",
+    desc: "Earn 100 referral points for every merchant partner you bring into the ecosystem, tracked via your dashboard.",
     icon: TrendingUp,
-    tag: "REFERRALS",
+    tag: "Referrals",
   },
 ];
 
 const assignmentCriteria = [
   {
-    label: "Merchant Category",
-    desc: "Benefits are tailored to suit specific retail types such as Kirana stores, electronics, apparel, or pharmacies[cite: 1]."
+    label: "Merchant category",
+    desc: "Benefits tailored to your retail type — Kirana stores, electronics, apparel, pharmacies and more.",
+    icon: Store,
   },
   {
-    label: "Membership Plan",
-    desc: "Tiered advantages mapped directly to your active membership level within the ecosystem[cite: 1]."
+    label: "Membership plan",
+    desc: "Tiered advantages mapped directly to your active membership level within the ecosystem.",
+    icon: BadgeCheck,
   },
   {
-    label: "Business Level & Performance",
-    desc: "Earn enhanced rewards and priority privileges based on active customer engagement and successful referrals[cite: 1]."
+    label: "Business level & performance",
+    desc: "Enhanced rewards and priority privileges based on customer engagement and successful referrals.",
+    icon: BarChart3,
   },
   {
-    label: "Campaign Participation",
-    desc: "Unlock special rewards dynamically when participating in platform-wide promotional events[cite: 1]."
+    label: "Campaign participation",
+    desc: "Special rewards unlock dynamically when you take part in platform-wide promotional events.",
+    icon: CalendarCheck,
   },
 ];
 
-export default function MerchantBenefitsPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-  
-  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, -50]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0.4]);
-
+/* Hero side visual: a "benefits wallet" card */
+function BenefitsWallet() {
   return (
-    <div className="relative min-h-screen bg-[#FAFCFF] text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A] overflow-x-hidden font-sans">
-      
-      {/* ---------------------------------------------------------- */}
-      {/* HERO SECTION                                               */}
-      {/* ---------------------------------------------------------- */}
-      <section
-        ref={containerRef}
-        className="relative flex min-h-[75vh] flex-col justify-center overflow-hidden border-b border-[#0B2E7A]/10 px-6 pt-20 pb-16"
-      >
-        {/* Ambient Gradient Orbs */}
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full blur-[100px]"
-          style={{ background: "#7BC142" }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="pointer-events-none absolute -left-20 bottom-0 h-96 w-96 rounded-full blur-[120px]"
-          style={{ background: "#1857D6" }}
-        />
-
-        <motion.div
-          style={{ y: heroTextY, opacity: heroOpacity }}
-          className="relative z-10 mx-auto w-full max-w-6xl"
-        >
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className="mb-5 inline-flex items-center gap-2.5 rounded-full bg-[#1857D6]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#1857D6] border border-[#1857D6]/20 shadow-sm"
-          >
-            <Sparkles size={15} strokeWidth={2} />
-            <span>DEDICATED MERCHANT BENEFITS MODULE</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            className="max-w-4xl text-4xl leading-tight sm:text-5xl md:text-6xl font-light tracking-tight"
-            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-          >
-            Exclusive advantages designed to{" "}
-            <span className="text-[#3E7A1C] font-normal italic underline decoration-[#7BC142]/40 underline-offset-8">
-              accelerate your business
+    <div className="relative mx-auto w-full max-w-md">
+      <div aria-hidden="true" className="absolute inset-8 rounded-full bg-[#7BC142]/30 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#3E7A1C] to-[#6BAF38] p-6 text-white shadow-2xl shadow-[#3E7A1C]/30">
+        <div aria-hidden="true" className="absolute -right-12 -top-12 h-40 w-40 rounded-full border-[22px] border-white/10" />
+        <p className="relative text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">Your benefits wallet</p>
+        <p className="relative mt-2 text-5xl font-semibold" style={DISPLAY}>
+          300 <span className="text-2xl text-white/80">pts</span>
+        </p>
+        <p className="relative mt-1 text-sm text-white/80">200 joining + 100 referral</p>
+      </div>
+      <div className="relative -mt-6 mx-4 space-y-2.5 rounded-[24px] border border-[#0B2E7A]/10 bg-white p-4 shadow-xl shadow-[#0B2E7A]/10">
+        {[
+          { icon: Tags, label: "Category discount unlocked", tone: "text-[#1857D6] bg-[#1857D6]/10" },
+          { icon: Zap, label: "Priority campaign access", tone: "text-[#3E7A1C] bg-[#3E7A1C]/10" },
+          { icon: Crown, label: "Partner offers available", tone: "text-[#1857D6] bg-[#1857D6]/10" },
+        ].map(({ icon: Icon, label, tone }) => (
+          <div key={label} className="flex items-center gap-3 rounded-xl bg-[#FAFCFF] p-2.5">
+            <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${tone}`}>
+              <Icon size={17} />
             </span>
-            .
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-            className="mt-6 max-w-2xl text-base leading-relaxed text-[#0B2E7A]/80 sm:text-lg font-normal"
-          >
-            As a registered Merchant Partner, explore a dedicated section inside your dashboard featuring rewards, commercial discounts, promotional support, and priority campaign privileges[cite: 1].
-          </motion.p>
-        </motion.div>
-      </section>
-
-      {/* ---------------------------------------------------------- */}
-      {/* SECTION 1: CORE BENEFITS GRID                              */}
-      {/* ---------------------------------------------------------- */}
-      <section className="px-6 py-20 relative">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp className="mb-12 text-center">
-            <span className="font-mono text-xs font-semibold tracking-[0.25em] text-[#3E7A1C] bg-[#3E7A1C]/10 px-3.5 py-1.5 rounded-full border border-[#3E7A1C]/20">
-              MERCHANT PERKS
-            </span>
-            <h2 
-              className="mt-4 text-3xl sm:text-4xl font-light text-[#0B2E7A]"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              What You Unlock as a Partner
-            </h2>
-            <p className="mt-2 text-sm text-[#0B2E7A]/70 max-w-xl mx-auto">
-              Dynamic benefits created, updated, and assigned directly through the Super Admin dashboard[cite: 1].
-            </p>
-          </FadeUp>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {merchantBenefitsList.map((item, i) => {
-              const Icon = item.icon;
-              return (
-                <FadeUp key={item.title} delay={i * 0.1}>
-                  <div className="group relative flex h-full flex-col rounded-3xl p-8 bg-white border border-[#0B2E7A]/10 shadow-lg shadow-[#0B2E7A]/5 hover:shadow-xl transition-all duration-300">
-                    <div className="mb-6 flex items-center justify-between">
-                      <span className="font-mono text-[11px] font-bold tracking-widest text-[#1857D6] bg-[#1857D6]/10 px-3 py-1 rounded-full uppercase">
-                        {item.tag}
-                      </span>
-                      <div className="p-3 rounded-2xl bg-[#FAFCFF] border border-[#0B2E7A]/10 group-hover:scale-110 transition-transform">
-                        <Icon size={22} className="text-[#0B2E7A]" />
-                      </div>
-                    </div>
-                    <h3 
-                      className="mb-3 text-2xl text-[#0B2E7A] font-normal"
-                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                    >
-                      {item.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm leading-relaxed text-[#0B2E7A]/75 font-normal">
-                      {item.desc}
-                    </p>
-                  </div>
-                </FadeUp>
-              );
-            })}
+            <span className="text-sm font-medium text-[#0B2E7A]">{label}</span>
+            <span className="ml-auto h-2 w-2 rounded-full bg-[#7BC142]" />
           </div>
-        </div>
-      </section>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-      <LedgerRule label="DYNAMIC ALLOCATION & CONFIGURATION" />
+export default function MerchantBenefitsPage() {
+  return (
+    <PageShell>
+      <PageHero
+        eyebrow="Merchant benefits"
+        eyebrowIcon={Sparkles}
+        title={
+          <>
+            Exclusive advantages to <Highlight>accelerate your business</Highlight>.
+          </>
+        }
+        desc="As a registered Merchant Partner you get a dedicated section in your dashboard with rewards, commercial discounts, promotional support and priority campaign privileges."
+        actions={
+          <>
+            <BecomePartnerButton>Register & claim benefits</BecomePartnerButton>
+            <SecondaryButton href="#perks" icon={ArrowRight}>
+              See all perks
+            </SecondaryButton>
+          </>
+        }
+        aside={<BenefitsWallet />}
+      />
 
-      {/* ---------------------------------------------------------- */}
-      {/* SECTION 2: HOW BENEFITS ARE ASSIGNED                       */}
-      {/* ---------------------------------------------------------- */}
-      <section className="px-6 py-20 bg-gradient-to-b from-transparent via-[#1857D6]/[0.02] to-transparent">
-        <div className="mx-auto max-w-6xl">
-          <FadeUp className="mb-12 text-center">
-            <span className="font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6] bg-[#1857D6]/10 px-3.5 py-1.5 rounded-full border border-[#1857D6]/20">
-              TARGETED ASSIGNMENT
-            </span>
-            <h2 
-              className="mt-4 text-3xl sm:text-4xl font-light text-[#0B2E7A]"
-              style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-            >
-              Personalized for Your Business Account
-            </h2>
-            <p className="mt-2 text-sm text-[#0B2E7A]/70 max-w-xl mx-auto">
-              Each merchant sees only the benefits and offers specifically applicable to their account profile[cite: 1].
-            </p>
-          </FadeUp>
+      {/* ---------------- PERKS ---------------- */}
+      <Section id="perks">
+        <SectionHeading
+          eyebrow="Merchant perks"
+          title={<>What you unlock as a <Accent>partner</Accent></>}
+          desc="Benefits are created, updated and assigned directly from the admin dashboard."
+        />
+        <Stagger className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+          {merchantBenefitsList.map((item, i) => (
+            <StaggerItem key={item.title}>
+              <IconCard icon={item.icon} title={item.title} body={item.desc} tag={item.tag} tone={i % 2 ? "blue" : "green"} />
+            </StaggerItem>
+          ))}
+        </Stagger>
+      </Section>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* ---------------- PERSONALISED ASSIGNMENT ---------------- */}
+      <Section tone="green">
+        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-12">
+          <div>
+            <SectionHeading
+              align="left"
+              eyebrow="Targeted assignment"
+              title={<>Personalised for <Accent>your business</Accent></>}
+              desc="Each merchant sees only the benefits and offers that apply to their account profile — decided by four factors."
+            />
+            <FadeUp>
+              <div className="flex items-center gap-4 rounded-2xl border border-[#0B2E7A]/10 bg-white p-4 shadow-sm">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#3E7A1C] text-white">
+                  <BadgeCheck size={22} />
+                </span>
+                <p className="text-sm text-[#0B2E7A]/75">
+                  <span className="font-semibold text-[#0B2E7A]">Always up to date.</span> New benefits appear in your dashboard the moment they’re assigned.
+                </p>
+              </div>
+            </FadeUp>
+          </div>
+
+          <Stagger className="grid grid-cols-2 gap-3 sm:gap-4">
             {assignmentCriteria.map((crit, i) => (
-              <FadeUp key={crit.label} delay={i * 0.15}>
-                <div className="flex h-full flex-col rounded-3xl p-7 bg-white border border-[#0B2E7A]/10 shadow-md shadow-[#0B2E7A]/5">
-                  <div className="mb-4 inline-flex p-2.5 rounded-xl bg-[#3E7A1C]/10 text-[#3E7A1C] w-fit">
-                    <ShieldCheck size={20} />
+              <StaggerItem key={crit.label}>
+                <div className="group flex h-full flex-col rounded-2xl border border-[#0B2E7A]/10 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0B2E7A]/5">
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1857D6]/10 sm:h-11 sm:w-11 text-[#1857D6] transition-colors group-hover:bg-[#1857D6] group-hover:text-white">
+                      <crit.icon size={20} />
+                    </span>
+                    <span className="text-2xl font-semibold text-[#0B2E7A]/10 sm:text-3xl" style={DISPLAY}>0{i + 1}</span>
                   </div>
-                  <h3 
-                    className="mb-2 text-xl text-[#0B2E7A] font-normal"
-                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                  >
+                  <h3 className="mt-3 text-[15px] font-semibold leading-snug text-[#0B2E7A] sm:mt-4 sm:text-lg" style={DISPLAY}>
                     {crit.label}
                   </h3>
-                  <p className="text-xs sm:text-sm leading-relaxed text-[#0B2E7A]/75 font-normal">
-                    {crit.desc}
-                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#0B2E7A]/70 sm:mt-1.5 sm:text-sm">{crit.desc}</p>
                 </div>
-              </FadeUp>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
-      </section>
+      </Section>
 
-      {/* ---------------------------------------------------------- */}
-      {/* CALL TO ACTION                                             */}
-      {/* ---------------------------------------------------------- */}
-      <section className="relative overflow-hidden px-6 py-20">
-        <FadeUp className="mx-auto max-w-3xl text-center">
-          <span className="inline-block font-mono text-xs font-semibold tracking-[0.25em] text-[#3E7A1C] bg-[#3E7A1C]/10 px-4 py-1.5 rounded-full border border-[#3E7A1C]/20 mb-6">
-            JOIN THE ECOSYSTEM
-          </span>
-          <h2
-            className="mt-4 text-3xl leading-tight sm:text-4xl md:text-5xl text-[#0B2E7A] font-light"
-            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-          >
-            Ready to access exclusive merchant benefits and grow your retail store?
-          </h2>
-          
-          <div className="mt-10 flex justify-center">
-            <a
-              href="/register"
-              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-[#3E7A1C] px-9 py-4 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_8px_25px_rgba(62,122,28,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(62,122,28,0.55)] active:translate-y-0"
-            >
-              <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <span>Register & Claim Benefits</span>
-              <ArrowUpRight
-                size={18}
-                className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"
-              />
-            </a>
-          </div>
-        </FadeUp>
-      </section>
-    </div>
+      <CtaBand
+        eyebrow="Join the ecosystem"
+        title="Ready to unlock exclusive merchant benefits?"
+        desc="Register your shop and start with 200 joining points the moment you’re approved."
+        buttonLabel="Register & claim benefits"
+      />
+    </PageShell>
   );
 }

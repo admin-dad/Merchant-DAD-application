@@ -2,8 +2,28 @@
 
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { ImagePlus, Loader2, Save, Trash2, Video } from 'lucide-react'
+import { Loader2, Save, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+
+function ShopMediaIcon({ video = false, size = 32 }: { video?: boolean; size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+    {video ? <>
+      <rect x="5" y="13" width="54" height="42" rx="10" fill="#DDD6FE" />
+      <rect x="5" y="9" width="54" height="40" rx="9" fill="#7C3AED" />
+      <path d="M5 18h54v8H5z" fill="#4C1D95" />
+      <path d="m12 18 6-9h8l-6 9zm19 0 6-9h8l-6 9zm19 0 6-9h1a2 2 0 0 1 2 2v7z" fill="#EDE9FE" />
+      <circle cx="32" cy="37" r="10" fill="white" />
+      <path d="m30 32 7 5-7 5V32Z" fill="#7C3AED" />
+    </> : <>
+      <rect x="5" y="12" width="50" height="43" rx="8" transform="rotate(-7 5 12)" fill="#BFDBFE" />
+      <rect x="10" y="9" width="49" height="44" rx="8" fill="#2563EB" />
+      <rect x="14" y="13" width="41" height="36" rx="5" fill="#BAE6FD" />
+      <circle cx="43" cy="23" r="6" fill="#FBBF24" />
+      <path d="m14 40 13-15 17 24H19a5 5 0 0 1-5-5v-4Z" fill="#22C55E" />
+      <path d="m30 49 13-17 12 12a5 5 0 0 1-5 5H30Z" fill="#15803D" />
+    </>}
+  </svg>
+}
 
 const BUCKET = 'merchant-shop-media'
 const SLOTS = ['shop_image_1_path', 'shop_image_2_path', 'shop_video_path'] as const
@@ -148,7 +168,7 @@ export default function MerchantShopMedia({ merchantId }: { merchantId: string }
   return (
     <section aria-labelledby="shop-media-heading" className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
       <header className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]"><ImagePlus size={21} /></div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]"><ShopMediaIcon size={28} /></div>
         <div><h2 id="shop-media-heading" className="text-base font-semibold text-slate-900">Shop Images & Video</h2><p className="mt-1 text-xs leading-relaxed text-slate-500">Add up to two shop images and one video. These uploads are optional and saved separately from your business details.</p></div>
       </header>
       {loading ? <p role="status" className="flex items-center gap-2 py-8 text-sm text-slate-500"><Loader2 size={18} className="animate-spin" />Loading shop media…</p> : <>
@@ -160,9 +180,9 @@ export default function MerchantShopMedia({ merchantId }: { merchantId: string }
               const item = media[slot]
               const label = video ? 'Shop video' : `Shop image ${index + 1}`
               return <div key={slot} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">{video ? <Video size={17} /> : <ImagePlus size={17} />}{label}</h3>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]" aria-hidden="true"><ShopMediaIcon video={video} size={28} /></span>{label}</h3>
                 <div className="mb-4 flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-200 bg-white">
-                  {item.preview ? video ? <video src={item.preview} controls preload="metadata" className="h-full w-full object-contain" aria-label="Shop video preview" /> : <Image src={item.preview} alt={`${label} preview`} width={640} height={360} unoptimized className="h-full w-full object-contain" /> : <div className="px-3 text-center text-xs text-slate-400">{item.path ? 'Preview unavailable. Reload the page or replace this file.' : video ? 'No video added' : 'No image added'}</div>}
+                  {item.preview ? video ? <video src={item.preview} controls preload="metadata" className="h-full w-full object-contain" aria-label="Shop video preview" /> : <Image src={item.preview} alt={`${label} preview`} width={640} height={360} unoptimized className="h-full w-full object-contain" /> : <div className="flex flex-col items-center gap-3 px-3 py-4 text-center text-xs text-slate-500"><span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#1857D6]" aria-hidden="true"><ShopMediaIcon video={video} size={56} /></span><span>{item.path ? 'Preview unavailable. Reload the page or replace this file.' : video ? 'No video added' : 'No image added'}</span></div>}
                 </div>
                 <input id={slot} type="file" disabled={saving} accept={(video ? VIDEO_TYPES : IMAGE_TYPES).join(',')} aria-label={`Upload ${label.toLowerCase()}`} onChange={event => { choose(slot, event.target.files?.[0]); event.target.value = '' }} className="block w-full min-w-0 text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700" />
                 <p className="mt-2 text-[11px] text-slate-400">{video ? 'MP4 or WebM · Up to 50 MB' : 'JPG, PNG or WebP · Up to 5 MB'}</p>

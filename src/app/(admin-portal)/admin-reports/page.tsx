@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -43,19 +45,11 @@ function toCSV(headers: string[], rows: (string | number)[][]): string {
   return lines.join('\n')
 }
 
-function downloadBlob(content: string, filename: string, mime: string) {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+async function downloadBlob(content: string, filename: string, mime: string) {
+  await saveFile(new Blob([content], { type: mime }), filename)
 }
 
-function downloadTablePDF(title: string, subtitle: string, headers: string[], rows: (string | number)[][], filename: string, colWidths: number[]) {
+async function downloadTablePDF(title: string, subtitle: string, headers: string[], rows: (string | number)[][], filename: string, colWidths: number[]) {
   const pdf = new jsPDF()
   const pageWidth = pdf.internal.pageSize.width
   const pageHeight = pdf.internal.pageSize.height
@@ -101,7 +95,7 @@ function downloadTablePDF(title: string, subtitle: string, headers: string[], ro
     pdf.setFontSize(10); pdf.setTextColor(148, 163, 184)
     pdf.text('No records found for this report based on current filters.', marginX, y + 2)
   }
-  pdf.save(filename)
+  await saveFile(pdf.output('blob'), filename)
 }
 
 function monthKey(iso: string) {
@@ -274,136 +268,141 @@ export default function AdminReportsPage() {
   }, [fScans])
 
   // ── Unified Export Handler ───────────────────────────────────────────
-  const handleExport = (reportKey: string, format: 'csv' | 'pdf') => {
+  const handleExport = async (reportKey: string, format: 'csv' | 'pdf') => {
     setExporting(`${reportKey}-${format}`)
+    try {
     
-    let title = '', subtitle = `Filtered Platform Data • Generated ${new Date().toLocaleDateString('en-IN')}`
-    let headers: string[] = []
-    let rows: (string | number)[][] = []
-    let colWidths: number[] = []
-    let filename = ''
+      let title = '', subtitle = `Filtered Platform Data • Generated ${new Date().toLocaleDateString('en-IN')}`
+      let headers: string[] = []
+      let rows: (string | number)[][] = []
+      let colWidths: number[] = []
+      let filename = ''
 
-    switch (reportKey) {
-      case 'merchant_reg':
-        title = 'Merchant Registration Report'
-        headers = ['Business Name', 'Category', 'Status', 'Joined Date']
-        rows = fMerchants.map(m => [m.business_name, m.category, m.status, new Date(m.created_at).toLocaleDateString('en-IN')])
-        colWidths = [60, 40, 30, 40]; filename = 'Merchant_Registration_Report'
-        break
-      case 'merchant_cat':
-        title = 'Merchant Category Report'
-        headers = ['Category', 'Count']
-        const catCounts: Record<string, number> = {}
-        fMerchants.forEach(m => { catCounts[m.category] = (catCounts[m.category] || 0) + 1 })
-        rows = Object.entries(catCounts).map(([cat, count]) => [cat, count])
-        colWidths = [60, 30]; filename = 'Merchant_Category_Report'
-        break
-      case 'customer_reg':
-        title = 'Customer Registration Report'
-        headers = ['Customer Phone', 'First Seen Date']
-        const custMap: Record<string, string> = {}
-        fScans.forEach(s => { if (s.customer_phone && !custMap[s.customer_phone]) custMap[s.customer_phone] = s.created_at })
-        rows = Object.entries(custMap).map(([phone, date]) => [`+91 ${phone}`, new Date(date).toLocaleDateString('en-IN')])
-        colWidths = [50, 40]; filename = 'Customer_Registration_Report'
-        break
-      case 'vendor':
-        title = 'Vendor Report'
-        headers = ['Store Name', 'Owner', 'Status', 'Joined Date']
-        rows = fVendors.map(v => [v.store_name, v.owner_name, v.status, new Date(v.created_at).toLocaleDateString('en-IN')])
-        colWidths = [50, 40, 30, 40]; filename = 'Vendor_Report'
-        break
-      case 'referral':
-        title = 'Referral Report'
-        headers = ['Referrer', 'Referred Business', 'Status', 'Date']
-        rows = fReferrals.map(r => [merchantMap[r.referrer_id] || 'Unknown', r.referred_business_name, r.status, new Date(r.created_at).toLocaleDateString('en-IN')])
-        colWidths = [40, 50, 30, 40]; filename = 'Referral_Report'
-        break
-      case 'points':
-        title = 'Points Report'
-        headers = ['Merchant', 'Type', 'Amount', 'Description', 'Date']
-        rows = fTransactions.filter(t => t.wallet_type === 'points').map(t => [merchantMap[t.merchant_id] || 'Unknown', t.transaction_type, `${t.amount} Pts`, t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
-        colWidths = [40, 20, 25, 50, 35]; filename = 'Points_Report'
-        break
-      case 'redemption':
-        title = 'Redemption Report'
-        headers = ['Merchant', 'Amount', 'Description', 'Date']
-        rows = fTransactions.filter(t => t.wallet_type === 'points' && t.transaction_type === 'debit').map(t => [merchantMap[t.merchant_id] || 'Unknown', `${t.amount} Pts`, t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
-        colWidths = [45, 30, 60, 35]; filename = 'Redemption_Report'
-        break
-      case 'wallet_txn':
-        title = 'Wallet Transaction Report'
-        headers = ['Merchant', 'Type', 'Amount (₹)', 'Description', 'Date']
-        rows = fTransactions.filter(t => t.wallet_type === 'cash').map(t => [merchantMap[t.merchant_id] || 'Unknown', t.transaction_type, t.amount.toFixed(2), t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
-        colWidths = [40, 25, 30, 50, 30]; filename = 'Wallet_Transaction_Report'
-        break
-      case 'sales':
-        title = 'E-Commerce Sales Report'
-        headers = ['Order ID', 'Status', 'Date']
-        rows = fOrders.map(o => [o.id, o.status, new Date(o.created_at).toLocaleDateString('en-IN')])
-        colWidths = [70, 40, 40]; filename = 'Ecommerce_Sales_Report'
-        break
-      case 'order':
-        title = 'Order Report'
-        headers = ['Order ID', 'Status', 'Date']
-        rows = fOrders.map(o => [o.id, o.status, new Date(o.created_at).toLocaleDateString('en-IN')])
-        colWidths = [70, 40, 40]; filename = 'Order_Report'
-        break
-      case 'qr_scan':
-        title = 'QR Scan Report'
-        headers = ['Merchant', 'Customer Phone', 'Status', 'Date']
-        rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, new Date(s.created_at).toLocaleString('en-IN')])
-        colWidths = [50, 35, 30, 45]; filename = 'QR_Scan_Report'
-        break
-      case 'engagement':
-        title = 'Customer Engagement Report'
-        headers = ['Merchant', 'Customer Phone', 'Status', 'Date']
-        rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, new Date(s.created_at).toLocaleString('en-IN')])
-        colWidths = [50, 35, 30, 45]; filename = 'Customer_Engagement_Report'
-        break
-      case 'scratch_card':
-        title = 'Scratch Card Report'
-        headers = ['Merchant', 'Customer Phone', 'Status', 'Prize Won', 'Date']
-        rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, s.prize_won || 'N/A', new Date(s.created_at).toLocaleString('en-IN')])
-        colWidths = [45, 35, 25, 40, 35]; filename = 'Scratch_Card_Report'
-        break
-      case 'winner':
-        title = 'Winner Report'
-        headers = ['Merchant', 'Customer Phone', 'Prize Won', 'Date']
-        rows = fScans.filter(s => s.status === 'Reward Won').map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.prize_won || 'Reward', new Date(s.created_at).toLocaleString('en-IN')])
-        colWidths = [50, 35, 45, 40]; filename = 'Winner_Report'
-        break
-      case 'prize_dist':
-        title = 'Prize Distribution Report'
-        headers = ['Merchant', 'Customer Phone', 'Prize', 'Status', 'Date']
-        rows = fScans.filter(s => s.status === 'Reward Won').map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.prize_won || 'Reward', s.fulfillment_status || 'Pending', new Date(s.created_at).toLocaleDateString('en-IN')])
-        colWidths = [45, 35, 35, 25, 35]; filename = 'Prize_Distribution_Report'
-        break
-      case 'billing':
-        title = 'Merchant Billing Report'
-        headers = ['Merchant', 'Amount (₹)', 'Method', 'UTR', 'Status', 'Date']
-        rows = fPayments.map(p => [merchantMap[p.merchant_id] || 'Unknown', p.amount.toFixed(2), p.payment_method, p.utr_number || 'N/A', p.status, new Date(p.created_at).toLocaleDateString('en-IN')])
-        colWidths = [40, 25, 25, 35, 25, 35]; filename = 'Merchant_Billing_Report'
-        break
-      case 'payment_coll':
-        title = 'Payment Collection Report'
-        headers = ['Merchant', 'Amount (₹)', 'Method', 'Date']
-        rows = fPayments.filter(p => p.status === 'approved').map(p => [merchantMap[p.merchant_id] || 'Unknown', p.amount.toFixed(2), p.payment_method, new Date(p.created_at).toLocaleDateString('en-IN')])
-        colWidths = [50, 30, 30, 40]; filename = 'Payment_Collection_Report'
-        break
-      case 'campaign_perf':
-        title = 'Campaign Performance Report'
-        headers = ['Campaign Name', 'Status', 'Win Probability', 'Created Date']
-        rows = fCampaigns.map(c => [c.name, c.status, `${parseFloat((c.winning_probability * 100).toFixed(2))}%`, new Date(c.created_at).toLocaleDateString('en-IN')])
-        colWidths = [60, 30, 30, 40]; filename = 'Campaign_Performance_Report'
-        break
-    }
+      switch (reportKey) {
+        case 'merchant_reg':
+          title = 'Merchant Registration Report'
+          headers = ['Business Name', 'Category', 'Status', 'Joined Date']
+          rows = fMerchants.map(m => [m.business_name, m.category, m.status, new Date(m.created_at).toLocaleDateString('en-IN')])
+          colWidths = [60, 40, 30, 40]; filename = 'Merchant_Registration_Report'
+          break
+        case 'merchant_cat':
+          title = 'Merchant Category Report'
+          headers = ['Category', 'Count']
+          const catCounts: Record<string, number> = {}
+          fMerchants.forEach(m => { catCounts[m.category] = (catCounts[m.category] || 0) + 1 })
+          rows = Object.entries(catCounts).map(([cat, count]) => [cat, count])
+          colWidths = [60, 30]; filename = 'Merchant_Category_Report'
+          break
+        case 'customer_reg':
+          title = 'Customer Registration Report'
+          headers = ['Customer Phone', 'First Seen Date']
+          const custMap: Record<string, string> = {}
+          fScans.forEach(s => { if (s.customer_phone && !custMap[s.customer_phone]) custMap[s.customer_phone] = s.created_at })
+          rows = Object.entries(custMap).map(([phone, date]) => [`+91 ${phone}`, new Date(date).toLocaleDateString('en-IN')])
+          colWidths = [50, 40]; filename = 'Customer_Registration_Report'
+          break
+        case 'vendor':
+          title = 'Vendor Report'
+          headers = ['Store Name', 'Owner', 'Status', 'Joined Date']
+          rows = fVendors.map(v => [v.store_name, v.owner_name, v.status, new Date(v.created_at).toLocaleDateString('en-IN')])
+          colWidths = [50, 40, 30, 40]; filename = 'Vendor_Report'
+          break
+        case 'referral':
+          title = 'Referral Report'
+          headers = ['Referrer', 'Referred Business', 'Status', 'Date']
+          rows = fReferrals.map(r => [merchantMap[r.referrer_id] || 'Unknown', r.referred_business_name, r.status, new Date(r.created_at).toLocaleDateString('en-IN')])
+          colWidths = [40, 50, 30, 40]; filename = 'Referral_Report'
+          break
+        case 'points':
+          title = 'Points Report'
+          headers = ['Merchant', 'Type', 'Amount', 'Description', 'Date']
+          rows = fTransactions.filter(t => t.wallet_type === 'points').map(t => [merchantMap[t.merchant_id] || 'Unknown', t.transaction_type, `${t.amount} Pts`, t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
+          colWidths = [40, 20, 25, 50, 35]; filename = 'Points_Report'
+          break
+        case 'redemption':
+          title = 'Redemption Report'
+          headers = ['Merchant', 'Amount', 'Description', 'Date']
+          rows = fTransactions.filter(t => t.wallet_type === 'points' && t.transaction_type === 'debit').map(t => [merchantMap[t.merchant_id] || 'Unknown', `${t.amount} Pts`, t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
+          colWidths = [45, 30, 60, 35]; filename = 'Redemption_Report'
+          break
+        case 'wallet_txn':
+          title = 'Wallet Transaction Report'
+          headers = ['Merchant', 'Type', 'Amount (₹)', 'Description', 'Date']
+          rows = fTransactions.filter(t => t.wallet_type === 'cash').map(t => [merchantMap[t.merchant_id] || 'Unknown', t.transaction_type, t.amount.toFixed(2), t.description || 'N/A', new Date(t.created_at).toLocaleDateString('en-IN')])
+          colWidths = [40, 25, 30, 50, 30]; filename = 'Wallet_Transaction_Report'
+          break
+        case 'sales':
+          title = 'E-Commerce Sales Report'
+          headers = ['Order ID', 'Status', 'Date']
+          rows = fOrders.map(o => [o.id, o.status, new Date(o.created_at).toLocaleDateString('en-IN')])
+          colWidths = [70, 40, 40]; filename = 'Ecommerce_Sales_Report'
+          break
+        case 'order':
+          title = 'Order Report'
+          headers = ['Order ID', 'Status', 'Date']
+          rows = fOrders.map(o => [o.id, o.status, new Date(o.created_at).toLocaleDateString('en-IN')])
+          colWidths = [70, 40, 40]; filename = 'Order_Report'
+          break
+        case 'qr_scan':
+          title = 'QR Scan Report'
+          headers = ['Merchant', 'Customer Phone', 'Status', 'Date']
+          rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, new Date(s.created_at).toLocaleString('en-IN')])
+          colWidths = [50, 35, 30, 45]; filename = 'QR_Scan_Report'
+          break
+        case 'engagement':
+          title = 'Customer Engagement Report'
+          headers = ['Merchant', 'Customer Phone', 'Status', 'Date']
+          rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, new Date(s.created_at).toLocaleString('en-IN')])
+          colWidths = [50, 35, 30, 45]; filename = 'Customer_Engagement_Report'
+          break
+        case 'scratch_card':
+          title = 'Scratch Card Report'
+          headers = ['Merchant', 'Customer Phone', 'Status', 'Prize Won', 'Date']
+          rows = fScans.map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.status, s.prize_won || 'N/A', new Date(s.created_at).toLocaleString('en-IN')])
+          colWidths = [45, 35, 25, 40, 35]; filename = 'Scratch_Card_Report'
+          break
+        case 'winner':
+          title = 'Winner Report'
+          headers = ['Merchant', 'Customer Phone', 'Prize Won', 'Date']
+          rows = fScans.filter(s => s.status === 'Reward Won').map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.prize_won || 'Reward', new Date(s.created_at).toLocaleString('en-IN')])
+          colWidths = [50, 35, 45, 40]; filename = 'Winner_Report'
+          break
+        case 'prize_dist':
+          title = 'Prize Distribution Report'
+          headers = ['Merchant', 'Customer Phone', 'Prize', 'Status', 'Date']
+          rows = fScans.filter(s => s.status === 'Reward Won').map(s => [merchantMap[s.merchant_id] || 'Unknown', s.customer_phone ? `+91 ${s.customer_phone}` : 'Walk-in', s.prize_won || 'Reward', s.fulfillment_status || 'Pending', new Date(s.created_at).toLocaleDateString('en-IN')])
+          colWidths = [45, 35, 35, 25, 35]; filename = 'Prize_Distribution_Report'
+          break
+        case 'billing':
+          title = 'Merchant Billing Report'
+          headers = ['Merchant', 'Amount (₹)', 'Method', 'UTR', 'Status', 'Date']
+          rows = fPayments.map(p => [merchantMap[p.merchant_id] || 'Unknown', p.amount.toFixed(2), p.payment_method, p.utr_number || 'N/A', p.status, new Date(p.created_at).toLocaleDateString('en-IN')])
+          colWidths = [40, 25, 25, 35, 25, 35]; filename = 'Merchant_Billing_Report'
+          break
+        case 'payment_coll':
+          title = 'Payment Collection Report'
+          headers = ['Merchant', 'Amount (₹)', 'Method', 'Date']
+          rows = fPayments.filter(p => p.status === 'approved').map(p => [merchantMap[p.merchant_id] || 'Unknown', p.amount.toFixed(2), p.payment_method, new Date(p.created_at).toLocaleDateString('en-IN')])
+          colWidths = [50, 30, 30, 40]; filename = 'Payment_Collection_Report'
+          break
+        case 'campaign_perf':
+          title = 'Campaign Performance Report'
+          headers = ['Campaign Name', 'Status', 'Win Probability', 'Created Date']
+          rows = fCampaigns.map(c => [c.name, c.status, `${parseFloat((c.winning_probability * 100).toFixed(2))}%`, new Date(c.created_at).toLocaleDateString('en-IN')])
+          colWidths = [60, 30, 30, 40]; filename = 'Campaign_Performance_Report'
+          break
+      }
 
-    if (format === 'csv') {
-      downloadBlob(toCSV(headers, rows), `${filename}.csv`, 'text/csv')
-    } else {
-      downloadTablePDF(title, subtitle, headers, rows, `${filename}.pdf`, colWidths)
+      if (format === 'csv') {
+        await downloadBlob(toCSV(headers, rows), `${filename}.csv`, 'text/csv')
+      } else {
+        await downloadTablePDF(title, subtitle, headers, rows, `${filename}.pdf`, colWidths)
+      }
+    } catch (error) {
+      alert(exportError(error))
+    } finally {
+      setExporting(null)
     }
-    setTimeout(() => setExporting(null), 400)
   }
 
   // ── Report Definitions Array (SOW Section 21) ────────────────────────

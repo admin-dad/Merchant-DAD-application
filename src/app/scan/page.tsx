@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, canvasPNG, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -411,114 +413,94 @@ function ScanContent() {
 
     try {
       const width = 800
-      const height = 1000
+      const pad = 48
+      const textWidth = width - pad * 2 - 64
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('Canvas not supported')
 
-      // Background gradient (brand colors)
+      // Measure the content first so the photo can be large without leaving
+      // a fixed blank area between the description and the date.
+      ctx.font = '900 38px system-ui, -apple-system, sans-serif'
+      const heading = canvasTextLines(ctx, `${name || 'You'} won a reward!`, textWidth)
+      ctx.font = '600 20px system-ui, -apple-system, sans-serif'
+      const merchantLines = canvasTextLines(ctx, `at ${merchantName || 'this store'}`, textWidth)
+      ctx.font = '800 34px system-ui, -apple-system, sans-serif'
+      const prizeLines = canvasTextLines(ctx, prizeWon || 'Reward', textWidth)
+      ctx.font = '400 19px system-ui, -apple-system, sans-serif'
+      const description = prizeGift?.description ? canvasTextLines(ctx, prizeGift.description, textWidth) : []
+      let photo: HTMLImageElement | null = null
+      if (prizeGift?.image_url) {
+        try { photo = await loadImage(prizeGift.image_url) } catch { /* Keep the reward details available if the photo cannot load. */ }
+      }
+      const headingY = 148
+      const merchantY = headingY + (heading.length - 1) * 46 + 38
+      const photoY = merchantY + (merchantLines.length - 1) * 28 + 30
+      const photoSize = 600
+      const prizeY = photo ? photoY + photoSize + 46 : photoY + 16
+      const descriptionY = prizeY + (prizeLines.length - 1) * 42 + 32
+      const contentBottom = description.length ? descriptionY + (description.length - 1) * 27 : prizeY + (prizeLines.length - 1) * 42
+      const dateY = contentBottom + 44
+      const height = dateY + 54
+      canvas.width = width
+      canvas.height = height
+
       const bg = ctx.createLinearGradient(0, 0, width, height)
       bg.addColorStop(0, '#0f172a')
       bg.addColorStop(0.5, '#1e3a8a')
       bg.addColorStop(1, '#0f172a')
       ctx.fillStyle = bg
       ctx.fillRect(0, 0, width, height)
-
-      // Decorative top accent bar (matches the app's brand gradient)
       const accent = ctx.createLinearGradient(0, 0, width, 0)
       accent.addColorStop(0, '#1857D6')
       accent.addColorStop(0.5, '#4F8CFF')
       accent.addColorStop(1, '#7BC142')
       ctx.fillStyle = accent
-      ctx.fillRect(0, 0, width, 14)
-
-      // Card panel
-      const pad = 48
+      ctx.fillRect(0, 0, width, 12)
       ctx.fillStyle = 'rgba(255,255,255,0.06)'
-      roundRect(ctx, pad, 100, width - pad * 2, height - 100 - pad, 24)
+      roundRect(ctx, pad, 48, width - pad * 2, height - 80, 24)
       ctx.fill()
-
-      // "YOU WON!" heading
       ctx.textAlign = 'center'
-      ctx.fillStyle = '#7BC142'
+      ctx.fillStyle = '#A3DC73'
       ctx.font = '700 22px system-ui, -apple-system, sans-serif'
-      ctx.fillText('🎉 CONGRATULATIONS 🎉', width / 2, 170)
-
+      ctx.fillText('🎉 CONGRATULATIONS 🎉', width / 2, 96)
       ctx.fillStyle = '#ffffff'
-      ctx.font = '900 40px system-ui, -apple-system, sans-serif'
-      ctx.fillText(`${name || 'You'} won a reward!`, width / 2, 225)
-
-      // Merchant name
+      ctx.font = '900 38px system-ui, -apple-system, sans-serif'
+      heading.forEach((line, index) => ctx.fillText(line, width / 2, headingY + index * 46))
       ctx.fillStyle = '#93c5fd'
-      ctx.font = '600 18px system-ui, -apple-system, sans-serif'
-      ctx.fillText(`at ${merchantName || 'this store'}`, width / 2, 258)
-
-      // Gift photo (best-effort — skipped silently if it fails to load,
-      // e.g. due to CORS on the image host)
-      let imageBottomY = 300
-      if (prizeGift?.image_url) {
-        try {
-          const img = await loadImage(prizeGift.image_url)
-          const imgSize = 300
-          const imgX = width / 2 - imgSize / 2
-          const imgY = 300
-          ctx.save()
-          roundRect(ctx, imgX, imgY, imgSize, imgSize, 20)
-          ctx.clip()
-          ctx.drawImage(img, imgX, imgY, imgSize, imgSize)
-          ctx.restore()
-          imageBottomY = imgY + imgSize + 40
-        } catch {
-          // Image failed to load (likely CORS) — continue without it.
-          imageBottomY = 320
-        }
-      } else {
-        imageBottomY = 320
+      ctx.font = '600 20px system-ui, -apple-system, sans-serif'
+      merchantLines.forEach((line, index) => ctx.fillText(line, width / 2, merchantY + index * 28))
+      if (photo) {
+        const x = (width - photoSize) / 2
+        ctx.save()
+        roundRect(ctx, x, photoY, photoSize, photoSize, 22)
+        ctx.clip()
+        ctx.fillStyle = 'rgba(255,255,255,0.08)'
+        ctx.fillRect(x, photoY, photoSize, photoSize)
+        const ratio = Math.min(photoSize / photo.naturalWidth, photoSize / photo.naturalHeight)
+        const photoWidth = photo.naturalWidth * ratio
+        const photoHeight = photo.naturalHeight * ratio
+        ctx.drawImage(photo, x + (photoSize - photoWidth) / 2, photoY + (photoSize - photoHeight) / 2, photoWidth, photoHeight)
+        ctx.restore()
       }
-
-      // Prize name
       ctx.fillStyle = '#FDE047'
-      ctx.font = '800 32px system-ui, -apple-system, sans-serif'
-      wrapText(ctx, prizeWon || 'Reward', width / 2, imageBottomY, width - pad * 2 - 40, 40)
-
-      // Description (if any)
-      if (prizeGift?.description) {
-        ctx.fillStyle = '#cbd5e1'
-        ctx.font = '400 16px system-ui, -apple-system, sans-serif'
-        wrapText(ctx, prizeGift.description, width / 2, imageBottomY + 60, width - pad * 2 - 60, 24)
-      }
-
-      // Footer: date
-      ctx.fillStyle = '#64748b'
-      ctx.font = '400 14px system-ui, -apple-system, sans-serif'
-      const dateStr = new Date().toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-      ctx.fillText(`Won on ${dateStr}`, width / 2, height - 70)
+      ctx.font = '800 34px system-ui, -apple-system, sans-serif'
+      prizeLines.forEach((line, index) => ctx.fillText(line, width / 2, prizeY + index * 42))
+      ctx.fillStyle = '#cbd5e1'
+      ctx.font = '400 19px system-ui, -apple-system, sans-serif'
+      description.forEach((line, index) => ctx.fillText(line, width / 2, descriptionY + index * 27))
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = '400 16px system-ui, -apple-system, sans-serif'
+      const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      ctx.fillText(`Won on ${dateStr}`, width / 2, dateY)
 
       // Trigger download
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          setIsDownloading(false)
-          return
-        }
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeMerchant = (merchantName || 'reward').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-        a.download = `${safeMerchant}-reward-${Date.now()}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        setIsDownloading(false)
-      }, 'image/png')
+      const safeName = (merchantName || 'reward').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+      await saveFile(await canvasPNG(canvas), `${safeName}-reward-${Date.now()}.png`)
+      setIsDownloading(false)
     } catch (err) {
       console.error('Failed to generate reward image:', err)
+      alert(exportError(err))
       setIsDownloading(false)
     }
   }
@@ -551,7 +533,7 @@ function ScanContent() {
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-hidden flex flex-col justify-center"
+        className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-x-hidden overflow-y-auto flex flex-col"
         style={{ fontFamily: 'var(--font-display)', maxHeight: 'calc(100dvh - 24px)' }}
       >
         <div className="h-1.5 w-full bg-gradient-to-r from-[#1857D6] via-[#4F8CFF] to-[#7BC142] absolute top-0 left-0" />
@@ -829,7 +811,7 @@ function ScanContent() {
                         transition={{ delay: 0.15 }}
                         src={prizeGift.image_url}
                         alt={prizeGift.name}
-                        className="mt-3 sm:mt-4 h-24 w-24 sm:h-32 sm:w-32 rounded-xl object-cover shadow-lg ring-1 ring-black/5"
+                        className="mt-4 aspect-square w-full max-w-[280px] rounded-2xl bg-slate-50 object-contain shadow-lg ring-1 ring-black/5 sm:max-w-[320px]"
                       />
                     )}
 
@@ -922,33 +904,22 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-// Simple word-wrap for canvas text, since CanvasRenderingContext2D has no
-// built-in wrapping. Draws each line centered at x, starting at y and
-// stepping down by lineHeight per line.
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number
-) {
-  const words = text.split(' ')
-  let line = ''
-  let curY = y
-
-  for (let i = 0; i < words.length; i++) {
-    const testLine = line ? `${line} ${words[i]}` : words[i]
-    const testWidth = ctx.measureText(testLine).width
-    if (testWidth > maxWidth && line) {
-      ctx.fillText(line, x, curY)
-      line = words[i]
-      curY += lineHeight
-    } else {
-      line = testLine
+// Measure wrapped canvas text, including long unbroken names, before drawing.
+function canvasTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const lines: string[] = []
+  for (const paragraph of text.split(/\r?\n/)) {
+    let line = ''
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (line && ctx.measureText(`${line} ${word}`).width > maxWidth) { lines.push(line); line = '' }
+      for (const character of word) {
+        if (line && ctx.measureText(line + character).width > maxWidth) { lines.push(line); line = '' }
+        line += character
+      }
+      line += ' '
     }
+    if (line.trim()) lines.push(line.trim())
   }
-  if (line) ctx.fillText(line, x, curY)
+  return lines.length ? lines : ['']
 }
 
 // Default export wrapping in Suspense

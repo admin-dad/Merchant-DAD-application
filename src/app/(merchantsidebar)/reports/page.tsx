@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -96,19 +98,11 @@ function toCSV(headers: string[], rows: (string | number)[][]): string {
   return lines.join('\n')
 }
 
-function downloadBlob(content: string, filename: string, mime: string) {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+async function downloadBlob(content: string, filename: string, mime: string) {
+  await saveFile(new Blob([content], { type: mime }), filename)
 }
 
-function downloadTablePDF(
+async function downloadTablePDF(
   title: string,
   subtitle: string,
   headers: string[],
@@ -178,7 +172,7 @@ function downloadTablePDF(
     pdf.text('No records found for this report.', marginX, y + 2)
   }
 
-  pdf.save(filename)
+  await saveFile(pdf.output('blob'), filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -340,78 +334,93 @@ export default function ReportsPage() {
   }, [scans])
 
   // ── Export handlers ────────────────────────────────────────────────
-  const exportReferrals = (format: 'csv' | 'pdf') => {
+  const exportReferrals = async (format: 'csv' | 'pdf') => {
     if (!merchant) return
     setExporting(`referrals-${format}`)
-    const headers = ['Business Name', 'Status', 'Date']
-    const rows = referrals.map((r) => [r.referred_business_name, r.status, formatDate(r.created_at)])
+    try {
+      const headers = ['Business Name', 'Status', 'Date']
+      const rows = referrals.map((r) => [r.referred_business_name, r.status, formatDate(r.created_at)])
 
-    if (format === 'csv') {
-      downloadBlob(toCSV(headers, rows), `${merchant.business_name}_Referrals_Report.csv`, 'text/csv')
-    } else {
-      downloadTablePDF(
-        'Referrals Report',
-        `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
-        headers,
-        rows,
-        `${merchant.business_name}_Referrals_Report.pdf`,
-        [80, 40, 60]
-      )
+      if (format === 'csv') {
+        await downloadBlob(toCSV(headers, rows), `${merchant.business_name}_Referrals_Report.csv`, 'text/csv')
+      } else {
+        await downloadTablePDF(
+          'Referrals Report',
+          `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
+          headers,
+          rows,
+          `${merchant.business_name}_Referrals_Report.pdf`,
+          [80, 40, 60]
+        )
+      }
+    } catch (error) {
+      alert(exportError(error))
+    } finally {
+      setExporting(null)
     }
-    setTimeout(() => setExporting(null), 400)
   }
 
-  const exportPoints = (format: 'csv' | 'pdf') => {
+  const exportPoints = async (format: 'csv' | 'pdf') => {
     if (!merchant) return
     setExporting(`points-${format}`)
-    const headers = ['Description', 'Wallet', 'Type', 'Amount', 'Date']
-    const rows = transactions.map((t) => [
-      t.description || 'Transaction',
-      t.wallet_type,
-      t.transaction_type,
-      t.wallet_type === 'points' ? `${t.amount} Pts` : `₹${t.amount.toFixed(2)}`,
-      formatDate(t.created_at),
-    ])
+    try {
+      const headers = ['Description', 'Wallet', 'Type', 'Amount', 'Date']
+      const rows = transactions.map((t) => [
+        t.description || 'Transaction',
+        t.wallet_type,
+        t.transaction_type,
+        t.wallet_type === 'points' ? `${t.amount} Pts` : `₹${t.amount.toFixed(2)}`,
+        formatDate(t.created_at),
+      ])
 
-    if (format === 'csv') {
-      downloadBlob(toCSV(headers, rows), `${merchant.business_name}_Points_Report.csv`, 'text/csv')
-    } else {
-      downloadTablePDF(
-        'Points & Cash Report',
-        `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
-        headers,
-        rows,
-        `${merchant.business_name}_Points_Report.pdf`,
-        [55, 25, 20, 30, 45]
-      )
+      if (format === 'csv') {
+        await downloadBlob(toCSV(headers, rows), `${merchant.business_name}_Points_Report.csv`, 'text/csv')
+      } else {
+        await downloadTablePDF(
+          'Points & Cash Report',
+          `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
+          headers,
+          rows,
+          `${merchant.business_name}_Points_Report.pdf`,
+          [55, 25, 20, 30, 45]
+        )
+      }
+    } catch (error) {
+      alert(exportError(error))
+    } finally {
+      setExporting(null)
     }
-    setTimeout(() => setExporting(null), 400)
   }
 
-  const exportScans = (format: 'csv' | 'pdf') => {
+  const exportScans = async (format: 'csv' | 'pdf') => {
     if (!merchant) return
     setExporting(`scans-${format}`)
-    const headers = ['Customer', 'Phone', 'Status', 'Date']
-    const rows = scans.map((s) => [
-      s.customer_name || 'Walk-in Customer',
-      s.customer_phone ? `+91 ${s.customer_phone}` : 'Not provided',
-      s.status,
-      formatDate(s.created_at),
-    ])
+    try {
+      const headers = ['Customer', 'Phone', 'Status', 'Date']
+      const rows = scans.map((s) => [
+        s.customer_name || 'Walk-in Customer',
+        s.customer_phone ? `+91 ${s.customer_phone}` : 'Not provided',
+        s.status,
+        formatDate(s.created_at),
+      ])
 
-    if (format === 'csv') {
-      downloadBlob(toCSV(headers, rows), `${merchant.business_name}_QR_Scans_Report.csv`, 'text/csv')
-    } else {
-      downloadTablePDF(
-        'QR Scans Report',
-        `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
-        headers,
-        rows,
-        `${merchant.business_name}_QR_Scans_Report.pdf`,
-        [55, 35, 30, 45]
-      )
+      if (format === 'csv') {
+        await downloadBlob(toCSV(headers, rows), `${merchant.business_name}_QR_Scans_Report.csv`, 'text/csv')
+      } else {
+        await downloadTablePDF(
+          'QR Scans Report',
+          `${merchant.business_name} • Generated ${new Date().toLocaleDateString('en-IN')}`,
+          headers,
+          rows,
+          `${merchant.business_name}_QR_Scans_Report.pdf`,
+          [55, 35, 30, 45]
+        )
+      }
+    } catch (error) {
+      alert(exportError(error))
+    } finally {
+      setExporting(null)
     }
-    setTimeout(() => setExporting(null), 400)
   }
 
   // ── Loading / Error states ──────────────────────────────────────────

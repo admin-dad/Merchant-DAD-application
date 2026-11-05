@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, shareFile, exportError } from '@/lib/file-export'
+
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -22,6 +24,7 @@ import {
   Wallet,
   Sparkles,
 } from 'lucide-react'
+import { createMerchantQRPoster, merchantScanURL } from '@/lib/merchant-qr'
 import { QRCodeCanvas } from 'qrcode.react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -240,29 +243,7 @@ export default function QRCodeManagementPage() {
       throw new Error('Your QR code is not ready yet.')
     }
 
-    const background = new window.Image()
-    await new Promise<void>((resolve, reject) => {
-      background.onload = () => resolve()
-      background.onerror = () => reject(new Error('Could not load the QR poster.'))
-      background.src = '/merchant-qr-poster.png'
-    })
-
-    const canvas = document.createElement('canvas')
-    canvas.width = background.naturalWidth
-    canvas.height = background.naturalHeight
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Could not create the QR poster.')
-    ctx.drawImage(background, 0, 0)
-
-    // Coordinates refer to the attached 1032 x 1599 poster. Erase only the
-    // placeholder text, preserving the frame, corner markers and artwork.
-    const scaleX = canvas.width / 1032
-    const scaleY = canvas.height / 1599
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(344 * scaleX, 810 * scaleY, 342 * scaleX, 250 * scaleY)
-    ctx.imageSmoothingEnabled = false
-    ctx.drawImage(qrCanvas, 365 * scaleX, 785 * scaleY, 300 * scaleX, 300 * scaleY)
-    return canvas
+    return createMerchantQRPoster(qrCanvas)
   }
 
   const createPNGFile = async () => {
@@ -274,26 +255,15 @@ export default function QRCodeManagementPage() {
     return new File([blob], `${merchant.business_name.replace(/\s/g, '_')}_Promotional_QR.png`, { type: 'image/png' })
   }
 
-  const savePNG = (file: File) => {
-    const url = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = file.name
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    // Let the browser begin the download before releasing the object URL.
-    window.setTimeout(() => URL.revokeObjectURL(url), 10000)
-  }
-
   const downloadPNG = async () => {
     if (!merchant || !isQrUnlocked || exporting) return
     setExporting('download')
     try {
-      savePNG(await createPNGFile())
+      const file = await createPNGFile()
+      await saveFile(file, file.name)
     } catch (err) {
       console.error('Failed to generate PNG:', err)
-      alert('Failed to download PNG. Please try again.')
+      alert(exportError(err))
     } finally {
       setExporting(null)
     }
@@ -304,20 +274,13 @@ export default function QRCodeManagementPage() {
     setExporting('share')
     try {
       const file = await createPNGFile()
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `${merchant.business_name} QR Code`,
-          files: [file],
-        })
-      } else {
-        savePNG(file)
-        alert('Image sharing is not available here. Your PNG has been downloaded so you can share it from your files.')
-      }
+      const result = await shareFile(file, `${merchant.business_name} QR Code`)
+      if (result === 'downloaded') alert('Image sharing is not available in this browser. Your PNG was downloaded so you can share it from your files.')
     } catch (err) {
       // Closing the device share sheet is a normal user action.
       if (err instanceof Error && err.name === 'AbortError') return
       console.error('Failed to share PNG:', err)
-      alert('Could not share your PNG. Please use Download and share the image from your files.')
+      alert(exportError(err))
     } finally {
       setExporting(null)
     }
@@ -383,8 +346,7 @@ export default function QRCodeManagementPage() {
   }
 
   // Generate the scan URL for the QR Code
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const scanUrl = `${origin}/scan?merchant=${merchant.id}`
+  const scanUrl = merchantScanURL(merchant.id)
   const monthlyFee = merchant.billing_rate && merchant.billing_rate > 0 ? merchant.billing_rate : 0
 
   return (
@@ -579,7 +541,7 @@ export default function QRCodeManagementPage() {
             transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
             className="flex flex-col self-start rounded-[2.5rem] border border-slate-200/50 bg-white/80 p-6 shadow-2xl shadow-slate-200/40 backdrop-blur-xl lg:col-span-7 sm:p-10"
           >
-            <div className="mb-8 flex items-center justify-between border-b border-slate-100/80 pb-5">
+            <div className="mb-8 flex flex-col gap-4 border-b border-slate-100/80 pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-700 shadow-inner border border-slate-100">
                   <History size={20} strokeWidth={2} />
@@ -599,7 +561,7 @@ export default function QRCodeManagementPage() {
                   <RefreshCw size={14} className={`transition-transform ${refreshingScans ? 'animate-spin text-[#1857D6]' : 'group-hover:rotate-180 duration-500'}`} />
                   <span>Sync</span>
                 </button>
-                <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-[#1857D6] bg-blue-50 border border-blue-100 px-4 py-2 rounded-full shadow-inner">
+                <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-bold text-[#1857D6] bg-blue-50 border border-blue-100 px-4 py-2 rounded-full shadow-inner">
                   <Smartphone size={14} />
                   {scans.length} Scans
                 </div>

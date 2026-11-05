@@ -1,5 +1,7 @@
 'use client'
 
+import { shareText, exportError } from '@/lib/file-export'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -143,18 +145,14 @@ export default function ReferralsPage() {
 
   const handleShare = async () => {
     if (!referralLink) return
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join our Platform',
-          text: `Use my referral code ${referralCode} to sign up and start growing your business!`,
-          url: referralLink,
-        })
-      } catch (err) {
-        console.log('Error sharing:', err)
-      }
-    } else {
-      handleCopyLink()
+    try {
+      await shareText({
+        title: 'Join our Platform',
+        text: `Use my referral code ${referralCode} to sign up and start growing your business!`,
+        url: referralLink,
+      })
+    } catch (error) {
+      alert(exportError(error))
     }
   }
 

@@ -62,3 +62,16 @@ Deploy the website changes for the banner, and rebuild/reinstall the APK for the
 bundled fallback. Test opening in airplane mode, disconnecting mid-session,
 retrying while offline, and reconnecting. This is offline connection handling;
 it does not support offline login, purchases, payments, or database writes.
+
+## Native downloads and sharing
+
+`FileExportPlugin.java` handles generated PNG, PDF and CSV files. Downloads open
+Android's system Save dialog, where the user can choose Downloads or another
+folder. Sharing opens Android's share sheet with a read-only FileProvider URI.
+No broad storage permission is needed. Regular browsers keep normal downloads.
+
+Deploy the website and rebuild/reinstall the APK together for this change.
+Old APKs display an update message rather than silently failing exports. Test:
+QR poster save/share, dashboard framed QR save, invoice PDF, reward-card PNG,
+reports CSV/PDF, cancelling the Save dialog, and sharing to another installed app.
+Files up to 32 MB are supported by the native export bridge.

@@ -1,20 +1,12 @@
 'use client'
 
-import MerchantModal from '@/components/modals/Merchant'
-import { useRef, useState, useEffect } from "react";
-import {
-    motion,
-    AnimatePresence,
-    useScroll,
-    useTransform,
-    useReducedMotion,
-    useInView,
-} from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import {
     Trophy,
     Sparkles,
-    ArrowUpRight,
+    ArrowRight,
     Play,
     X,
     ExternalLink,
@@ -22,19 +14,22 @@ import {
     AlertCircle,
     Link as LinkIcon,
     Film,
+    CalendarDays,
 } from "lucide-react";
-
-/* ------------------------------------------------------------------ */
-/*  DAP Brand Palette & Motion Tokens                                 */
-/*  paper      #FAFCFF  – clean, crisp off-white                      */
-/*  deepBlue   #0B2E7A  – profound structural backgrounds             */
-/*  linkBlue   #1857D6  – electric vibrant blue accents               */
-/*  deepGreen  #3E7A1C  – rich ribbon green for primary actions       */
-/*  leafGreen  #7BC142  – luminous highlight green                    */
-/* ------------------------------------------------------------------ */
-
-const EASE = [0.16, 1, 0.3, 1] as const;
-const FLAG_COLORS = ["#1857D6", "#3E7A1C", "#7BC142", "#0B2E7A", "#1857D6"];
+import {
+    PageShell,
+    PageHero,
+    Highlight,
+    Section,
+    SectionHeading,
+    Accent,
+    FadeUp,
+    BecomePartnerButton,
+    SecondaryButton,
+    CtaBand,
+    DISPLAY,
+    EASE,
+} from "@/components/site/ui";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -109,117 +104,6 @@ const Instagram = ({ size = 24, className = "" }) => (
     </svg>
 );
 
-// ─────────────────────────────────────────────────────────────────────────
-// Shared motion primitives (kept identical to the About page)
-// ─────────────────────────────────────────────────────────────────────────
-function FadeUp({
-    children,
-    delay = 0,
-    className = "",
-    yOffset = 30,
-}: {
-    children: React.ReactNode;
-    delay?: number;
-    className?: string;
-    yOffset?: number;
-}) {
-    const reduce = useReducedMotion();
-    return (
-        <motion.div
-            initial={reduce ? {} : { opacity: 0, y: yOffset, filter: "blur(6px)" }}
-            whileInView={reduce ? {} : { opacity: 1, y: 0, filter: "blur(0px)" }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, delay, ease: EASE }}
-            className={className}
-        >
-            {children}
-        </motion.div>
-    );
-}
-
-function Bunting() {
-    const reduce = useReducedMotion();
-    const count = 18;
-    const flags = Array.from({ length: count });
-
-    return (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center overflow-visible">
-            <svg viewBox="0 0 1200 50" className="h-12 w-full max-w-7xl px-6" preserveAspectRatio="none">
-                <path d="M0,5 Q600,45 1200,5" fill="none" stroke="#0B2E7A" strokeOpacity={0.12} strokeWidth={1.5} />
-            </svg>
-            <div className="absolute top-0 flex w-full max-w-7xl justify-between px-10">
-                {flags.map((_, i) => {
-                    const t = i / (count - 1);
-                    const dip = Math.sin(t * Math.PI) * 26;
-                    const color = FLAG_COLORS[i % FLAG_COLORS.length];
-                    return (
-                        <motion.div
-                            key={i}
-                            style={{ marginTop: dip }}
-                            animate={
-                                reduce
-                                    ? {}
-                                    : {
-                                        rotate: [i % 2 === 0 ? -6 : 6, i % 2 === 0 ? 6 : -6, i % 2 === 0 ? -6 : 6],
-                                        skewX: [i % 2 === 0 ? -4 : 4, i % 2 === 0 ? 4 : -4, i % 2 === 0 ? -4 : 4],
-                                    }
-                            }
-                            transition={{
-                                duration: 3.2 + (i % 5) * 0.4,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                                delay: i * 0.08,
-                            }}
-                            className="origin-top"
-                        >
-                            <div
-                                className="h-7 w-6 shadow-sm"
-                                style={{ background: color, clipPath: "polygon(0 0, 100% 0, 50% 100%)" }}
-                            />
-                        </motion.div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-function LedgerRule({ label }: { label: string }) {
-    return (
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-4">
-            <span className="font-mono text-[11px] font-semibold tracking-[0.3em] text-[#0B2E7A]/60 flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-ping" />
-                {label}
-            </span>
-            <div className="h-px flex-1 bg-gradient-to-r from-[#0B2E7A]/20 via-[#0B2E7A]/5 to-transparent" />
-        </div>
-    );
-}
-
-function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
-    const ref = useRef(null);
-    const inView = useInView(ref, { once: true, margin: "-60px" });
-    const reduce = useReducedMotion();
-
-    return (
-        <span ref={ref} className="font-mono tabular-nums">
-            {reduce || !inView ? (
-                `${to}${suffix}`
-            ) : (
-                <motion.span
-                    initial={{ "--num": 0 } as never}
-                    animate={{ "--num": to } as never}
-                    transition={{ duration: 1.6, ease: EASE }}
-                    onUpdate={(latest) => {
-                        const el = ref.current as unknown as HTMLElement | null;
-                        if (el) el.textContent = `${Math.round((latest as any)["--num"])}${suffix}`;
-                    }}
-                />
-            )}
-        </span>
-    );
-}
-
 const formatDate = (isoDate: string) =>
     new Date(isoDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -247,7 +131,7 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
 
     if (video.platform === "youtube" && youtubeThumb && !imgFailed) {
         return (
-            <div className="relative h-44 w-full overflow-hidden bg-[#0B2E7A]">
+            <div className="relative aspect-video w-full overflow-hidden bg-[#0B2E7A]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={youtubeThumb}
@@ -260,8 +144,8 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
                     whileHover={{ scale: 1.1 }}
                     className="absolute inset-0 flex items-center justify-center"
                 >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
-                        <Play size={22} className="fill-[#0B2E7A] text-[#0B2E7A] translate-x-0.5" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg sm:h-14 sm:w-14">
+                        <Play size={22} className="fill-[#3E7A1C] text-[#3E7A1C] translate-x-0.5" />
                     </div>
                 </motion.div>
             </div>
@@ -270,7 +154,7 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
 
     if (video.platform === "other") {
         return (
-            <div className="relative h-44 w-full overflow-hidden bg-black">
+            <div className="relative aspect-video w-full overflow-hidden bg-black">
                 <video
                     src={video.url}
                     muted
@@ -283,8 +167,8 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
                     whileHover={{ scale: 1.1 }}
                     className="absolute inset-0 flex items-center justify-center"
                 >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
-                        <Play size={22} className="fill-[#0B2E7A] text-[#0B2E7A] translate-x-0.5" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg sm:h-14 sm:w-14">
+                        <Play size={22} className="fill-[#3E7A1C] text-[#3E7A1C] translate-x-0.5" />
                     </div>
                 </motion.div>
             </div>
@@ -294,14 +178,56 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
     // Instagram (or a YouTube thumbnail that failed to load): gradient fallback
     return (
         <div
-            className="relative flex h-44 items-center justify-center overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #0B2E7A 0%, #1857D6 100%)" }}
+            className="relative flex aspect-video w-full items-center justify-center overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #3E7A1C 0%, #7BC142 60%, #1857D6 100%)" }}
         >
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#7BC142]/20 blur-2xl" />
             <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-            <motion.div whileHover={{ scale: 1.1 }} className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg">
-                <Play size={22} className="fill-[#0B2E7A] text-[#0B2E7A] translate-x-0.5" />
+            <motion.div whileHover={{ scale: 1.1 }} className="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg sm:h-14 sm:w-14">
+                <Play size={22} className="fill-[#3E7A1C] text-[#3E7A1C] translate-x-0.5" />
             </motion.div>
+        </div>
+    );
+}
+
+type Filter = "all" | "youtube" | "instagram" | "other";
+
+/* Hero side visual: trophy stats card */
+function TrophyCard({ total, youtube, instagram, loading }: { total: number; youtube: number; instagram: number; loading: boolean }) {
+    const fmt = (n: number) => (loading ? "—" : String(n));
+    return (
+        <div className="relative mx-auto w-full max-w-md">
+            <div aria-hidden="true" className="absolute inset-8 rounded-full bg-[#7BC142]/30 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#3E7A1C] to-[#6BAF38] p-6 text-white shadow-2xl shadow-[#3E7A1C]/30 sm:p-7">
+                <div aria-hidden="true" className="absolute -right-12 -top-12 h-44 w-44 rounded-full border-[24px] border-white/10" />
+                <motion.span
+                    animate={{ rotate: [0, -8, 8, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                    className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15"
+                >
+                    <Trophy size={26} />
+                </motion.span>
+                <p className="relative mt-5 text-6xl font-semibold leading-none" style={DISPLAY}>
+                    {fmt(total)}
+                </p>
+                <p className="relative mt-2 text-sm text-white/85">Winner videos published</p>
+            </div>
+            <div className="relative mx-4 -mt-5 grid grid-cols-2 gap-3 rounded-[24px] border border-[#0B2E7A]/10 bg-white p-3 shadow-xl shadow-[#0B2E7A]/10">
+                <div className="flex items-center gap-3 rounded-2xl bg-[#FAFCFF] p-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50"><Youtube size={18} className="text-red-500" /></span>
+                    <div>
+                        <p className="text-xl font-semibold text-[#0B2E7A]" style={DISPLAY}>{fmt(youtube)}</p>
+                        <p className="text-[11px] text-[#0B2E7A]/55">YouTube</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl bg-[#FAFCFF] p-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50"><Instagram size={18} className="text-pink-600" /></span>
+                    <div>
+                        <p className="text-xl font-semibold text-[#0B2E7A]" style={DISPLAY}>{fmt(instagram)}</p>
+                        <p className="text-[11px] text-[#0B2E7A]/55">Instagram</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -310,17 +236,14 @@ function VideoThumb({ video }: { video: WinnerVideoRecord }) {
 /*  PAGE                                                                 */
 /* ==================================================================== */
 export default function WinnerVideoPage() {
-    const supabase = createClient();
-    const containerRef = useRef<HTMLDivElement>(null);
-    const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end start"] });
-    const heroTextY = useTransform(scrollYProgress, [0, 1], [0, -60]);
-    const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0.4]);
+    const supabase = useMemo(() => createClient(), []);
 
     const [videos, setVideos] = useState<WinnerVideoRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [previewVideo, setPreviewVideo] = useState<WinnerVideoRecord | null>(null);
-    const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false)
+    const [filter, setFilter] = useState<Filter>("all");
+
     useEffect(() => {
         const fetchVideos = async () => {
             setLoading(true);
@@ -352,203 +275,160 @@ export default function WinnerVideoPage() {
 
     const youtubeCount = videos.filter((v) => v.platform === "youtube").length;
     const instagramCount = videos.filter((v) => v.platform === "instagram").length;
+    const otherCount = videos.filter((v) => v.platform === "other").length;
+
+    const tabs: { key: Filter; label: string; count: number }[] = [
+        { key: "all", label: "All", count: videos.length },
+        { key: "youtube", label: "YouTube", count: youtubeCount },
+        { key: "instagram", label: "Instagram", count: instagramCount },
+        ...(otherCount > 0 ? [{ key: "other" as Filter, label: "Other", count: otherCount }] : []),
+    ];
+
+    const visible = filter === "all" ? videos : videos.filter((v) => v.platform === filter);
 
     return (
-        <div className="relative min-h-screen bg-[#FAFCFF] text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A] overflow-x-hidden font-sans">
-            {/* ---------------------------------------------------------- */}
-            {/* HERO SECTION WITH PARALLAX & GLOWS                         */}
-            {/* ---------------------------------------------------------- */}
-            <section
-                ref={containerRef}
-                className="relative flex min-h-[70vh] flex-col justify-center overflow-hidden border-b border-[#0B2E7A]/10 px-6 pt-16 pb-12"
-            >
-                <Bunting />
+        <PageShell>
+            <PageHero
+                eyebrow="Winner spotlight"
+                eyebrowIcon={Trophy}
+                title={
+                    <>
+                        Every winner has a <Highlight>story</Highlight> worth watching.
+                    </>
+                }
+                desc="From surprise scratch-card wins to big campaign payouts — watch real merchants and customers celebrate their moment on the network."
+                actions={
+                    <>
+                        <BecomePartnerButton />
+                        <SecondaryButton href="#videos" icon={ArrowRight}>
+                            Watch the winners
+                        </SecondaryButton>
+                        <span className="inline-flex items-center gap-2 text-sm text-[#0B2E7A]/65">
+                            <Sparkles size={15} className="text-[#3E7A1C]" /> New stories added every week
+                        </span>
+                    </>
+                }
+                aside={<TrophyCard total={videos.length} youtube={youtubeCount} instagram={instagramCount} loading={loading} />}
+            />
 
-                <motion.div
-                    animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.4, 0.25] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                    className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full blur-[100px]"
-                    style={{ background: "#7BC142" }}
+            {/* ---------------- VIDEO GRID ---------------- */}
+            <Section id="videos">
+                <SectionHeading
+                    eyebrow="Watch the wins"
+                    title={<>Real people, <Accent>real rewards</Accent></>}
+                    desc="Tap any video to play it right here."
                 />
-                <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.35, 0.2] }}
-                    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                    className="pointer-events-none absolute -left-20 bottom-0 h-96 w-96 rounded-full blur-[120px]"
-                    style={{ background: "#1857D6" }}
-                />
 
-                <motion.div style={{ y: heroTextY, opacity: heroOpacity }} className="relative z-0 mx-auto w-full max-w-6xl">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, ease: EASE }}
-                        className="mb-5 inline-flex items-center gap-2.5 rounded-full bg-[#1857D6]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#1857D6] border border-[#1857D6]/20 shadow-sm"
-                    >
-                        <Trophy size={15} strokeWidth={2} className="animate-pulse" />
-                        <span>WINNER SPOTLIGHT</span>
-                    </motion.div>
-
-                    <motion.h1
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-                        className="max-w-4xl text-4xl leading-tight sm:text-5xl md:text-6xl font-light tracking-tight"
-                        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                    >
-                        Every winner has a{" "}
-                        <span className="text-[#3E7A1C] font-normal italic underline decoration-[#7BC142]/40 underline-offset-8">
-                            story
-                        </span>{" "}
-                        worth watching.
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 25 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-                        className="mt-6 max-w-xl text-base leading-relaxed text-[#0B2E7A]/80 sm:text-lg font-normal"
-                    >
-                        From surprise scratch-card wins to big campaign payouts — watch real
-                        merchants and customers celebrate their moment on the network.
-                    </motion.p>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.45, ease: EASE }}
-                        className="mt-8 flex flex-wrap items-center gap-5"
-                    >
-                        <a
-                            href="#videos"
-                            className="group relative inline-flex items-center gap-3 overflow-hidden rounded-xl bg-[#3E7A1C] px-7 py-3.5 font-mono text-xs sm:text-sm font-semibold tracking-wide text-white shadow-[0_6px_20px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_25px_rgba(62,122,28,0.5)] active:translate-y-0"
-                        >
-                            <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                            <span>Watch the winners</span>
-                            <ArrowUpRight size={17} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
-                        </a>
-
-                        <div className="flex items-center gap-2 text-xs font-mono text-[#0B2E7A]/70 bg-white/80 backdrop-blur-md px-4 py-3 rounded-xl border border-[#0B2E7A]/10 shadow-sm">
-                            <Sparkles size={15} className="text-[#3E7A1C]" />
-                            <span>New stories added every week</span>
-                        </div>
-                    </motion.div>
-                </motion.div>
-            </section>
-
-            {/* ---------------------------------------------------------- */}
-            {/* STATS STRIP                                                 */}
-            {/* ---------------------------------------------------------- */}
-            <section className="px-6 py-14">
-                <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 sm:grid-cols-3 sm:gap-8">
-                    {[
-                        { to: videos.length, suffix: "", label: "Winner videos published" },
-                        { to: youtubeCount, suffix: "", label: "Featured on YouTube" },
-                        { to: instagramCount, suffix: "", label: "Featured on Instagram" },
-                    ].map((s, i) => (
-                        <FadeUp
-                            key={s.label}
-                            delay={i * 0.08}
-                            className="p-6 rounded-2xl bg-white border border-[#0B2E7A]/10 shadow-sm hover:shadow-md transition-shadow"
-                        >
-                            <div className="text-3xl sm:text-4xl text-[#3E7A1C] font-semibold tracking-tight">
-                                <CountUp to={s.to} suffix={s.suffix} />
-                            </div>
-                            <div className="mt-2 text-xs sm:text-sm leading-snug text-[#0B2E7A]/75 font-medium">{s.label}</div>
-                        </FadeUp>
-                    ))}
-                </div>
-            </section>
-
-            <LedgerRule label="WATCH THE WINS" />
-
-            {/* ---------------------------------------------------------- */}
-            {/* VIDEO GRID                                                  */}
-            {/* ---------------------------------------------------------- */}
-            <section id="videos" className="px-6 py-16 scroll-mt-24">
-                <div className="mx-auto max-w-6xl">
-                    {loading ? (
-                        <div className="flex h-64 items-center justify-center">
-                            <Loader2 size={28} className="animate-spin text-[#1857D6]" />
-                        </div>
-                    ) : error ? (
-                        <div className="mx-auto max-w-md rounded-3xl border border-[#0B2E7A]/10 bg-white p-10 text-center shadow-sm">
-                            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
-                                <AlertCircle size={26} />
-                            </div>
-                            <p className="text-sm text-[#0B2E7A]/70">{error}</p>
-                        </div>
-                    ) : videos.length === 0 ? (
-                        <div className="mx-auto max-w-md rounded-3xl border border-[#0B2E7A]/10 bg-white p-10 text-center shadow-sm">
-                            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1857D6]/10 text-[#1857D6]">
-                                <Film size={26} />
-                            </div>
-                            <p className="text-sm text-[#0B2E7A]/70">No winner videos yet — check back soon.</p>
-                        </div>
-                    ) : (
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            {videos.map((v, i) => (
-                                <FadeUp key={v.id} delay={(i % 6) * 0.08} className="h-full">
-                                    <motion.button
-                                        onClick={() => setPreviewVideo(v)}
-                                        whileHover={{ y: -6, transition: { duration: 0.3, ease: EASE } }}
-                                        className="group relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-[#0B2E7A]/10 bg-white text-left shadow-lg shadow-[#0B2E7A]/5 transition-shadow duration-300 hover:shadow-xl hover:shadow-[#0B2E7A]/10"
+                {!loading && !error && videos.length > 0 && (
+                    <FadeUp className="mb-6 flex justify-center">
+                        <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-[#0B2E7A]/10 bg-white p-1 shadow-sm">
+                            {tabs.map((t) => {
+                                const active = filter === t.key;
+                                return (
+                                    <button
+                                        key={t.key}
+                                        type="button"
+                                        onClick={() => setFilter(t.key)}
+                                        aria-pressed={active}
+                                        className={`relative flex shrink-0 cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                                            active ? "text-white" : "text-[#0B2E7A]/70 hover:text-[#0B2E7A]"
+                                        }`}
                                     >
-                                        {/* Real video preview / thumbnail */}
-                                        <div className="relative">
-                                            <VideoThumb video={v} />
-                                            <div className="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 shadow-sm">
-                                                {getPlatformIcon(v.platform)}
-                                            </div>
-                                        </div>
-
-                                        {/* Meta */}
-                                        <div className="flex flex-1 flex-col gap-2 p-5">
-                                            <h3
-                                                className="text-lg leading-snug text-[#0B2E7A] font-normal line-clamp-2"
-                                                style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                                            >
-                                                {v.title}
-                                            </h3>
-                                            <div className="mt-auto flex items-center justify-between pt-2 text-xs font-mono text-[#0B2E7A]/60">
-                                                <span className="capitalize">{v.platform}</span>
-                                                <span>{formatDate(v.created_at)}</span>
-                                            </div>
-                                        </div>
-                                    </motion.button>
-                                </FadeUp>
-                            ))}
+                                        {active && (
+                                            <motion.span
+                                                layoutId="wv-tab"
+                                                className="absolute inset-0 rounded-xl bg-[#3E7A1C]"
+                                                transition={{ duration: 0.3, ease: EASE }}
+                                            />
+                                        )}
+                                        <span className="relative">{t.label}</span>
+                                        <span className={`relative rounded-full px-1.5 text-[11px] ${active ? "bg-white/20" : "bg-[#0B2E7A]/5"}`}>
+                                            {t.count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
-                    )}
-                </div>
-            </section>
+                    </FadeUp>
+                )}
 
-            {/* ---------------------------------------------------------- */}
-            {/* CLOSING CTA                                                 */}
-            {/* ---------------------------------------------------------- */}
-            <section className="relative overflow-hidden px-6 py-20">
-                <FadeUp className="mx-auto max-w-3xl text-center">
-                    <span className="inline-block font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6] bg-[#1857D6]/10 px-4 py-1.5 rounded-full border border-[#1857D6]/20 mb-6">
-                        YOUR STORY COULD BE NEXT
-                    </span>
-                    <h2
-                        className="mt-4 text-3xl leading-tight sm:text-4xl md:text-5xl text-[#0B2E7A] font-light"
-                        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                    >
-                        Scan, win, and get featured — one QR code at a time.
-                    </h2>
-
-                    <div className="mt-10 flex justify-center">
-                        <button
-                            onClick={() => setIsMerchantModalOpen(true)}
-                            className="group relative inline-flex items-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3 text-sm text-white shadow-[0_4px_16px_rgba(62,122,28,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.6)] active:translate-y-0 cursor-pointer"
-                        >
-                            <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                            <Sparkles size={16} />
-                            <span>Become a partner</span>
-                        </button>
+                {loading ? (
+                    <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="overflow-hidden rounded-3xl border border-[#0B2E7A]/10 bg-white">
+                                <div className="aspect-video animate-pulse bg-[#0B2E7A]/5" />
+                                <div className="space-y-2 p-5">
+                                    <div className="h-4 w-3/4 animate-pulse rounded bg-[#0B2E7A]/5" />
+                                    <div className="h-3 w-1/3 animate-pulse rounded bg-[#0B2E7A]/5" />
+                                </div>
+                            </div>
+                        ))}
+                        <span className="sr-only"><Loader2 /> Loading videos</span>
                     </div>
-                </FadeUp>
-            </section>
+                ) : error ? (
+                    <div className="mx-auto max-w-md rounded-3xl border border-[#0B2E7A]/10 bg-white p-10 text-center shadow-sm">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-500">
+                            <AlertCircle size={26} />
+                        </div>
+                        <p className="text-sm text-[#0B2E7A]/70">{error}</p>
+                    </div>
+                ) : videos.length === 0 ? (
+                    <div className="mx-auto max-w-md rounded-3xl border border-dashed border-[#0B2E7A]/20 bg-white p-10 text-center">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3E7A1C]/10 text-[#3E7A1C]">
+                            <Film size={26} />
+                        </div>
+                        <p className="text-base font-semibold text-[#0B2E7A]">No winner videos yet</p>
+                        <p className="mt-1 text-sm text-[#0B2E7A]/60">Check back soon — new stories are added every week.</p>
+                    </div>
+                ) : (
+                    <motion.div layout className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+                        <AnimatePresence mode="popLayout">
+                            {visible.map((v) => (
+                                <motion.button
+                                    key={v.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.96 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.96 }}
+                                    transition={{ duration: 0.35, ease: EASE }}
+                                    onClick={() => setPreviewVideo(v)}
+                                    className="group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-[#0B2E7A]/10 bg-white text-left shadow-sm sm:rounded-3xl transition-shadow duration-300 hover:shadow-xl hover:shadow-[#0B2E7A]/10"
+                                >
+                                    <div className="relative">
+                                        <VideoThumb video={v} />
+                                        <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[10px] sm:left-3 sm:top-3 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[11px] font-semibold capitalize text-[#0B2E7A] shadow-sm">
+                                            {getPlatformIcon(v.platform, 13)}
+                                            {v.platform}
+                                        </div>
+                                        <div className="absolute right-2 top-2 hidden h-8 w-8 items-center sm:right-3 sm:top-3 sm:flex justify-center rounded-full bg-[#3E7A1C] text-white shadow-lg">
+                                            <Trophy size={14} />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-1 flex-col gap-2 p-3 sm:gap-3 sm:p-5">
+                                        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-[#0B2E7A] sm:text-lg" style={DISPLAY}>
+                                            {v.title}
+                                        </h3>
+                                        <div className="mt-auto flex items-center justify-between text-[10px] text-[#0B2E7A]/55 sm:text-xs">
+                                            <span className="flex items-center gap-1.5">
+                                                <CalendarDays size={13} /> {formatDate(v.created_at)}
+                                            </span>
+                                            <span className="flex items-center gap-1 font-semibold text-[#3E7A1C] opacity-0 transition-opacity group-hover:opacity-100">
+                                                <Play size={12} className="fill-current" /> Play
+                                            </span>
+                                        </div>
+                                    </div>
+                                </motion.button>
+                            ))}
+                        </AnimatePresence>
+                    </motion.div>
+                )}
+            </Section>
+
+            <CtaBand
+                eyebrow="Your story could be next"
+                title="Scan, win and get featured — one QR code at a time."
+                desc="Bring the scratch-card experience to your counter and your customers could be our next winners."
+            />
 
             {/* ---------------------------------------------------------- */}
             {/* VIDEO PREVIEW POPUP                                         */}
@@ -577,7 +457,7 @@ export default function WinnerVideoPage() {
                                     </div>
                                     <h3
                                         className="truncate text-base text-[#0B2E7A] font-normal"
-                                        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
+                                        style={DISPLAY}
                                     >
                                         {previewVideo.title}
                                     </h3>
@@ -629,7 +509,7 @@ export default function WinnerVideoPage() {
 
                             {previewVideo.platform === "instagram" && !getInstagramEmbedUrl(previewVideo.url) && (
                                 <p className="mt-2 text-center text-xs text-[#0B2E7A]/40">
-                                    Couldn't load an inline preview for this link —{" "}
+                                    Couldn&apos;t load an inline preview for this link —{" "}
                                     <a href={previewVideo.url} target="_blank" rel="noopener noreferrer" className="text-[#1857D6] hover:underline">
                                         open it directly
                                     </a>
@@ -640,9 +520,6 @@ export default function WinnerVideoPage() {
                     </div>
                 )}
             </AnimatePresence>
-
-                  <MerchantModal isOpen={isMerchantModalOpen} onClose={() => setIsMerchantModalOpen(false)} />
-            
-        </div>
+        </PageShell>
     );
 }

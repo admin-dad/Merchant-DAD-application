@@ -1,5 +1,9 @@
 'use client'
 
+import { createMerchantQRPoster, merchantScanURL } from '@/lib/merchant-qr'
+
+import { saveFile, canvasPNG, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { useRouter } from 'next/navigation'
@@ -81,7 +85,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [downloadingQR, setDownloadingQR] = useState(false)
   const downloadQRRef = useRef<HTMLDivElement>(null)
-  const [qrPaymentState, setQRPaymentState] = useState<'checking' | 'ready' | 'unpaid' | 'error'>('checking')
   const [error, setError] = useState<string | null>(null)
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
 
@@ -134,18 +137,6 @@ export default function DashboardPage() {
         return
       }
       setMerchant(merchData)
-
-      // The visible dashboard QR uses the same monthly-payment gate as /qr-code.
-      if (merchData.billing_type === 'monthly') {
-        const now = new Date()
-        const { data: payment, error: paymentError } = await supabase.from('merchant_payments').select('id')
-          .eq('merchant_id', merchData.id).in('status', ['approved', 'completed'])
-          .gte('created_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
-          .lt('created_at', new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()).limit(1)
-        setQRPaymentState(paymentError ? 'error' : payment?.length ? 'ready' : 'unpaid')
-      } else {
-        setQRPaymentState('ready')
-      }
 
       // Fetch Subcategory scan amount if applicable
       if (merchData.category && merchData.sub_category) {
@@ -318,10 +309,6 @@ export default function DashboardPage() {
     return true
   }
 
-  const showDashboardQR = () => {
-    document.getElementById('dashboard-qr')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
   const downloadFramedQR = async () => {
     if (!merchant || downloadingQR) return
     setDownloadingQR(true)
@@ -329,32 +316,10 @@ export default function DashboardPage() {
       if (!await checkQRAccess()) return
       const qr = downloadQRRef.current?.querySelector('canvas')
       if (!qr) throw new Error('Your QR code is not ready yet. Please try again.')
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = 1200
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('Could not create the QR image.')
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, 1200, 1200)
-      ctx.strokeStyle = '#0B2E7A'
-      ctx.lineWidth = 12
-      ctx.strokeRect(24, 24, 1152, 1152)
-      ctx.strokeStyle = '#7BC142'
-      ctx.lineWidth = 6
-      ctx.strokeRect(46, 46, 1108, 1108)
-      ctx.imageSmoothingEnabled = false
-      ctx.drawImage(qr, 88, 88, 1024, 1024)
-      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
-        value => value ? resolve(value) : reject(new Error('Could not create the PNG.')), 'image/png'))
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${merchant.business_name.replace(/\s/g, '_')}_Framed_QR.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 10000)
+      const canvas = await createMerchantQRPoster(qr)
+      await saveFile(await canvasPNG(canvas), `${merchant.business_name.replace(/\s/g, '_')}_Framed_QR.png`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not download your QR code.')
+      alert(exportError(err))
     } finally {
       setDownloadingQR(false)
     }
@@ -455,7 +420,7 @@ const QUICK_ACTIONS = [
 
           {isProfileComplete ? (
             <Link
-              href="#dashboard-qr"
+              href="/qr-code"
               className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
             >
               <QrCode size={18} />
@@ -661,36 +626,6 @@ const QUICK_ACTIONS = [
         </motion.div>
       </div>
 
-      <section id="dashboard-qr" aria-labelledby="dashboard-qr-heading" className="mb-8 scroll-mt-24 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
-        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-4">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#1857D6]"><QrCode size={23} /></span>
-          <div>
-            <h2 id="dashboard-qr-heading" className="text-lg font-bold text-slate-900">Your Shop QR</h2>
-            <p className="mt-1 text-sm text-slate-500">Your framed QR code, ready to download as a PNG image.</p>
-          </div>
-        </div>
-        {isProfileComplete && qrPaymentState === 'ready' ? <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
-          <div className="w-full max-w-[264px] border-[5px] border-[#0B2E7A] bg-white p-1.5">
-            <div ref={downloadQRRef} className="border-2 border-[#7BC142] bg-white p-3">
-              <QRCodeCanvas value={`${typeof window !== 'undefined' ? window.location.origin : ''}/scan?merchant=${merchant.id}`}
-                size={1024} style={{ width: '100%', height: 'auto', display: 'block' }} level="H" marginSize={4} fgColor="#000000" bgColor="#ffffff" />
-            </div>
-          </div>
-          <div className="w-full text-center sm:w-auto sm:max-w-xs sm:text-left">
-            <h3 className="break-words text-xl font-bold text-slate-900">{merchant.business_name}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">Display this QR code at your shop so customers can scan and participate.</p>
-            <button type="button" onClick={downloadFramedQR} disabled={downloadingQR}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-6 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60 sm:w-auto">
-              {downloadingQR ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-              {downloadingQR ? 'Preparing PNG…' : 'Download PNG'}
-            </button>
-          </div>
-        </div> : <div className="rounded-2xl bg-slate-50 p-6 text-center">
-          <p className="text-sm text-slate-600">{!isProfileComplete ? 'Complete your profile to view and download your shop QR.' : qrPaymentState === 'unpaid' ? 'Pay your monthly fee to unlock your shop QR.' : qrPaymentState === 'error' ? 'Could not verify your monthly payment. Refresh the dashboard to try again.' : 'Checking QR availability…'}</p>
-          {(!isProfileComplete || qrPaymentState === 'unpaid') && <Link href={!isProfileComplete ? '/profile' : '/scan-payments'} className="mt-4 inline-flex rounded-xl bg-[#1857D6] px-5 py-2.5 text-sm font-semibold text-white">{!isProfileComplete ? 'Complete Profile' : 'Pay Monthly Fee'}</Link>}
-        </div>}
-      </section>
-
       {/* Quick Actions */}
       <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-3 border-b border-slate-100 pb-4">
@@ -708,7 +643,7 @@ const QUICK_ACTIONS = [
             const isQrAction = action.href === '/qr-code'
             const locked = isQrAction && !isProfileComplete
             if (isQrAction) return (
-              <button key={action.href} type="button" onClick={showDashboardQR} disabled={downloadingQR}
+              <button key={action.href} type="button" onClick={downloadFramedQR} disabled={downloadingQR}
                 className="group flex flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 px-3 py-4 text-center transition-all hover:border-[#1857D6]/30 hover:bg-[#1857D6]/5 hover:shadow-sm disabled:cursor-wait disabled:opacity-60">
                 <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1857D6] shadow-sm">
                   {downloadingQR ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
@@ -741,6 +676,12 @@ const QUICK_ACTIONS = [
       </div>
 
 
+
+      {/* Off-screen source for the direct framed-PNG download. */}
+      <div ref={downloadQRRef} className="hidden" aria-hidden="true">
+        <QRCodeCanvas value={merchantScanURL(merchant.id)}
+          size={1024} level="H" marginSize={4} fgColor="#000000" bgColor="#ffffff" />
+      </div>
 
       {/* Floating scratch-card trigger + popup — MerchantScratchCard now
           checks for a pending card and shows a small icon button (bottom

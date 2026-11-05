@@ -176,7 +176,7 @@ const VideoCard = ({
     >
       <div className={`h-1.5 w-full shrink-0 ${styles.accent}`} />
 
-      <div className="relative w-full flex-shrink-0 aspect-video overflow-hidden bg-black">
+      <div className="relative w-full flex-shrink-0 aspect-[16/10] min-h-[180px] overflow-hidden bg-black">
         <button
           onClick={() => onPlay(video)}
           className="absolute inset-0 w-full h-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1857D6] focus-visible:ring-offset-2"
@@ -211,7 +211,7 @@ const VideoCard = ({
           {styles.label}
         </span>
 
-        <h3 className="mb-3 line-clamp-2 text-base font-bold leading-snug text-slate-900 group-hover:text-[#1857D6] transition-colors">
+        <h3 className="mb-3 line-clamp-2 text-lg font-bold leading-snug text-slate-900 group-hover:text-[#1857D6] transition-colors">
           {video.title}
         </h3>
 
@@ -513,7 +513,7 @@ export default function MerchantVideosPage() {
           <p className="mt-1 text-sm text-slate-500">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredVideos.map((video) => (
             <VideoCard
               key={video.id}

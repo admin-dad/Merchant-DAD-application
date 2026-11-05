@@ -1,6 +1,8 @@
 // app/admin-qr-codes/page.tsx
 'use client'
 
+import { saveFile, canvasPNG, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -20,6 +22,7 @@ import {
   Download,
 } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/client'
+import { createMerchantQRPoster, merchantScanURL } from '@/lib/merchant-qr'
 import { QRCodeCanvas } from 'qrcode.react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -29,7 +32,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 interface MerchantRow {
   id: string
   business_name: string
-  category: string
+  category: string | null
   sub_category: string | null
   status: string
   created_at: string
@@ -119,10 +122,18 @@ export default function AdminQRCodesPage() {
 
       const [{ data: merchantData, error: merchantError }, { data: scanData, error: scanError }] =
         await Promise.all([
-          supabase
-            .from('merchants')
-            .select('id, business_name, category, sub_category, status, created_at')
-            .order('created_at', { ascending: false }),
+          (async () => {
+            const rows: MerchantRow[] = []
+            for (let offset = 0; ; offset += 500) {
+              const { data, error } = await supabase.from('merchants')
+                .select('id, business_name, category, sub_category, status, created_at')
+                .order('created_at', { ascending: false }).order('id')
+                .range(offset, offset + 499)
+              if (error) return { data: null, error }
+              rows.push(...(data ?? []))
+              if (!data || data.length < 500) return { data: rows, error: null }
+            }
+          })(),
           supabase
             .from('qr_scans')
             .select('id, merchant_id, customer_name, customer_phone, status, created_at')
@@ -189,8 +200,8 @@ export default function AdminQRCodesPage() {
       const q = search.trim().toLowerCase()
       list = list.filter(
         (m) =>
-          m.business_name.toLowerCase().includes(q) ||
-          m.category.toLowerCase().includes(q) ||
+          (m.business_name ?? '').toLowerCase().includes(q) ||
+          (m.category ?? '').toLowerCase().includes(q) ||
           (m.sub_category || '').toLowerCase().includes(q)
       )
     }
@@ -453,20 +464,22 @@ function MerchantQRModal({
   onClose: () => void
   formatDate: (iso: string) => string
 }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const scanUrl = merchant ? `${origin}/scan?merchant=${merchant.id}` : ''
+  const [downloading, setDownloading] = useState(false)
+  const scanUrl = merchant ? merchantScanURL(merchant.id) : ''
 
-  const downloadPNG = () => {
-    if (!merchant) return
+  const downloadPNG = async () => {
+    if (!merchant || downloading) return
     const canvas = document.getElementById('admin-merchant-qr-canvas') as HTMLCanvasElement | null
     if (!canvas) return
-    const pngUrl = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream')
-    const link = document.createElement('a')
-    link.href = pngUrl
-    link.download = `${merchant.business_name.replace(/\s/g, '_')}_QR.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    setDownloading(true)
+    try {
+      const poster = await createMerchantQRPoster(canvas)
+      await saveFile(await canvasPNG(poster), `${(merchant.business_name || 'Merchant').replace(/\s/g, '_')}_Promotional_QR.png`)
+    } catch (error) {
+      alert(exportError(error))
+    } finally {
+      setDownloading(false)
+    }
   }
 
   return (
@@ -513,23 +526,25 @@ function MerchantQRModal({
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-12">
                 {/* QR side */}
                 <div className="sm:col-span-4 flex flex-col items-center">
-                  <div className="p-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl shadow-sm">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <QRCodeCanvas
                       id="admin-merchant-qr-canvas"
                       value={scanUrl}
-                      size={160}
+                      size={1024}
+                      style={{ width: 160, height: 160 }}
                       level="H"
-                      includeMargin={false}
+                      marginSize={4}
                       fgColor="#0B0F19"
                       bgColor="#FFFFFF"
                     />
                   </div>
                   <button
                     onClick={downloadPNG}
+                    disabled={downloading}
                     className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer"
                   >
                     <Download size={14} />
-                    Download PNG
+                    {downloading ? 'Preparing…' : 'Download PNG'}
                   </button>
 
                   <div className="mt-4 grid w-full grid-cols-2 gap-2">

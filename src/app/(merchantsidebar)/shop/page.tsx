@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, exportError } from '@/lib/file-export'
+
 import { PRODUCT_AUDIENCES, productAudienceLabel } from '@/lib/product-audiences'
 
 import { useState, useEffect, useMemo } from 'react'
@@ -185,8 +187,16 @@ export default function MerchantShopPage() {
 
       if (prodRes.data) setProducts(prodRes.data as Product[])
       if (ordRes.data) setOrders(ordRes.data as Order[])
-      if (catRes.data) setCategories(catRes.data)
-      if (subCatRes.data) setSubcategories(subCatRes.data)
+      // Only offer taxonomy assigned to products in the active e-commerce catalog.
+      const catalog = (prodRes.data ?? []) as Product[]
+      const catalogCategories = (catRes.data ?? []).filter(category =>
+        catalog.some(product => product.category === category.name))
+      setCategories(catalogCategories)
+      setSubcategories((subCatRes.data ?? []).filter(subcategory => {
+        const parent = catalogCategories.find(category => category.id === subcategory.category_id)
+        return parent && catalog.some(product =>
+          product.category === parent.name && product.sub_category === subcategory.name)
+      }))
 
       if (txRes.data) {
         let pts = 0, cash = 0
@@ -209,11 +219,6 @@ export default function MerchantShopPage() {
     }
   }, [cart, merchant, cartLoaded])
 
-  // ── Reset Subcategory when Category changes ──────────────────────────
-  useEffect(() => {
-    setFilterSubCategory('All')
-  }, [filterCategory])
-
   // ── Dynamic Subcategories based on selected Category ─────────────────
   const availableSubcats = useMemo(() => {
     if (filterCategory === 'All') return subcategories
@@ -221,6 +226,10 @@ export default function MerchantShopPage() {
     if (!selectedCat) return []
     return subcategories.filter(sc => sc.category_id === selectedCat.id)
   }, [filterCategory, categories, subcategories])
+
+  useEffect(() => {
+    setFilterSubCategory('All')
+  }, [filterCategory])
 
   // ── Cart Logic ───────────────────────────────────────────────────────
   const addToCart = (product: Product) => {
@@ -502,10 +511,10 @@ export default function MerchantShopPage() {
         // A text wordmark keeps invoices available if the logo cannot load.
       }
       const pdf = buildRewardsInvoice(order, logo)
-      pdf.save(`Invoice_${order.id.substring(0, 8)}.pdf`)
+      await saveFile(pdf.output('blob'), `Invoice_${order.id.substring(0, 8)}.pdf`)
     } catch (error) {
       console.error('Could not generate invoice:', error)
-      alert('Could not download your invoice. Please try again.')
+      alert(exportError(error))
     }
   }
 

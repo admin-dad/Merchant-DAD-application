@@ -1,5 +1,7 @@
 'use client'
 
+import { saveFile, canvasPNG, exportError } from '@/lib/file-export'
+
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -510,21 +512,12 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
       ctx.fillText(`Won on ${displayDate}`, width / 2, height - 60)
 
       // ── Trigger download — filename uses merchant name ──
-      canvas.toBlob((blob) => {
-        if (!blob) { setIsDownloading(false); return }
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        const safeName = (merchantName || 'merchant').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-        a.download = `${safeName}-reward-${Date.now()}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        setIsDownloading(false)
-      }, 'image/png')
+      const safeName = (merchantName || 'reward').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+      await saveFile(await canvasPNG(canvas), `${safeName}-reward-${Date.now()}.png`)
+      setIsDownloading(false)
     } catch (err) {
       console.error('Failed to generate reward image:', err)
+      alert(exportError(err))
       setIsDownloading(false)
     }
   }

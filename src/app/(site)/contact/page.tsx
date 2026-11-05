@@ -1,82 +1,89 @@
 'use client'
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  motion,
-  useScroll,
-  useTransform,
-  useReducedMotion,
-} from "framer-motion";
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Send, 
-  Sparkles, 
-  ArrowUpRight, 
-  CheckCircle2 
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  MessageCircle,
+  CheckCircle2,
+  Clock,
+  Store,
+  QrCode,
+  ShoppingBag,
+  HelpCircle,
 } from "lucide-react";
+import {
+  PageShell,
+  PageHero,
+  Highlight,
+  Section,
+  Stagger,
+  StaggerItem,
+  FadeUp,
+  CtaBand,
+  BecomePartnerButton,
+  SecondaryButton,
+  DISPLAY,
+  EASE,
+} from "@/components/site/ui";
 
-/* ------------------------------------------------------------------ */
-/*  DAP Brand Palette & Motion Tokens                                 */
-/*  paper      #FAFCFF  – clean, crisp off-white                      */
-/*  deepBlue   #0B2E7A  – profound structural backgrounds             */
-/*  linkBlue   #1857D6  – electric vibrant blue accents               */
-/*  deepGreen  #3E7A1C  – rich ribbon green for primary actions       */
-/*  leafGreen  #7BC142  – luminous highlight green                    */
-/* ------------------------------------------------------------------ */
+const CHANNELS = [
+  { icon: Mail, label: "Email support", value: "support@domain.com", tone: "bg-[#1857D6]/10 text-[#1857D6]" },
+  { icon: Phone, label: "Helpline / WhatsApp", value: "+91 (Support line available)", tone: "bg-[#3E7A1C]/10 text-[#3E7A1C]" },
+  { icon: MapPin, label: "Location", value: "India", tone: "bg-[#0B2E7A]/10 text-[#0B2E7A]" },
+];
 
-const EASE = [0.16, 1, 0.3, 1] as const;
+const TOPICS = [
+  { icon: Store, label: "Merchant registration" },
+  { icon: QrCode, label: "QR campaign setup" },
+  { icon: ShoppingBag, label: "E-commerce" },
+  { icon: HelpCircle, label: "Something else" },
+];
 
-function FadeUp({
-  children,
-  delay = 0,
-  className = "",
-  yOffset = 30,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-  yOffset?: number;
-}) {
-  const reduce = useReducedMotion();
+const inputCls =
+  "w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] outline-none transition placeholder:text-[#0B2E7A]/35 focus:border-[#3E7A1C] focus:bg-white focus:ring-4 focus:ring-[#3E7A1C]/10";
+const labelCls = "mb-1.5 block text-xs font-semibold text-[#0B2E7A]/70";
+
+/* Hero side visual: support availability card */
+function SupportCard() {
   return (
-    <motion.div
-      initial={reduce ? {} : { opacity: 0, y: yOffset, filter: "blur(6px)" }}
-      whileInView={reduce ? {} : { opacity: 1, y: 0, filter: "blur(0px)" }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.8, delay, ease: EASE }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/* --- Ledger Divider --- */
-function LedgerRule({ label }: { label: string }) {
-  return (
-    <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-6">
-      <span className="font-mono text-[11px] font-semibold tracking-[0.3em] text-[#0B2E7A]/60 flex items-center gap-2">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3E7A1C] animate-ping" />
-        {label}
-      </span>
-      <div className="h-px flex-1 bg-gradient-to-r from-[#0B2E7A]/20 via-[#0B2E7A]/5 to-transparent" />
+    <div className="relative mx-auto w-full max-w-md">
+      <div aria-hidden="true" className="absolute inset-8 rounded-full bg-[#7BC142]/25 blur-3xl" />
+      <div className="relative rounded-[28px] border border-[#0B2E7A]/10 bg-white/90 p-5 shadow-2xl shadow-[#0B2E7A]/10 backdrop-blur sm:p-6">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[#3E7A1C] text-white">
+            <MessageCircle size={22} />
+            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-[#7BC142] ring-2 ring-white" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-[#0B2E7A]">Merchant support team</p>
+            <p className="flex items-center gap-1.5 text-xs text-[#0B2E7A]/55">
+              <Clock size={12} /> Usually replies within a working day
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 space-y-2.5">
+          <div className="w-fit max-w-[85%] rounded-2xl rounded-tl-md bg-[#FAFCFF] px-4 py-2.5 text-sm text-[#0B2E7A]/80 ring-1 ring-[#0B2E7A]/5">
+            Hi! How can we help your shop today?
+          </div>
+          <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-tr-md bg-[#3E7A1C] px-4 py-2.5 text-sm text-white">
+            How do I set up my QR campaign?
+          </div>
+          <div className="w-fit max-w-[85%] rounded-2xl rounded-tl-md bg-[#FAFCFF] px-4 py-2.5 text-sm text-[#0B2E7A]/80 ring-1 ring-[#0B2E7A]/5">
+            Easy — we’ll walk you through it step by step.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function ContactPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-  
-  const heroTextY = useTransform(scrollYProgress, [0, 1], [0, -50]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0.4]);
-
   const [submitted, setSubmitted] = useState(false);
+  const [topic, setTopic] = useState(TOPICS[0].label);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,262 +91,179 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#FAFCFF] text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A] overflow-x-hidden font-sans">
-      
-      {/* ---------------------------------------------------------- */}
-      {/* HERO SECTION                                               */}
-      {/* ---------------------------------------------------------- */}
-      <section
-        ref={containerRef}
-        className="relative flex min-h-[65vh] flex-col justify-center overflow-hidden border-b border-[#0B2E7A]/10 px-6 pt-20 pb-16"
-      >
-        {/* Ambient Gradient Orbs */}
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full blur-[100px]"
-          style={{ background: "#7BC142" }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="pointer-events-none absolute -left-20 bottom-0 h-96 w-96 rounded-full blur-[120px]"
-          style={{ background: "#1857D6" }}
-        />
+    <PageShell>
+      <PageHero
+        eyebrow="Contact us"
+        eyebrowIcon={MessageCircle}
+        title={
+          <>
+            We’re here to support your <Highlight>merchant journey</Highlight>.
+          </>
+        }
+        desc="Questions about registration, onboarding, QR campaign setup or e-commerce? Reach out to our support and admin team."
+        actions={
+          <>
+            <BecomePartnerButton />
+            <SecondaryButton href="#message" icon={Send}>
+              Send a message
+            </SecondaryButton>
+          </>
+        }
+        aside={<SupportCard />}
+      />
 
-        <motion.div
-          style={{ y: heroTextY, opacity: heroOpacity }}
-          className="relative z-10 mx-auto w-full max-w-6xl"
-        >
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: EASE }}
-            className="mb-5 inline-flex items-center gap-2.5 rounded-full bg-[#1857D6]/10 px-4 py-1.5 font-mono text-xs font-medium tracking-[0.2em] text-[#1857D6] border border-[#1857D6]/20 shadow-sm"
-          >
-            <Sparkles size={15} strokeWidth={2} />
-            <span>GET IN TOUCH WITH US</span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            className="max-w-4xl text-4xl leading-tight sm:text-5xl md:text-6xl font-light tracking-tight"
-            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-          >
-            We're here to support your{" "}
-            <span className="text-[#3E7A1C] font-normal italic underline decoration-[#7BC142]/40 underline-offset-8">
-              merchant journey
-            </span>
-            .
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-            className="mt-6 max-w-2xl text-base leading-relaxed text-[#0B2E7A]/80 sm:text-lg font-normal"
-          >
-            Have questions about merchant registration, onboarding, QR campaign setup, or e-commerce integrations? Reach out to our support and administrative team.
-          </motion.p>
-        </motion.div>
-      </section>
-
-      {/* ---------------------------------------------------------- */}
-      {/* SECTION: CONTACT CARDS & FORM                              */}
-      {/* ---------------------------------------------------------- */}
-      <section className="px-6 py-20 relative">
-        <div className="mx-auto max-w-6xl grid gap-12 lg:grid-cols-3">
-          
-          {/* Contact Details Column */}
-          <div className="space-y-6 lg:col-span-1">
-            <FadeUp>
-              <div className="rounded-3xl p-8 bg-white border border-[#0B2E7A]/10 shadow-lg shadow-[#0B2E7A]/5 space-y-6">
-                <div>
-                  <span className="font-mono text-xs font-bold tracking-widest text-[#1857D6] uppercase mb-2 block">
-                    Support Channels
-                  </span>
-                  <h3 
-                    className="text-2xl text-[#0B2E7A] font-normal"
-                    style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                  >
-                    Direct Inquiries
-                  </h3>
-                </div>
-
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-2xl bg-[#FAFCFF] border border-[#0B2E7A]/10 text-[#1857D6] shrink-0">
-                      <Mail size={20} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono text-[#0B2E7A]/60 uppercase">Email Support</div>
-                      <div className="text-sm font-medium text-[#0B2E7A] mt-0.5">support@domain.com</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-2xl bg-[#FAFCFF] border border-[#0B2E7A]/10 text-[#3E7A1C] shrink-0">
-                      <Phone size={20} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono text-[#0B2E7A]/60 uppercase">Helpline / WhatsApp</div>
-                      <div className="text-sm font-medium text-[#0B2E7A] mt-0.5">+91 (Support Line Available)</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-2xl bg-[#FAFCFF] border border-[#0B2E7A]/10 text-[#0B2E7A] shrink-0">
-                      <MapPin size={20} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-mono text-[#0B2E7A]/60 uppercase">Location</div>
-                      <div className="text-sm font-medium text-[#0B2E7A] mt-0.5">India</div>
-                    </div>
-                  </div>
+      <Section>
+        {/* Channel cards */}
+        <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          {CHANNELS.map(({ icon: Icon, label, value, tone }, i) => (
+            <StaggerItem key={label} className={i === 2 ? "col-span-2 sm:col-span-1" : ""}>
+              <div className="flex h-full flex-col items-start gap-3 rounded-2xl border border-[#0B2E7A]/10 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:rounded-3xl sm:p-5 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0B2E7A]/5">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 sm:rounded-2xl ${tone}`}>
+                  <Icon size={21} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-[#0B2E7A]/55">{label}</p>
+                  <p className="mt-0.5 break-words text-[13px] font-semibold text-[#0B2E7A] sm:text-sm">{value}</p>
                 </div>
               </div>
-            </FadeUp>
-          </div>
+            </StaggerItem>
+          ))}
+        </Stagger>
 
-          {/* Contact Form Column */}
-          <div className="lg:col-span-2">
-            <FadeUp delay={0.15}>
-              <div className="rounded-3xl p-8 sm:p-10 bg-white border border-[#0B2E7A]/10 shadow-xl shadow-[#0B2E7A]/5 relative overflow-hidden">
+        {/* Form */}
+        <FadeUp className="mt-5">
+          <div id="message" className="grid scroll-mt-24 overflow-hidden rounded-[32px] border border-[#0B2E7A]/10 bg-white shadow-xl shadow-[#0B2E7A]/5 lg:grid-cols-[0.8fr_1.2fr]">
+            {/* Side panel */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#3E7A1C] to-[#6BAF38] p-7 text-white sm:p-10">
+              <div aria-hidden="true" className="absolute -right-16 -top-16 h-56 w-56 rounded-full border-[28px] border-white/10" />
+              <div aria-hidden="true" className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+              <p className="relative text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">Get in touch</p>
+              <h2 className="relative mt-3 text-3xl font-semibold leading-tight sm:text-4xl" style={DISPLAY}>
+                Send us a message
+              </h2>
+              <p className="relative mt-3 text-sm leading-relaxed text-white/85">
+                Tell us a little about your business and what you need. Our team reviews every inquiry personally.
+              </p>
+              <ul className="relative mt-7 space-y-3">
+                {["Registration & KYC help", "QR & scratch card campaigns", "Points, wallet & billing", "Vendor & e-commerce questions"].map((t) => (
+                  <li key={t} className="flex items-center gap-2.5 text-sm">
+                    <CheckCircle2 size={16} className="shrink-0 text-[#D7F5B8]" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Form body */}
+            <div className="p-6 sm:p-10">
+              <AnimatePresence mode="wait">
                 {submitted ? (
-                  <div className="py-16 text-center space-y-4">
-                    <div className="inline-flex p-4 rounded-full bg-[#3E7A1C]/10 text-[#3E7A1C]">
-                      <CheckCircle2 size={40} />
-                    </div>
-                    <h3 
-                      className="text-3xl text-[#0B2E7A] font-normal"
-                      style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                    >
-                      Message Received Successfully
+                  <motion.div
+                    key="done"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4, ease: EASE }}
+                    className="flex h-full flex-col items-center justify-center py-10 text-center"
+                  >
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#3E7A1C]/10 text-[#3E7A1C]">
+                      <CheckCircle2 size={34} />
+                    </span>
+                    <h3 className="mt-5 text-2xl font-semibold text-[#0B2E7A] sm:text-3xl" style={DISPLAY}>
+                      Message received
                     </h3>
-                    <p className="text-sm text-[#0B2E7A]/75 max-w-md mx-auto">
+                    <p className="mx-auto mt-2 max-w-sm text-sm text-[#0B2E7A]/70">
                       Thank you for getting in touch. Our support team will review your inquiry and connect with you shortly.
                     </p>
                     <button
                       onClick={() => setSubmitted(false)}
-                      className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#0B2E7A] px-6 py-3 font-mono text-xs font-semibold text-white transition-all hover:bg-[#1857D6]"
+                      className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#3E7A1C] px-5 py-2.5 text-sm font-semibold text-[#3E7A1C] transition hover:bg-[#3E7A1C] hover:text-white"
                     >
-                      Send Another Message
+                      Send another message
                     </button>
-                  </div>
+                  </motion.div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <motion.form
+                    key="form"
+                    onSubmit={handleSubmit}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-5"
+                  >
                     <div>
-                      <span className="font-mono text-xs font-bold tracking-widest text-[#3E7A1C] uppercase mb-2 block">
-                        Get In Touch
-                      </span>
-                      <h3 
-                        className="text-2xl sm:text-3xl text-[#0B2E7A] font-normal"
-                        style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-                      >
-                        Send Us a Message
-                      </h3>
-                    </div>
-
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="block font-mono text-xs font-semibold text-[#0B2E7A]/75 uppercase">
-                          Full Name *
-                        </label>
-                        <input
-                          required
-                          type="text"
-                          placeholder="John Doe"
-                          className="w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] placeholder:text-[#0B2E7A]/30 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/20"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block font-mono text-xs font-semibold text-[#0B2E7A]/75 uppercase">
-                          Mobile Number *
-                        </label>
-                        <input
-                          required
-                          type="tel"
-                          placeholder="+91 90088 83444"
-                          className="w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] placeholder:text-[#0B2E7A]/30 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/20"
-                        />
+                      <span className={labelCls}>What can we help with?</span>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {TOPICS.map(({ icon: Icon, label }) => {
+                          const active = topic === label;
+                          return (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={() => setTopic(label)}
+                              aria-pressed={active}
+                              className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-medium transition ${
+                                active
+                                  ? "border-[#3E7A1C] bg-[#3E7A1C]/10 text-[#3E7A1C]"
+                                  : "border-[#0B2E7A]/10 bg-[#FAFCFF] text-[#0B2E7A]/70 hover:border-[#0B2E7A]/25"
+                              }`}
+                            >
+                              <Icon size={18} />
+                              {label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block font-mono text-xs font-semibold text-[#0B2E7A]/75 uppercase">
-                        Email Address *
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <label className="block">
+                        <span className={labelCls}>Full name *</span>
+                        <input required type="text" placeholder="Your name" className={inputCls} />
                       </label>
-                      <input
-                        required
-                        type="email"
-                        placeholder="name@business.com"
-                        className="w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] placeholder:text-[#0B2E7A]/30 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/20"
-                      />
+                      <label className="block">
+                        <span className={labelCls}>Mobile number *</span>
+                        <input required type="tel" inputMode="tel" placeholder="10-digit mobile number" className={inputCls} />
+                      </label>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block font-mono text-xs font-semibold text-[#0B2E7A]/75 uppercase">
-                        Message / Inquiry *
-                      </label>
+                    <label className="block">
+                      <span className={labelCls}>Email address *</span>
+                      <input required type="email" placeholder="name@business.com" className={inputCls} />
+                    </label>
+
+                    <label className="block">
+                      <span className={labelCls}>Message *</span>
                       <textarea
                         required
                         rows={4}
-                        placeholder="Tell us about your business category or inquiry details..."
-                        className="w-full rounded-xl border border-[#0B2E7A]/15 bg-[#FAFCFF] px-4 py-3 text-sm text-[#0B2E7A] placeholder:text-[#0B2E7A]/30 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/20 resize-none"
+                        placeholder="Tell us about your business category or inquiry details…"
+                        className={`${inputCls} resize-none`}
                       />
-                    </div>
+                    </label>
 
                     <button
                       type="submit"
-                      className="group relative inline-flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl bg-[#3E7A1C] px-8 py-4 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_6px_20px_rgba(62,122,28,0.35)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(62,122,28,0.5)] active:translate-y-0"
+                      className="group relative inline-flex w-full cursor-pointer items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-8 py-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(62,122,28,0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(62,122,28,0.45)]"
                     >
-                      <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                      <span>Submit Inquiry</span>
-                      <Send size={16} className="transition-transform group-hover:translate-x-1" />
+                      <span className="absolute inset-0 -translate-x-full skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
+                      <span className="relative">Submit inquiry</span>
+                      <Send size={16} className="relative transition-transform group-hover:translate-x-1" />
                     </button>
-                  </form>
+                  </motion.form>
                 )}
-              </div>
-            </FadeUp>
-          </div>
-
-        </div>
-      </section>
-
-      <LedgerRule label="ECOSYSTEM PLATFORM" />
-
-      {/* ---------------------------------------------------------- */}
-      {/* CLOSING CALL TO ACTION                                     */}
-      {/* ---------------------------------------------------------- */}
-      <section className="relative overflow-hidden px-6 py-20">
-        <FadeUp className="mx-auto max-w-3xl text-center">
-          <span className="inline-block font-mono text-xs font-semibold tracking-[0.25em] text-[#1857D6] bg-[#1857D6]/10 px-4 py-1.5 rounded-full border border-[#1857D6]/20 mb-6">
-            PARTNER NETWORK
-          </span>
-          <h2
-            className="mt-4 text-3xl leading-tight sm:text-4xl md:text-5xl text-[#0B2E7A] font-light"
-            style={{ fontFamily: "'Instrument Serif', Georgia, serif" }}
-          >
-            Ready to join the integrated merchant loyalty & e-commerce platform?
-          </h2>
-          
-          <div className="mt-10 flex justify-center">
-            <a
-              href="/register"
-              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-[#3E7A1C] px-9 py-4 font-mono text-sm font-semibold tracking-wide text-white shadow-[0_8px_25px_rgba(62,122,28,0.4)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(62,122,28,0.55)] active:translate-y-0"
-            >
-              <span className="absolute inset-0 h-full w-full bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <span>Register as Merchant Partner</span>
-              <ArrowUpRight
-                size={18}
-                className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1"
-              />
-            </a>
+              </AnimatePresence>
+            </div>
           </div>
         </FadeUp>
-      </section>
-    </div>
+      </Section>
+
+      <CtaBand
+        eyebrow="Partner network"
+        title="Ready to join the merchant loyalty & e-commerce platform?"
+        desc="Register in under two minutes — approval in 24–48 hours."
+        buttonLabel="Register as Merchant Partner"
+      />
+    </PageShell>
   );
 }
