@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/client'
-import { PRODUCT_AUDIENCES } from '@/lib/product-audiences'
+import { useProductAudiences } from '@/lib/use-product-audiences'
 import { Plus, Loader2, CheckCircle2, UploadCloud, ChevronDown, Image as ImageIcon, Coins } from 'lucide-react'
 
 // TypeScript Interfaces
@@ -19,6 +19,7 @@ interface Subcategory {
 }
 
 export default function AddProductPage() {
+  const { audiences } = useProductAudiences(true)
   const router = useRouter()
   const supabase = createAdminClient()
   
@@ -213,7 +214,7 @@ export default function AddProductPage() {
 
           <label className="mb-6 block text-sm font-semibold text-slate-700">Product audience
             <select required value={form.target_audience} onChange={event => setForm({ ...form, target_audience: event.target.value })} className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100">
-              {PRODUCT_AUDIENCES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              {audiences.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
             <span className="mt-2 block text-xs font-normal text-slate-500">Choose who this product is for. Use Other for products without a specific audience.</span>
           </label>

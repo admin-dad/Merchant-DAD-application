@@ -185,6 +185,7 @@ function ScanContent() {
 
   const [merchantId, setMerchantId] = useState<string | null>(null)
   const [merchantName, setMerchantName] = useState<string | null>(null)
+  const [wonAt, setWonAt] = useState<Date | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -370,6 +371,7 @@ function ScanContent() {
     setTimeout(async () => {
       if (isWinner) {
         setScratchResult('win')
+        setWonAt(new Date())
         setPrizeWon(wonPrize)
         setPrizeGift(activeCampaign?.gift || null)
 
@@ -421,9 +423,9 @@ function ScanContent() {
 
       // Measure the content first so the photo can be large without leaving
       // a fixed blank area between the description and the date.
-      ctx.font = '900 38px system-ui, -apple-system, sans-serif'
+      ctx.font = '900 48px system-ui, -apple-system, sans-serif'
       const heading = canvasTextLines(ctx, `${name || 'You'} won a reward!`, textWidth)
-      ctx.font = '600 20px system-ui, -apple-system, sans-serif'
+      ctx.font = '600 28px system-ui, -apple-system, sans-serif'
       const merchantLines = canvasTextLines(ctx, `at ${merchantName || 'this store'}`, textWidth)
       ctx.font = '800 34px system-ui, -apple-system, sans-serif'
       const prizeLines = canvasTextLines(ctx, prizeWon || 'Reward', textWidth)
@@ -433,9 +435,9 @@ function ScanContent() {
       if (prizeGift?.image_url) {
         try { photo = await loadImage(prizeGift.image_url) } catch { /* Keep the reward details available if the photo cannot load. */ }
       }
-      const headingY = 148
-      const merchantY = headingY + (heading.length - 1) * 46 + 38
-      const photoY = merchantY + (merchantLines.length - 1) * 28 + 30
+      const headingY = 164
+      const merchantY = headingY + (heading.length - 1) * 58 + 46
+      const photoY = merchantY + (merchantLines.length - 1) * 36 + 40
       const photoSize = 600
       const prizeY = photo ? photoY + photoSize + 46 : photoY + 16
       const descriptionY = prizeY + (prizeLines.length - 1) * 42 + 32
@@ -462,14 +464,14 @@ function ScanContent() {
       ctx.fill()
       ctx.textAlign = 'center'
       ctx.fillStyle = '#A3DC73'
-      ctx.font = '700 22px system-ui, -apple-system, sans-serif'
+      ctx.font = '800 30px system-ui, -apple-system, sans-serif'
       ctx.fillText('🎉 CONGRATULATIONS 🎉', width / 2, 96)
       ctx.fillStyle = '#ffffff'
-      ctx.font = '900 38px system-ui, -apple-system, sans-serif'
-      heading.forEach((line, index) => ctx.fillText(line, width / 2, headingY + index * 46))
+      ctx.font = '900 48px system-ui, -apple-system, sans-serif'
+      heading.forEach((line, index) => ctx.fillText(line, width / 2, headingY + index * 58))
       ctx.fillStyle = '#93c5fd'
-      ctx.font = '600 20px system-ui, -apple-system, sans-serif'
-      merchantLines.forEach((line, index) => ctx.fillText(line, width / 2, merchantY + index * 28))
+      ctx.font = '600 28px system-ui, -apple-system, sans-serif'
+      merchantLines.forEach((line, index) => ctx.fillText(line, width / 2, merchantY + index * 36))
       if (photo) {
         const x = (width - photoSize) / 2
         ctx.save()
@@ -491,7 +493,7 @@ function ScanContent() {
       description.forEach((line, index) => ctx.fillText(line, width / 2, descriptionY + index * 27))
       ctx.fillStyle = '#94a3b8'
       ctx.font = '400 16px system-ui, -apple-system, sans-serif'
-      const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      const dateStr = (wonAt ?? new Date()).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })
       ctx.fillText(`Won on ${dateStr}`, width / 2, dateY)
 
       // Trigger download
@@ -844,19 +846,19 @@ function ScanContent() {
                     <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-500">Please claim this at the store counter.</p>
                   </>
                 ) : (
-                  <>
+                  <div className="flex min-h-[min(58dvh,480px)] w-full flex-col items-center justify-center px-2 py-8 text-center">
                     <motion.div
                       initial={{ y: -10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      className="mb-3 sm:mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-red-50"
+                      className="mb-6 flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/50"
                     >
-                      <Frown size={28} className="text-red-500" />
+                      <Frown size={52} strokeWidth={1.5} className="text-red-500" />
                     </motion.div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
-                    <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-500">
+                    <h2 className="text-2xl sm:text-3xl font-bold leading-snug text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
+                    <p className="mt-4 text-base leading-relaxed text-slate-500">
                       You didn't win this time, but keep shopping at {merchantName} and scan again tomorrow for more chances!
                     </p>
-                  </>
+                  </div>
                 )}
               </motion.div>
             )}

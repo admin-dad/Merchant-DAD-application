@@ -2,7 +2,7 @@
 
 import { saveFile, exportError } from '@/lib/file-export'
 
-import { PRODUCT_AUDIENCES, productAudienceLabel } from '@/lib/product-audiences'
+import { useProductAudiences } from '@/lib/use-product-audiences'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -90,6 +90,7 @@ interface Coupon {
 }
 
 export default function MerchantShopPage() {
+  const { audiences, audienceLabel } = useProductAudiences()
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
@@ -596,7 +597,7 @@ export default function MerchantShopPage() {
                 <div className="relative min-w-[140px]">
                   <select aria-label="Filter by product audience" value={filterAudience} onChange={event => setFilterAudience(event.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 focus:border-[#1857D6] focus:outline-none focus:ring-2 focus:ring-[#1857D6]/10">
                     <option value="All">All Audiences</option>
-                    {PRODUCT_AUDIENCES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    {audiences.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                   <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 </div>
@@ -634,7 +635,7 @@ export default function MerchantShopPage() {
                       onClick={() => router.push(`/shop/${p.id}`)}
                     >
                       <div className="h-32 w-full rounded-xl bg-slate-100 overflow-hidden mb-3 flex items-center justify-center relative">
-                        <span className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%_-_1rem)] rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[10px] font-bold text-[#0B2E7A] shadow-sm backdrop-blur-sm">{productAudienceLabel(p.target_audience)}</span>
+                        <span className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%_-_1rem)] rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[10px] font-bold text-[#0B2E7A] shadow-sm backdrop-blur-sm">{audienceLabel(p.target_audience)}</span>
                         {p.image_url ? (
                           <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         ) : (

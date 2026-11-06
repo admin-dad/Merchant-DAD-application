@@ -36,6 +36,7 @@ import SocialLinks from "@/components/SocialLinks";
 // pattern already used elsewhere in this project. Adjust the two usages
 // below (near the bottom of this file, and the "Become a partner" button)
 // if Merchant.tsx actually expects different props.
+import SiteWelcome from "@/components/SiteWelcome";
 import MerchantModal from "@/components/modals/Merchant";
 
 const supabase = createClient(
@@ -544,15 +545,25 @@ const DEFAULT_POINTS_CONFIG = {
 };
 
 export default function RakvihLanding() {
+  const [checkingAppSession, setCheckingAppSession] = useState(true);
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) { setCheckingAppSession(false); return; }
     let active = true;
+    let redirecting = false;
     const client = createMerchantClient();
-    void client.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session || !active) return;
-      const { data: merchant } = await client.from('merchants').select('id, status').eq('user_id', session.user.id).maybeSingle();
-      if (active && merchant && ['approved', 'active'].includes(merchant.status)) window.location.replace('/dashboard');
-    });
+    void (async () => {
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        if (!session || !active) return;
+        const { data: merchant } = await client.from('merchants').select('id, status').eq('user_id', session.user.id).maybeSingle();
+        if (active && merchant && ['approved', 'active'].includes(merchant.status)) {
+          redirecting = true;
+          window.location.replace('/dashboard');
+        }
+      } finally {
+        if (active && !redirecting) setCheckingAppSession(false);
+      }
+    })().catch(console.error);
     return () => { active = false; };
   }, []);
 
@@ -566,6 +577,12 @@ export default function RakvihLanding() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0.4]);
 
   const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [merchantInitialMode, setMerchantInitialMode] = useState<'login' | 'register'>('register');
+  useEffect(() => {
+    if (!checkingAppSession && !Capacitor.isNativePlatform()) setWelcomeOpen(true);
+  }, [checkingAppSession]);
+
 
   // Real approved-merchant count from Supabase. We deliberately only ever
   // display HALF of it (rounded down) per request — e.g. 50 real approved
@@ -630,7 +647,12 @@ export default function RakvihLanding() {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#FAFCFF] font-sans text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A]">
+    <>
+      {checkingAppSession && <div role="status" aria-label="Opening Merchant DAD" className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-white">
+        <img src="/homelg.png" alt="Merchant DAD" className="h-auto w-48 object-contain" />
+        <span className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+      </div>}
+    <div inert={checkingAppSession} style={{ visibility: checkingAppSession ? 'hidden' : 'visible' }} className="relative min-h-screen overflow-x-hidden bg-[#FAFCFF] font-sans text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A]">
  <Header />
       {/* ---------------------------------------------------------- */}
       {/* HERO BANNER                                                 */}
@@ -1068,7 +1090,9 @@ export default function RakvihLanding() {
 
          <Footer />
 
-      <MerchantModal isOpen={isMerchantModalOpen} onClose={() => setIsMerchantModalOpen(false)} />
+      {welcomeOpen && <SiteWelcome onClose={() => setWelcomeOpen(false)} onChoose={mode => { setWelcomeOpen(false); setMerchantInitialMode(mode); setIsMerchantModalOpen(true); }} />}
+      <MerchantModal initialMode={merchantInitialMode} isOpen={isMerchantModalOpen} onClose={() => setIsMerchantModalOpen(false)} />
     </div>
+    </>
   );
 }

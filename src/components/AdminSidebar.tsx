@@ -56,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   // Added Coupons here
   { href: '/coupons', label: 'Coupons Management', icon: Tag },
   { href: '/categories', label: 'Categories', icon: FolderTree },
+  { href: '/product-audiences', label: 'Product Audiences', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/campaigns', label: 'Campaigns & Scratch Cards', icon: Ticket },
