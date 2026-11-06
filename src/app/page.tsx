@@ -27,6 +27,8 @@ import {
   PieChart,
   Zap,
 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { createClient as createMerchantClient } from "@/lib/supabase/client";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SocialLinks from "@/components/SocialLinks";
@@ -542,6 +544,18 @@ const DEFAULT_POINTS_CONFIG = {
 };
 
 export default function RakvihLanding() {
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let active = true;
+    const client = createMerchantClient();
+    void client.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session || !active) return;
+      const { data: merchant } = await client.from('merchants').select('id, status').eq('user_id', session.user.id).maybeSingle();
+      if (active && merchant && ['approved', 'active'].includes(merchant.status)) window.location.replace('/dashboard');
+    });
+    return () => { active = false; };
+  }, []);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,

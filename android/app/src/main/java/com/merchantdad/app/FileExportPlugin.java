@@ -1,6 +1,9 @@
 package com.merchantdad.app;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.os.Build;
+import android.provider.MediaStore;
 import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
@@ -81,6 +84,36 @@ public class FileExportPlugin extends Plugin {
         final File file;
         try { file = prepareFile(call); }
         catch (Exception error) { saveInProgress = false; call.reject("Could not prepare download: " + error.getMessage(), error); return; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && call.getString("mimeType", "").startsWith("image/")) {
+            Uri destination = null;
+            try {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, file.getName());
+                values.put(MediaStore.Images.Media.MIME_TYPE, call.getString("mimeType"));
+                values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Merchant DAD");
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                destination = getContext().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (destination == null) throw new IOException("Could not create gallery image");
+                try (FileInputStream input = new FileInputStream(file);
+                     OutputStream output = getContext().getContentResolver().openOutputStream(destination)) {
+                    if (output == null) throw new IOException("Could not save gallery image");
+                    byte[] buffer = new byte[65536];
+                    int length;
+                    while ((length = input.read(buffer)) != -1) output.write(buffer, 0, length);
+                }
+                values.clear();
+                values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                getContext().getContentResolver().update(destination, values, null, null);
+                JSObject response = new JSObject();
+                response.put("cancelled", false);
+                response.put("fileName", file.getName());
+                call.resolve(response);
+            } catch (Exception error) {
+                if (destination != null) getContext().getContentResolver().delete(destination, null, null);
+                call.reject("Could not save image to gallery", error);
+            } finally { removeFile(file); saveInProgress = false; }
+            return;
+        }
         getActivity().runOnUiThread(() -> {
             try {
                 Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);

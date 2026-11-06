@@ -25,6 +25,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onPause() {
+        android.webkit.CookieManager.getInstance().flush();
+        super.onPause();
+    }
+
+    @Override
     public void onDestroy() {
         hideStartup();
         super.onDestroy();

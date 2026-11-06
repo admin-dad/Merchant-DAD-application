@@ -99,16 +99,11 @@ export default function MerchantShopPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [wallet, setWallet] = useState({ points: 0, cash: 0 })
   
-  // Database Categories
-  const [categories, setCategories] = useState<any[]>([])
-  const [subcategories, setSubcategories] = useState<any[]>([])
   
   // Navigation & Filtering
   const [activeTab, setActiveTab] = useState<'shop' | 'cart' | 'orders'>('shop')
   const [searchQuery, setSearchQuery] = useState('')
   const [filterAudience, setFilterAudience] = useState('All')
-  const [filterCategory, setFilterCategory] = useState('All')
-  const [filterSubCategory, setFilterSubCategory] = useState('All')
   const [sortOrder, setSortOrder] = useState('newest')
   
   // Cart State
@@ -177,27 +172,14 @@ export default function MerchantShopPage() {
       }
       setCartLoaded(true)
 
-      const [prodRes, txRes, ordRes, catRes, subCatRes] = await Promise.all([
+      const [prodRes, txRes, ordRes] = await Promise.all([
         supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }),
         supabase.from('merchant_transactions').select('wallet_type, transaction_type, amount').eq('merchant_id', merchData.id),
-        supabase.from('orders').select('*, order_items(*)').eq('merchant_id', merchData.id).order('created_at', { ascending: false }),
-        supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order', { ascending: true }),
-        supabase.from('subcategories').select('id, category_id, name').eq('is_active', true).order('sort_order', { ascending: true })
+        supabase.from('orders').select('*, order_items(*)').eq('merchant_id', merchData.id).order('created_at', { ascending: false })
       ])
 
       if (prodRes.data) setProducts(prodRes.data as Product[])
       if (ordRes.data) setOrders(ordRes.data as Order[])
-      // Only offer taxonomy assigned to products in the active e-commerce catalog.
-      const catalog = (prodRes.data ?? []) as Product[]
-      const catalogCategories = (catRes.data ?? []).filter(category =>
-        catalog.some(product => product.category === category.name))
-      setCategories(catalogCategories)
-      setSubcategories((subCatRes.data ?? []).filter(subcategory => {
-        const parent = catalogCategories.find(category => category.id === subcategory.category_id)
-        return parent && catalog.some(product =>
-          product.category === parent.name && product.sub_category === subcategory.name)
-      }))
-
       if (txRes.data) {
         let pts = 0, cash = 0
         txRes.data.forEach(tx => {
@@ -218,18 +200,6 @@ export default function MerchantShopPage() {
       localStorage.setItem(`rakvih_cart_${merchant.id}`, JSON.stringify(cart))
     }
   }, [cart, merchant, cartLoaded])
-
-  // ── Dynamic Subcategories based on selected Category ─────────────────
-  const availableSubcats = useMemo(() => {
-    if (filterCategory === 'All') return subcategories
-    const selectedCat = categories.find(c => c.name === filterCategory)
-    if (!selectedCat) return []
-    return subcategories.filter(sc => sc.category_id === selectedCat.id)
-  }, [filterCategory, categories, subcategories])
-
-  useEffect(() => {
-    setFilterSubCategory('All')
-  }, [filterCategory])
 
   // ── Cart Logic ───────────────────────────────────────────────────────
   const addToCart = (product: Product) => {
@@ -523,10 +493,8 @@ export default function MerchantShopPage() {
     let result = products.filter(p => {
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = filterCategory === 'All' || p.category === filterCategory
-      const matchesSubCategory = filterSubCategory === 'All' || p.sub_category === filterSubCategory
       
-      return matchesSearch && matchesCategory && matchesSubCategory && (filterAudience === 'All' || (p.target_audience || 'other') === filterAudience)
+      return matchesSearch && (filterAudience === 'All' || (p.target_audience || 'other') === filterAudience)
     })
 
     result.sort((a, b) => {
@@ -536,7 +504,7 @@ export default function MerchantShopPage() {
     })
 
     return result
-  }, [products, searchQuery, filterCategory, filterSubCategory, filterAudience, sortOrder])
+  }, [products, searchQuery, filterAudience, sortOrder])
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><Loader2 size={28} className="animate-spin text-[#1857D6]" /></div>
 
@@ -631,37 +599,6 @@ export default function MerchantShopPage() {
                     {PRODUCT_AUDIENCES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                   <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                </div>
-
-                {/* Category Filter */}
-                <div className="relative min-w-[140px]">
-                  <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
-                  >
-                    <option value="All">All Categories</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-
-                {/* Sub-Category Filter */}
-                <div className="relative min-w-[150px]">
-                  <select
-                    value={filterSubCategory}
-                    onChange={(e) => setFilterSubCategory(e.target.value)}
-                    disabled={availableSubcats.length === 0}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="All">All Sub-Categories</option>
-                    {availableSubcats.map(sub => (
-                      <option key={sub.id} value={sub.name}>{sub.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
 
                 {/* Sort Filter */}
