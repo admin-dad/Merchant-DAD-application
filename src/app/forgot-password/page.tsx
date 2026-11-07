@@ -1,12 +1,13 @@
 'use client'
 import Link from 'next/link'
+import { Capacitor } from '@capacitor/core'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Mail, Loader2 } from 'lucide-react'
 export default function ForgotPasswordPage() {
   const [email,setEmail]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [sent,setSent]=useState(false)
   const submit=async(event:React.FormEvent)=>{event.preventDefault();setBusy(true);setError('');try{
-    const origin=process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    const origin=Capacitor.isNativePlatform() ? 'https://merchant-dad-application.vercel.app' : window.location.origin
     const {error}=await createClient().auth.resetPasswordForEmail(email.trim(),{redirectTo:new URL('/reset-password',origin).toString()})
     if(error)throw error;setSent(true)
   }catch(error){setError(error instanceof Error?error.message:'Could not send reset email. Please try again.')}finally{setBusy(false)}}

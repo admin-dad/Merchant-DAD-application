@@ -545,6 +545,13 @@ const DEFAULT_POINTS_CONFIG = {
 };
 
 export default function RakvihLanding() {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('code') || new URLSearchParams(url.hash.slice(1)).get('type') === 'recovery') {
+      window.location.replace('/reset-password' + url.search + url.hash);
+    }
+  }, []);
+
   const [checkingAppSession, setCheckingAppSession] = useState(true);
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) { setCheckingAppSession(false); return; }
