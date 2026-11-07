@@ -2,7 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 
 type ExportPayload = { data: string; fileName: string; mimeType: string; title?: string }
 interface FileExportPlugin {
-  saveFile(options: ExportPayload): Promise<{ cancelled?: boolean }>
+  saveFile(options: ExportPayload): Promise<{ cancelled?: boolean; savedToGallery?: boolean }>
   shareFile(options: ExportPayload): Promise<void>
   shareText(options: { text: string; title: string }): Promise<void>
 }
@@ -40,6 +40,7 @@ export function canvasPNG(canvas: HTMLCanvasElement): Promise<Blob> {
 export async function saveFile(blob: Blob, fileName: string): Promise<boolean> {
   if (isAndroidExport()) {
     const result = await NativeExport.saveFile(await payload(blob, fileName))
+    if (!result.cancelled) window.dispatchEvent(new CustomEvent('file-export-success', { detail: result.savedToGallery ? 'Downloaded! Check your gallery.' : 'Downloaded! Check your saved files.' }))
     return !result.cancelled
   }
   const url = URL.createObjectURL(blob)
@@ -49,6 +50,7 @@ export async function saveFile(blob: Blob, fileName: string): Promise<boolean> {
   document.body.appendChild(link)
   link.click()
   link.remove()
+  window.dispatchEvent(new CustomEvent('file-export-success', { detail: 'Download started. Check your Downloads.' }))
   window.setTimeout(() => URL.revokeObjectURL(url), 10000)
   return true
 }

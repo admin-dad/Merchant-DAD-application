@@ -1,3 +1,4 @@
+import DownloadToast from '@/components/DownloadToast'
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased flex flex-col min-h-screen`}
       >
         <OfflineBanner />
+        <DownloadToast />
         {children}
       </body>
     </html>

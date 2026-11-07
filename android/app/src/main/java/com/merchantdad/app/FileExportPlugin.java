@@ -107,6 +107,7 @@ public class FileExportPlugin extends Plugin {
                 JSObject response = new JSObject();
                 response.put("cancelled", false);
                 response.put("fileName", file.getName());
+                response.put("savedToGallery", true);
                 call.resolve(response);
             } catch (Exception error) {
                 if (destination != null) getContext().getContentResolver().delete(destination, null, null);

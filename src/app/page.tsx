@@ -580,7 +580,13 @@ export default function RakvihLanding() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [merchantInitialMode, setMerchantInitialMode] = useState<'login' | 'register'>('register');
   useEffect(() => {
-    if (!checkingAppSession && !Capacitor.isNativePlatform()) setWelcomeOpen(true);
+    if (checkingAppSession) return;
+    setWelcomeOpen(true);
+    const onReturn = () => {
+      if (Capacitor.isNativePlatform() && document.visibilityState === 'visible') setWelcomeOpen(true);
+    };
+    document.addEventListener('visibilitychange', onReturn);
+    return () => document.removeEventListener('visibilitychange', onReturn);
   }, [checkingAppSession]);
 
 
