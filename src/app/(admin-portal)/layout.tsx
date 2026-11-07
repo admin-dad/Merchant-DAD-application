@@ -1,5 +1,8 @@
 'use client'
 
+import AdminMobileTables from '@/components/AdminMobileTables'
+import './mobile.css'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/client'
@@ -52,7 +55,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 w-full">
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        <main className="admin-responsive flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+          <AdminMobileTables />
           {children}
         </main>
       </div>

@@ -1,28 +1,11 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createAdminClient as createAdminSessionClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // Save this file as: app/api/admin/merchant-billing/route.ts
 
 export async function GET() {
-  // 1. Verify the caller is logged in, using the normal RLS-respecting client
-  //    (reads the session from cookies — nothing bypassed here).
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll() {
-          // no-op: this route doesn't need to refresh/set auth cookies
-        },
-      },
-    }
-  )
+  const supabase = await createAdminSessionClient()
 
   const {
     data: { user },
@@ -33,17 +16,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // TODO: replace with your real admin check before shipping, e.g.:
-  //   const { data: profile } = await supabase
-  //     .from('profiles')
-  //     .select('role')
-  //     .eq('id', user.id)
-  //     .single()
-  //   if (profile?.role !== 'admin') {
-  //     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  //   }
-  // Right now this route only requires a logged-in session, same as before —
-  // it does NOT yet check that the user is actually an admin.
+  const { data: adminUser, error: roleError } = await supabase.from('admin').select('id').eq('id', user.id).maybeSingle()
+  if (roleError || !adminUser) {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+  }
 
   // 2. Use the service-role client to read across ALL merchants, bypassing RLS.
   let admin

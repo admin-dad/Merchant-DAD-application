@@ -1,0 +1,46 @@
+@media (max-width: 639px) {
+  .admin-responsive { padding: 0.75rem; }
+  .admin-responsive > div { min-width: 0; }
+  .admin-responsive .admin-mobile-table { display: block; width: 100%; min-width: 0 !important; }
+  .admin-responsive .admin-mobile-table thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .admin-responsive .admin-mobile-table tbody { display: grid; gap: 0.75rem; padding: 0.75rem; }
+  .admin-responsive .admin-mobile-table tbody tr { display: block; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; padding: 0.5rem; }
+  .admin-responsive .admin-mobile-table tbody td { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.75rem; border: 0; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+  .admin-responsive .admin-mobile-table tbody td + td { border-top: 1px solid #f1f5f9; }
+  .admin-responsive .admin-mobile-table tbody td[data-label]:not([data-label=""])::before { content: attr(data-label); color: #64748b; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; }
+  .admin-responsive .admin-mobile-table tbody td > * { min-width: 0; max-width: 100%; }
+  .admin-responsive .admin-mobile-table tbody td .whitespace-nowrap { white-space: normal; }
+}
+
+/* Shared admin page banner, matching Platform Overview. */
+.admin-responsive .admin-page-header {
+  position: relative;
+  margin-bottom: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.5rem;
+  background: linear-gradient(to right, #ffffff, #f8fafc);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.admin-responsive .admin-page-header h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.admin-responsive .admin-page-header h1 + p {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+.admin-responsive .admin-page-header div:has(> svg):not(:has(> p)) {
+  flex-shrink: 0;
+}
+@media (min-width: 640px) {
+  .admin-responsive .admin-page-header h1 { font-size: 1.875rem; line-height: 2.25rem; }
+}
+@media (max-width: 639px) {
+  .admin-responsive .admin-page-header { padding: 1.25rem; }
+  .admin-responsive .admin-page-header h1 { overflow-wrap: anywhere; }
+}

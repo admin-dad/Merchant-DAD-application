@@ -1,9 +1,12 @@
 'use client'
 
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import Link from 'next/link'
 import Image from 'next/image'
 import SocialLinks from '@/components/SocialLinks'
 import { ArrowUpRight, QrCode, ShieldCheck, Gift } from 'lucide-react'
+
+const ExternalLinks = registerPlugin<{ openRakvih(): Promise<void> }>('FileExport')
 
 // Same brand palette as the header:
 //   blue  #1857D6 -> #0B2E7A
@@ -76,15 +79,15 @@ export default function Footer() {
         {/* Brand + links */}
         <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_1fr_1fr] md:gap-12">
           <div className="col-span-2 md:col-span-1 md:pr-6">
-            <Link href="/" className="group inline-flex items-center gap-2">
-              <div className="relative flex h-10 w-20 items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                <Image src="/homelg.png" alt="MerchantApp Logo" fill sizes="80px" className="object-contain" />
+            <Link href="/" className="group inline-flex min-w-0 shrink-0 items-center gap-1">
+              <div className="relative flex h-9 w-16 items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105 xl:w-20">
+                <Image src="/homelg.png" alt="DAD Logo" fill sizes="(min-width: 1280px) 80px, 64px" className="object-contain" />
               </div>
               <span
-                className="bg-gradient-to-r from-[#4F8CFF] to-[#7BC142] bg-clip-text text-xl tracking-tight text-transparent"
+                className="whitespace-nowrap bg-gradient-to-r from-[#4F8CFF] to-[#7BC142] bg-clip-text text-lg tracking-tight text-transparent sm:text-xl"
                 style={{ ...DISPLAY, fontWeight: 600 }}
               >
-                MerchantApp
+                Merchant app
               </span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
@@ -115,7 +118,7 @@ export default function Footer() {
               <ul className="space-y-3 text-sm" style={DISPLAY}>
                 {col.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="group inline-flex items-center gap-2 transition-colors hover:text-white">
+                    <Link href={link.href} className="group inline-flex min-w-0 shrink-0 items-center gap-1 transition-colors hover:text-white">
                       <span className="h-1 w-1 shrink-0 rounded-full bg-slate-600 transition-all group-hover:w-3 group-hover:bg-[#7BC142]" />
                       {link.label}
                     </Link>
@@ -133,6 +136,12 @@ export default function Footer() {
             <span>Designed and Developed by</span>
             <a
               href="https://rakvih.in/"
+              onClick={event => {
+                if (Capacitor.getPlatform() === 'android' && Capacitor.isPluginAvailable('FileExport')) {
+                  event.preventDefault()
+                  void ExternalLinks.openRakvih().catch(() => { window.open('https://rakvih.in/', '_blank', 'noopener,noreferrer') })
+                }
+              }}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-slate-400 underline underline-offset-4 transition-colors hover:text-[#7BC142]"

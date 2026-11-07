@@ -193,16 +193,7 @@ export default function AdminMerchantBillingPage() {
       }
       setIsAuthenticated(true)
 
-      // NOTE: the API route below only checks that the user is logged in.
-      // Add your own admin-role check inside that route (see its TODO comment)
-      // before shipping this to production.
-
-      // Fetched via /api/admin/merchant-billing, which uses the Supabase
-      // SERVICE ROLE key server-side. This is deliberate: each merchant's own
-      // RLS policy only lets them see their OWN payments/transactions, so
-      // querying merchant_payments or merchant_transactions directly from
-      // this client would silently return zero rows for every merchant here.
-      // The API route bypasses RLS after verifying the caller is authenticated.
+      // The API verifies the admin session before reading billing data.
       const res = await fetch('/api/admin/merchant-billing', { cache: 'no-store' })
       const json = await res.json()
 
@@ -366,7 +357,7 @@ export default function AdminMerchantBillingPage() {
   return (
     <div className="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-8 bg-white min-h-screen">
       {/* Header */}
-      <div className="relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+      <div className="admin-page-header relative mb-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
         <div className="absolute right-0 top-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-gradient-to-br from-[#1857D6]/10 to-blue-500/10 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -405,7 +396,7 @@ export default function AdminMerchantBillingPage() {
       )}
 
       {/* Global stat cards */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Merchants</span>

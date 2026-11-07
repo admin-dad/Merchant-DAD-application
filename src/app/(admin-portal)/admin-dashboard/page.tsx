@@ -228,7 +228,7 @@ export default function AdminDashboardPage() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-gradient-to-r from-white to-slate-50 px-6 py-5 shadow-sm"
+        className="admin-page-header mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-200/80 bg-gradient-to-r from-white to-slate-50 px-6 py-5 shadow-sm"
       >
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#0B0F19] to-[#1857D6] text-white shadow-lg shadow-blue-500/20">
@@ -246,7 +246,7 @@ export default function AdminDashboardPage() {
       </motion.div>
 
       {/* Primary Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<Store size={18} />} label="Total Merchants" value={stats.totalMerchants} sub={`${stats.activeMerchants} Active`} accent="blue" />
         <StatCard icon={<Clock size={18} />} label="Pending Approvals" value={stats.pendingMerchants} sub="Awaiting review" accent="amber" />
         <StatCard icon={<Users size={18} />} label="Total Customers" value={stats.totalCustomers} sub="Unique phone numbers" accent="green" />
@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Beautiful Pie Chart Stat Cards */}
-      <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         
         <ChartStatCard icon={<TrendingUp size={18} />} label="Total QR Scans & Engagements" value={stats.totalScans.toLocaleString()} sub="Scratch cards issued">
           <ResponsiveContainer width="100%" height="100%">

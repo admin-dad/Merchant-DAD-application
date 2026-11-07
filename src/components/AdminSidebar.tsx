@@ -26,7 +26,6 @@ import {
   Bell,
   Globe,
   BarChart3,
-  Settings,
   Menu,
   X,
   LogOut,
@@ -74,7 +73,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin-winnervideos', label: 'Winner Videos', icon: Film },
   { href: '/admin-reports', label: 'Reports & Analytics', icon: BarChart3 },
   { href: '/legal-policies', label: 'Legal Policies', icon: FileText },
-  { href: '/settings', label: 'System Settings', icon: Settings },
 ]
 
 // Sub-links for Products Dropdown

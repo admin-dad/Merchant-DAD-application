@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Save, Trash2 } from 'lucide-react'
+import { Loader2, Save, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 function ShopMediaIcon({ video = false, size = 32 }: { video?: boolean; size?: number }) {
@@ -46,6 +46,12 @@ export default function MerchantShopMedia({ merchantId }: { merchantId: string }
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const mediaScroller = useRef<HTMLFieldSetElement>(null)
+  const scrollMedia = (direction: number) => {
+    const scroller = mediaScroller.current
+    if (!scroller) return
+    scroller.scrollBy({ left: direction * (scroller.clientWidth * 0.9 + 20), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+  }
   const objectURLs = useRef(new Set<string>())
   const dirty = SLOTS.some(slot => media[slot].file || media[slot].path !== savedPaths[slot])
 
@@ -174,12 +180,19 @@ export default function MerchantShopMedia({ merchantId }: { merchantId: string }
       {loading ? <p role="status" className="flex items-center gap-2 py-8 text-sm text-slate-500"><Loader2 size={18} className="animate-spin" />Loading shop media…</p> : <>
         {error && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
         {!ready ? <button type="button" onClick={() => { setLoading(true); setError(null); setAttempt(previous => previous + 1) }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Try again</button> : <>
-          <fieldset disabled={saving} className="grid gap-5 disabled:opacity-70 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mb-3 flex items-center justify-between gap-3 sm:hidden">
+            <span className="text-xs text-slate-500">Swipe to view images & video</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => scrollMedia(-1)} aria-label="Previous shop media" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700"><ChevronLeft size={20} /></button>
+              <button type="button" onClick={() => scrollMedia(1)} aria-label="Next shop media" className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-blue-700"><ChevronRight size={20} /></button>
+            </div>
+          </div>
+          <fieldset ref={mediaScroller} disabled={saving} aria-label="Shop images and video uploads" className="flex min-w-0 snap-x snap-mandatory gap-5 overflow-x-auto pb-3 disabled:opacity-70 sm:grid sm:overflow-visible sm:pb-0 sm:grid-cols-2 xl:grid-cols-3">
             {SLOTS.map((slot, index) => {
               const video = slot === 'shop_video_path'
               const item = media[slot]
               const label = video ? 'Shop video' : `Shop image ${index + 1}`
-              return <div key={slot} className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+              return <div key={slot} className="min-w-0 w-[90%] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:w-auto">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1857D6]" aria-hidden="true"><ShopMediaIcon video={video} size={28} /></span>{label}</h3>
                 <div className="mb-4 flex aspect-video items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-200 bg-white">
                   {item.preview ? video ? <video src={item.preview} controls preload="metadata" className="h-full w-full object-contain" aria-label="Shop video preview" /> : <Image src={item.preview} alt={`${label} preview`} width={640} height={360} unoptimized className="h-full w-full object-contain" /> : <div className="flex flex-col items-center gap-3 px-3 py-4 text-center text-xs text-slate-500"><span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#1857D6]" aria-hidden="true"><ShopMediaIcon video={video} size={56} /></span><span>{item.path ? 'Preview unavailable. Reload the page or replace this file.' : video ? 'No video added' : 'No image added'}</span></div>}

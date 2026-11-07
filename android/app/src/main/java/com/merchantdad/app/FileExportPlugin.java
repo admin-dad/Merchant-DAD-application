@@ -191,6 +191,23 @@ public class FileExportPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void openRakvih(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://rakvih.in/"));
+                intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                intent.setPackage("com.android.chrome");
+                try { getActivity().startActivity(intent); }
+                catch (android.content.ActivityNotFoundException unavailable) {
+                    intent.setPackage(null);
+                    getActivity().startActivity(intent);
+                }
+                call.resolve();
+            } catch (Exception error) { call.reject("Could not open your browser", error); }
+        });
+    }
+
+    @PluginMethod
     public void shareText(PluginCall call) {
         String text = call.getString("text");
         if (text == null || text.isEmpty()) { call.reject("Nothing to share"); return; }
