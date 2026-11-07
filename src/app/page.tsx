@@ -547,7 +547,7 @@ const DEFAULT_POINTS_CONFIG = {
 export default function RakvihLanding() {
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.has('code') || new URLSearchParams(url.hash.slice(1)).get('type') === 'recovery') {
+    if (url.searchParams.has('code') || url.searchParams.get('error_code') === 'otp_expired' || new URLSearchParams(url.hash.slice(1)).get('error_code') === 'otp_expired' || new URLSearchParams(url.hash.slice(1)).get('type') === 'recovery') {
       window.location.replace('/reset-password' + url.search + url.hash);
     }
   }, []);
