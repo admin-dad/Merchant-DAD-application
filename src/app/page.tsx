@@ -661,9 +661,9 @@ export default function RakvihLanding() {
 
   return (
     <>
-      {checkingAppSession && <div role="status" aria-label="Opening Merchant DAD" className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-white">
-        <img src="/homelg.png" alt="Merchant DAD" className="h-auto w-48 object-contain" />
-        <span className="h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+      {checkingAppSession && <div role="status" aria-label="Opening Merchant DAD" className="fixed inset-0 z-[9999] bg-white">
+        <img src="/homelg.png" alt="Merchant DAD" className="absolute left-1/2 top-1/2 h-[91px] w-40 -translate-x-1/2 -translate-y-1/2 object-contain" />
+        <span className="absolute left-1/2 top-[calc(50%_+_69px)] -ml-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-[#1857D6]" />
       </div>}
     <div inert={checkingAppSession} style={{ visibility: checkingAppSession ? 'hidden' : 'visible' }} className="relative min-h-screen overflow-x-hidden bg-[#FAFCFF] font-sans text-[#0B2E7A] selection:bg-[#7BC142] selection:text-[#0B2E7A]">
  <Header />

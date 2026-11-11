@@ -5,7 +5,7 @@ import { Loader2, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { DEFAULT_POLICIES, type LegalPolicy } from '@/lib/legal-policies'
 
-type ScanPolicySlug = 'terms' | 'customer-agreement'
+type ScanPolicySlug = 'terms' | 'customer-agreement' | 'coupon-terms'
 type PolicyResult =
   | { status: 'loading' }
   | { status: 'error' }

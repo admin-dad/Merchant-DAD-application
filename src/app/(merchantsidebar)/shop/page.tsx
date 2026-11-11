@@ -90,7 +90,7 @@ interface Coupon {
 }
 
 export default function MerchantShopPage() {
-  const { audiences, audienceLabel } = useProductAudiences()
+  const { audiences } = useProductAudiences()
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
@@ -634,8 +634,7 @@ export default function MerchantShopPage() {
                       className="cursor-pointer flex-1 flex flex-col z-0"
                       onClick={() => router.push(`/shop/${p.id}`)}
                     >
-                      <div className="h-32 w-full rounded-xl bg-slate-100 overflow-hidden mb-3 flex items-center justify-center relative">
-                        <span className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%_-_1rem)] rounded-full border border-blue-100 bg-white/95 px-2.5 py-1 text-[10px] font-bold text-[#0B2E7A] shadow-sm backdrop-blur-sm">{audienceLabel(p.target_audience)}</span>
+                      <div className="aspect-square w-full rounded-xl bg-slate-100 overflow-hidden mb-3 flex items-center justify-center relative">
                         {p.image_url ? (
                           <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         ) : (

@@ -1,4 +1,4 @@
-export const POLICY_SLUGS = ['terms', 'privacy', 'refund-policy', 'merchant-agreement', 'customer-agreement'] as const
+export const POLICY_SLUGS = ['terms', 'privacy', 'refund-policy', 'merchant-agreement', 'customer-agreement', 'coupon-terms'] as const
 export type PolicySlug = (typeof POLICY_SLUGS)[number]
 export interface PolicySection { title: string; body: string }
 export interface LegalPolicy {
@@ -10,6 +10,12 @@ export interface LegalPolicy {
 }
 
 export const DEFAULT_POLICIES: Record<PolicySlug, LegalPolicy> = {
+  'coupon-terms': {
+    slug: 'coupon-terms', title: 'Coupon Terms & Conditions',
+    description: 'Please review these terms before using a coupon.',
+    sections: [{ title: 'Coupon usage', body: 'Review the eligibility, validity dates, discount and redemption requirements shown on each coupon before use. Contact the merchant or platform support if you need clarification.' }],
+    updated_at: null,
+  },
   "terms": {
     "slug": "terms",
     "title": "Terms & Conditions",

@@ -160,7 +160,7 @@ function CouponCard({ coupon, onOpen }: { coupon: CouponRow; onOpen: () => void 
       }`}
     >
       {/* Image / visual header */}
-      <div className="relative h-32 w-full overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 to-slate-200">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 to-slate-200">
         {coupon.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -237,10 +237,10 @@ function CouponDetailModal({ coupon, onClose, onOpenTerms }: { coupon: CouponRow
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl my-auto max-h-[90vh] flex flex-col"
             >
-              <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 shrink-0">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 shrink-0">
                 {coupon.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-cover" />
+                  <img src={coupon.image_url} alt={coupon.title} className="h-full w-full object-contain" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-slate-300">
                     <TicketIcon size={32} />
@@ -315,7 +315,7 @@ function CouponDetailModal({ coupon, onClose, onOpenTerms }: { coupon: CouponRow
                     Terms & Conditions
                   </div>
                   <button type="button" onClick={onOpenTerms} className="text-left text-xs font-semibold leading-relaxed text-[#1857D6] underline underline-offset-2 hover:text-blue-800">
-                    Read the current platform Terms & Conditions
+                    Read Coupon Terms & Conditions
                   </button>
                 </div>
               </div>
@@ -576,7 +576,7 @@ export default function MerchantCouponsPage() {
 
       {/* Modals */}
       <CouponDetailModal coupon={selectedCoupon} onClose={() => setSelectedCoupon(null)} onOpenTerms={() => setShowGlobalTerms(true)} />
-      {showGlobalTerms && <LegalPolicyModal slug="terms" onClose={() => setShowGlobalTerms(false)} />}
+      {showGlobalTerms && <LegalPolicyModal slug="coupon-terms" onClose={() => setShowGlobalTerms(false)} />}
     </div>
   )
 }

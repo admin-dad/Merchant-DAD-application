@@ -41,7 +41,7 @@ interface Product {
 }
 
 export default function AdminProductsPage() {
-  const { audiences } = useProductAudiences(true)
+  const { audiences, audienceLabel } = useProductAudiences(true)
   const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
@@ -54,8 +54,7 @@ export default function AdminProductsPage() {
   
   // ── Filters & Search State ───────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterCategory, setFilterCategory] = useState('All')
-  const [filterSubCategory, setFilterSubCategory] = useState('All')
+  const [filterAudience, setFilterAudience] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
   
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -102,19 +101,6 @@ export default function AdminProductsPage() {
 
     fetchData()
   }, [supabase])
-
-  // ── Reset Subcategory when Category changes ──────────────────────────
-  useEffect(() => {
-    setFilterSubCategory('All')
-  }, [filterCategory])
-
-  // ── Dynamic Subcategories based on selected Category ─────────────────
-  const availableFilterSubcats = useMemo(() => {
-    if (filterCategory === 'All') return subcategories
-    const selectedCat = categories.find(c => c.name === filterCategory)
-    if (!selectedCat) return []
-    return subcategories.filter(sc => sc.category_id === selectedCat.id)
-  }, [filterCategory, categories, subcategories])
 
   const availableEditSubcats = useMemo(() => {
     const selectedCat = categories.find(c => c.name === editForm.category)
@@ -226,13 +212,12 @@ export default function AdminProductsPage() {
                           p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.category?.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesCategory = filterCategory === 'All' || p.category === filterCategory
-    const matchesSubCategory = filterSubCategory === 'All' || p.sub_category === filterSubCategory
+    const matchesAudience = filterAudience === 'All' || (p.target_audience || 'other') === filterAudience
     const matchesStatus = filterStatus === 'All' || 
                           (filterStatus === 'Active' && p.is_active) || 
                           (filterStatus === 'Inactive' && !p.is_active)
 
-    return matchesSearch && matchesCategory && matchesSubCategory && matchesStatus
+    return matchesSearch && matchesAudience && matchesStatus
   })
 
   // ── Loading State ───────────────────────────────────────────────────
@@ -301,35 +286,12 @@ export default function AdminProductsPage() {
             Filters:
           </div>
           
-          {/* Category Filter */}
-          <div className="relative min-w-[140px]">
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
-            >
-              <option value="All">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.name}>{cat.name}</option>
-              ))}
+          <div className="relative min-w-[180px]">
+            <select aria-label="Filter by product audience" value={filterAudience} onChange={event => setFilterAudience(event.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-100">
+              <option value="All">All Product Audiences</option>
+              {audiences.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* Sub-Category Filter */}
-          <div className="relative min-w-[150px]">
-            <select
-              value={filterSubCategory}
-              onChange={(e) => setFilterSubCategory(e.target.value)}
-              disabled={availableFilterSubcats.length === 0}
-              className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-4 pr-10 text-sm text-slate-800 cursor-pointer focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="All">All Sub-Categories</option>
-              {availableFilterSubcats.map(sub => (
-                <option key={sub.id} value={sub.name}>{sub.name}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
 
           {/* Status Filter */}
@@ -370,8 +332,7 @@ export default function AdminProductsPage() {
             <thead>
               <tr className="text-left text-slate-500 border-b border-slate-100">
                 <th className="py-3 px-4 font-medium">Product</th>
-                <th className="py-3 px-4 font-medium hidden md:table-cell">Category</th>
-                <th className="py-3 px-4 font-medium hidden lg:table-cell">Sub-Category</th>
+                <th className="py-3 px-4 font-medium">Product Audience</th>
                 <th className="py-3 px-4 font-medium">Points Required</th>
                 <th className="py-3 px-4 font-medium hidden sm:table-cell">Stock</th>
                 <th className="py-3 px-4 font-medium text-right">Status</th>
@@ -381,7 +342,7 @@ export default function AdminProductsPage() {
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={6} className="text-center py-12 text-slate-400">
                     No products found matching your filters.
                   </td>
                 </tr>
@@ -405,12 +366,8 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                     
-                    {/* Category */}
-                    <td className="py-4 px-4 hidden md:table-cell text-slate-600">{p.category || 'N/A'}</td>
-                    
-                    {/* Sub-Category */}
-                    <td className="py-4 px-4 hidden lg:table-cell text-slate-600">{p.sub_category || 'N/A'}</td>
-                    
+                    <td className="py-4 px-4 text-slate-600">{audienceLabel(p.target_audience || 'other')}</td>
+
                     {/* Points */}
                     <td className="py-4 px-4 font-bold text-[#1857D6]">
                       <span className="inline-flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-full">

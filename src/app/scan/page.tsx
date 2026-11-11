@@ -813,7 +813,7 @@ function ScanContent() {
                         transition={{ delay: 0.15 }}
                         src={prizeGift.image_url}
                         alt={prizeGift.name}
-                        className="mt-4 aspect-square w-full max-w-[280px] rounded-2xl bg-slate-50 object-contain shadow-lg ring-1 ring-black/5 sm:max-w-[320px]"
+                        className="mt-4 block h-auto max-h-[44dvh] w-auto max-w-full rounded-2xl object-contain shadow-lg ring-1 ring-black/5 sm:max-h-[420px]"
                       />
                     )}
 

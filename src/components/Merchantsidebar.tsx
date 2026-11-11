@@ -197,7 +197,7 @@ function IconRailContent({
   return (
     <div className="flex h-full flex-col items-center">
       {/* Logo */}
-      <Link href="" className="flex items-center justify-center pt-6 pb-5">
+      <Link href="/dashboard" aria-label="Merchant dashboard" className="flex items-center justify-center pt-6 pb-5">
         <div className="relative h-9 w-9 overflow-hidden rounded-lg">
           <Image src="/homelg.png" alt="Logo" fill sizes="36px" className="object-contain" priority />
         </div>
@@ -293,7 +293,7 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       {/* Logo and Title Header */}
-      <Link href="" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
+      <Link href="/dashboard" aria-label="Merchant dashboard" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
         <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
           <Image
             src="/homelg.png"
