@@ -546,6 +546,7 @@ export default function AdminGiftsPage() {
                         </div>
                       )}
                     </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 1200 px (1:1 square), or 1200 × 1800 px for portrait gifts. Keep the full prize visible.</p>
                   </div>
 
                   <div>
@@ -688,6 +689,7 @@ export default function AdminGiftsPage() {
                         </div>
                       )}
                     </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 1200 px (1:1 square), or 1200 × 1800 px for portrait gifts. Keep the full prize visible.</p>
                   </div>
 
                   <div>

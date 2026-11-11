@@ -2,7 +2,7 @@
 
 import { useProductAudiences } from '@/lib/use-product-audiences'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createAdminClient } from '@/lib/supabase/client'
@@ -49,8 +49,6 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   
   // Database Categories
-  const [categories, setCategories] = useState<any[]>([])
-  const [subcategories, setSubcategories] = useState<any[]>([])
   
   // ── Filters & Search State ───────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -81,11 +79,7 @@ export default function AdminProductsPage() {
     const fetchData = async () => {
       setLoading(true)
       
-      const [prodRes, catRes, subCatRes] = await Promise.all([
-        supabase.from('products').select('*').order('created_at', { ascending: false }),
-        supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order', { ascending: true }),
-        supabase.from('subcategories').select('id, category_id, name').eq('is_active', true).order('sort_order', { ascending: true })
-      ])
+      const prodRes = await supabase.from('products').select('*').order('created_at', { ascending: false })
 
       if (prodRes.error) {
         setError('Failed to load products.')
@@ -93,20 +87,12 @@ export default function AdminProductsPage() {
         setProducts(prodRes.data as Product[])
       }
 
-      if (catRes.data) setCategories(catRes.data)
-      if (subCatRes.data) setSubcategories(subCatRes.data)
 
       setLoading(false)
     }
 
     fetchData()
   }, [supabase])
-
-  const availableEditSubcats = useMemo(() => {
-    const selectedCat = categories.find(c => c.name === editForm.category)
-    if (!selectedCat) return []
-    return subcategories.filter(sc => sc.category_id === selectedCat.id)
-  }, [editForm.category, categories, subcategories])
 
   // ── Handle Delete Product ────────────────────────────────────────────
   const handleDelete = async (productId: string) => {
@@ -495,6 +481,7 @@ export default function AdminProductsPage() {
                         </div>
                       )}
                     </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 1200 px (1:1 square). Use a clear image with the full product visible.</p>
                   </div>
 
                   <div>
@@ -523,42 +510,6 @@ export default function AdminProductsPage() {
                       {audiences.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </label>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Category</label>
-                      <div className="relative">
-                        <select
-                          value={editForm.category}
-                          onChange={(e) => setEditForm({...editForm, category: e.target.value, sub_category: ''})}
-                          className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-10 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 cursor-pointer"
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map(cat => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Sub-Category</label>
-                      <div className="relative">
-                        <select
-                          value={editForm.sub_category}
-                          onChange={(e) => setEditForm({...editForm, sub_category: e.target.value})}
-                          disabled={!editForm.category || availableEditSubcats.length === 0}
-                          className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 pr-10 text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <option value="">Select Sub-Category</option>
-                          {availableEditSubcats.map(sub => (
-                            <option key={sub.id} value={sub.name}>{sub.name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>

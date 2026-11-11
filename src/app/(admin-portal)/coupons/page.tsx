@@ -298,6 +298,7 @@ function AddCouponModal({ open, onClose, onCreated, nextSortOrder }: AddCouponMo
                   </button>
                 )}
               </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 900 px (4:3). Keep offer text away from the image edges.</p>
 
               {/* Title + company */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -682,6 +683,7 @@ function EditCouponModal({ coupon, onClose, onUpdated }: EditCouponModalProps) {
                   </button>
                 )}
               </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 900 px (4:3). Keep offer text away from the image edges.</p>
 
               {/* Title + company */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

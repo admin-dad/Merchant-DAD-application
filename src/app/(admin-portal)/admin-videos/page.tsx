@@ -387,6 +387,7 @@ export default function AdminVideosPage() {
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-800 file:mr-3 file:rounded-lg file:border-0 file:bg-[#1857D6] file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-[#0B2E7A]"
                       />
                     </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1920 × 1080 px (16:9 landscape), or 1080 × 1920 px (9:16 vertical). MP4 with H.264 video and AAC audio is recommended.</p>
                     {selectedFile && (
                       <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600 font-medium">
                         <FileVideo size={13} /> Selected: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)

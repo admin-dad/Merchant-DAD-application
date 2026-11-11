@@ -1,22 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/client'
 import { useProductAudiences } from '@/lib/use-product-audiences'
-import { Plus, Loader2, CheckCircle2, UploadCloud, ChevronDown, Image as ImageIcon, Coins } from 'lucide-react'
-
-// TypeScript Interfaces
-interface Category {
-  id: string
-  name: string
-}
-
-interface Subcategory {
-  id: string
-  category_id: string
-  name: string
-}
+import { Plus, Loader2, CheckCircle2, UploadCloud, Image as ImageIcon, Coins } from 'lucide-react'
 
 export default function AddProductPage() {
   const { audiences } = useProductAudiences(true)
@@ -26,8 +14,6 @@ export default function AddProductPage() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   
-  const [categories, setCategories] = useState<Category[]>([])
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   
   const [form, setForm] = useState({
     target_audience: 'other',
@@ -39,24 +25,6 @@ export default function AddProductPage() {
     sub_category: '', // Storing the sub-category name
     image_url: ''
   })
-
-  // ── Fetch Categories & Subcategories ─────────────────────────────────
-  useEffect(() => {
-    const fetchData = async () => {
-      const [catRes, subCatRes] = await Promise.all([
-        supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order', { ascending: true }),
-        supabase.from('subcategories').select('id, category_id, name').eq('is_active', true).order('sort_order', { ascending: true })
-      ])
-      
-      if (catRes.data) setCategories(catRes.data)
-      if (subCatRes.data) setSubcategories(subCatRes.data)
-    }
-    fetchData()
-  }, [supabase])
-
-  // Find the selected category ID to filter subcategories correctly
-  const selectedCatId = categories.find(c => c.name === form.category)?.id
-  const filteredSubcategories = subcategories.filter(sc => sc.category_id === selectedCatId)
 
   // ── Handle Image Upload ──────────────────────────────────────────────
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,6 +148,7 @@ export default function AddProductPage() {
                 </div>
               )}
             </div>
+<p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1200 × 1200 px (1:1 square). Use a clear image with the full product visible.</p>
           </div>
 
           <hr className="border-slate-100" />
@@ -218,46 +187,6 @@ export default function AddProductPage() {
             </select>
             <span className="mt-2 block text-xs font-normal text-slate-500">Choose who this product is for. Use Other for products without a specific audience.</span>
           </label>
-
-          {/* Category & Organization */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">Category</label>
-              <div className="relative">
-                <select 
-                  value={form.category} 
-                  onChange={(e) => setForm({...form, category: e.target.value, sub_category: ''})} 
-                  className="w-full appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 shadow-sm transition-all focus:border-[#1857D6] focus:outline-none focus:ring-4 focus:ring-[#1857D6]/10"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option> 
-                  ))}
-                </select>
-                <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
-            
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">Sub-Category</label>
-              <div className="relative">
-                <select 
-                  value={form.sub_category} 
-                  onChange={(e) => setForm({...form, sub_category: e.target.value})} 
-                  disabled={!form.category}
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-900 shadow-sm transition-all focus:border-[#1857D6] focus:outline-none focus:ring-4 focus:ring-[#1857D6]/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
-                >
-                  <option value="">Select Sub-Category</option>
-                  {filteredSubcategories.map(sc => (
-                    <option key={sc.id} value={sc.name}>{sc.name}</option> 
-                  ))}
-                </select>
-                <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-slate-100" />
 
           {/* Points & Inventory */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

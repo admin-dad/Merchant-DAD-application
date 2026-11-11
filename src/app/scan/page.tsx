@@ -817,13 +817,6 @@ function ScanContent() {
                       />
                     )}
 
-                    <div className="mt-3 sm:mt-4 px-4 sm:px-6 py-2 sm:py-3 bg-[#7BC142]/10 rounded-xl border border-[#7BC142]/30">
-                      <span className="block text-base sm:text-lg font-bold text-[#3E7A1C]">{prizeWon}</span>
-                      {prizeGift?.description && (
-                        <span className="block mt-0.5 sm:mt-1 text-[10px] sm:text-xs text-slate-500">{prizeGift.description}</span>
-                      )}
-                    </div>
-
                     {/* Download the reward as a shareable image */}
                     <button
                       type="button"
@@ -846,16 +839,16 @@ function ScanContent() {
                     <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-500">Please claim this at the store counter.</p>
                   </>
                 ) : (
-                  <div className="flex min-h-[min(58dvh,480px)] w-full flex-col items-center justify-center px-2 py-8 text-center">
+                  <div className="flex min-h-[min(44dvh,360px)] w-full flex-col items-center justify-center px-2 py-6 text-center">
                     <motion.div
                       initial={{ y: -10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
-                      className="mb-6 flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/50"
+                      className="mb-5 flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/50"
                     >
-                      <Frown size={52} strokeWidth={1.5} className="text-red-500" />
+                      <Frown size={42} strokeWidth={1.5} className="text-red-500" />
                     </motion.div>
-                    <h2 className="text-2xl sm:text-3xl font-bold leading-snug text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
-                    <p className="mt-4 text-base leading-relaxed text-slate-500">
+                    <h2 className="text-xl sm:text-2xl font-bold leading-snug text-[#0B0F19]">Better Luck Next Time, {name}!</h2>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-500">
                       You didn't win this time, but keep shopping at {merchantName} and scan again tomorrow for more chances!
                     </p>
                   </div>
