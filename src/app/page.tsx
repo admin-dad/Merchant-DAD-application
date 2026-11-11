@@ -36,6 +36,7 @@ import SocialLinks from "@/components/SocialLinks";
 // pattern already used elsewhere in this project. Adjust the two usages
 // below (near the bottom of this file, and the "Become a partner" button)
 // if Merchant.tsx actually expects different props.
+import { useRouter } from "next/navigation";
 import SiteWelcome from "@/components/SiteWelcome";
 import MerchantModal from "@/components/modals/Merchant";
 
@@ -545,6 +546,7 @@ const DEFAULT_POINTS_CONFIG = {
 };
 
 export default function RakvihLanding() {
+  const startupRouter = useRouter();
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.has('code') || url.searchParams.get('error_code') === 'otp_expired' || new URLSearchParams(url.hash.slice(1)).get('error_code') === 'otp_expired' || new URLSearchParams(url.hash.slice(1)).get('type') === 'recovery') {
@@ -565,14 +567,14 @@ export default function RakvihLanding() {
         const { data: merchant } = await client.from('merchants').select('id, status').eq('user_id', session.user.id).maybeSingle();
         if (active && merchant && ['approved', 'active'].includes(merchant.status)) {
           redirecting = true;
-          window.location.replace('/dashboard');
+          startupRouter.replace('/dashboard');
         }
       } finally {
         if (active && !redirecting) setCheckingAppSession(false);
       }
     })().catch(console.error);
     return () => { active = false; };
-  }, []);
+  }, [startupRouter]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({

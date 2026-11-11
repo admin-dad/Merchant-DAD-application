@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
       hidden: false,
     },
     SplashScreen: {
-      // MainActivity shows the branded logo and spinner until the first page loads.
+      // Use the system launch splash, then the single website session loader.
       launchShowDuration: 0,
       backgroundColor: '#ffffff',
       showSpinner: false,
