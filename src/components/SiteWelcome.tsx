@@ -33,7 +33,8 @@ export default function SiteWelcome({ onClose, onChoose }: { onClose: () => void
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
       aria-labelledby="welcome-title"
       aria-describedby="welcome-desc"
-      className="fixed inset-0 m-auto max-h-[92dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-hidden rounded-[28px] bg-transparent p-0 backdrop:bg-slate-950/70 backdrop:backdrop-blur-md"
+      style={{ clipPath: 'inset(0 round 28px)', WebkitClipPath: 'inset(0 round 28px)' }}
+      className="fixed inset-0 m-auto max-h-[92dvh] w-[calc(100%_-_2rem)] max-w-3xl isolate overflow-hidden rounded-[28px] border-0 bg-white p-0 backdrop:bg-slate-950/70 backdrop:backdrop-blur-md"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -51,7 +52,7 @@ export default function SiteWelcome({ onClose, onChoose }: { onClose: () => void
         </button>
 
         {/* Brand panel */}
-        <div className="relative isolate overflow-hidden bg-gradient-to-br from-blue-700 via-blue-900 to-slate-950 px-6 pb-8 pt-7 text-white sm:px-8 md:py-10">
+        <div className="relative isolate overflow-hidden rounded-t-[28px] bg-gradient-to-br from-blue-700 via-blue-900 to-slate-950 px-6 pb-8 pt-7 text-white sm:px-8 md:rounded-l-[28px] md:rounded-tr-none md:py-10">
           <div aria-hidden className="pointer-events-none absolute -left-16 -top-16 -z-10 h-56 w-56 rounded-full bg-blue-400/40 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-20 -right-10 -z-10 h-56 w-56 rounded-full bg-lime-400/30 blur-3xl" />
           <div
@@ -115,7 +116,7 @@ export default function SiteWelcome({ onClose, onChoose }: { onClose: () => void
         </div>
 
         {/* Content panel */}
-        <div className="flex flex-col px-6 pb-6 pt-7 sm:px-8 md:py-10">
+        <div className="flex flex-col px-6 pb-6 pt-7 sm:px-8 md:rounded-l-[28px] md:rounded-tr-none md:py-10">
           <motion.p custom={0} variants={fadeUp} initial="hidden" animate="show" className="inline-flex w-fit items-center gap-1.5 rounded-full bg-lime-50 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-lime-700 ring-1 ring-lime-200">
             <Sparkles size={13} /> Welcome to Merchant DAD
           </motion.p>
