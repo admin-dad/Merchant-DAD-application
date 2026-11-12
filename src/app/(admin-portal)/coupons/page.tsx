@@ -267,13 +267,13 @@ function AddCouponModal({ open, onClose, onCreated, nextSortOrder }: AddCouponMo
               {/* Image upload */}
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-600">Coupon image</label>
-                <input
+                <><input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
-                />
+                /><span className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">Recommended image size: 960 × 960 px.</span></>
                 {imagePreview ? (
                   <div className="relative w-full overflow-hidden rounded-xl border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -641,13 +641,13 @@ function EditCouponModal({ coupon, onClose, onUpdated }: EditCouponModalProps) {
               {/* Image upload */}
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-600">Coupon image</label>
-                <input
+                <><input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => handleImageChange(e.target.files?.[0] ?? null)}
-                />
+                /><span className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">Recommended image size: 960 × 960 px.</span></>
                 {previewSrc ? (
                   <div className="relative w-full overflow-hidden rounded-xl border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

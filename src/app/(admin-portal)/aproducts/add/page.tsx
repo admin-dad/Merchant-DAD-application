@@ -109,13 +109,13 @@ export default function AddProductPage() {
           <div>
             <label className="mb-2.5 block text-sm font-semibold text-slate-700">Product Image</label>
             <div className="group relative flex h-64 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition-colors hover:bg-slate-100">
-              <input 
+              <><input
                 type="file" 
                 accept="image/*" 
                 onChange={handleImageUpload} 
                 className="absolute inset-0 z-50 h-full w-full cursor-pointer opacity-0"
                 disabled={uploadingImage}
-              />
+              /><span className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">Recommended image size: 960 × 960 px.</span></>
               
               {form.image_url ? (
                 <>

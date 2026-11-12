@@ -428,14 +428,14 @@ export default function AdminWinnerVideosPage() {
                   <div className="sm:col-span-8">
                     <label className="mb-1.5 block text-xs font-medium text-slate-700">Choose Video File from System</label>
                     <div className="flex items-center gap-3">
-                      <input
+                      <><input
                         type="file"
                         ref={fileInputRef}
                         accept="video/*"
                         required
                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-800 file:mr-3 file:rounded-lg file:border-0 file:bg-[#1857D6] file:px-3 file:py-1 file:text-xs file:font-semibold file:text-white hover:file:bg-[#0B2E7A]"
-                      />
+                      /><span className="mt-2 block text-xs font-normal leading-relaxed text-slate-500">Recommended video size: 1920 × 1080 px (landscape) or 1080 × 1920 px (portrait).</span></>
                     </div>
 <p className="mt-2 text-xs leading-relaxed text-slate-500">Recommended: 1080 × 1920 px (9:16 portrait), or 1920 × 1080 px (16:9 landscape). MP4 with H.264 video and AAC audio is recommended.</p>
                     {selectedFile && (
