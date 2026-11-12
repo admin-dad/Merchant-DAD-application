@@ -535,7 +535,7 @@ function ScanContent() {
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-x-hidden overflow-y-auto flex flex-col"
+        className="scratch-result-panel bg-white p-5 sm:p-8 rounded-2xl border border-slate-200 max-w-md w-full shadow-[0_24px_70px_rgba(9,13,22,0.35)] relative overflow-x-hidden overflow-y-auto flex flex-col"
         style={{ fontFamily: 'var(--font-display)', maxHeight: 'calc(100dvh - 24px)' }}
       >
         <div className="h-1.5 w-full bg-gradient-to-r from-[#1857D6] via-[#4F8CFF] to-[#7BC142] absolute top-0 left-0" />
