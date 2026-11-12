@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ always shows a system splash. Keep it blank white so the
+     only loader the user sees is the app's logo + spinner (AppLoader). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <size android:width="288dp" android:height="288dp" />
+</shape>

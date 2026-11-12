@@ -1,6 +1,9 @@
 package com.merchantdad.app;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.ViewGroup;
 import android.view.View;
 import android.webkit.WebView;
 import androidx.activity.EdgeToEdge;
@@ -11,6 +14,25 @@ import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    // Fallback so the loader never blocks the app if the page cannot report ready.
+    private static final long LOADER_TIMEOUT_MS = 12000;
+    private View appLoader;
+    private final Handler loaderHandler = new Handler(Looper.getMainLooper());
+
+    void hideAppLoader() {
+        runOnUiThread(() -> {
+            loaderHandler.removeCallbacksAndMessages(null);
+            View loader = appLoader;
+            if (loader == null) return;
+            appLoader = null;
+            loader.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                if (loader.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) loader.getParent()).removeView(loader);
+                }
+            }).start();
+        });
+    }
+
     @Override
     public void onPause() {
         android.webkit.CookieManager.getInstance().flush();
@@ -20,8 +42,17 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(FileExportPlugin.class);
+        registerPlugin(AppLoaderPlugin.class);
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
+
+        // Single startup loader (logo + spinner) over the WebView until the website is ready.
+        if (savedInstanceState == null) {
+            ViewGroup content = findViewById(android.R.id.content);
+            appLoader = getLayoutInflater().inflate(R.layout.app_loader, content, false);
+            content.addView(appLoader);
+            loaderHandler.postDelayed(this::hideAppLoader, LOADER_TIMEOUT_MS);
+        }
 
         // Keep the entire website, including fixed headers, inside the system bars.
         // This activity owns insets; SystemBars insets handling is disabled in config.

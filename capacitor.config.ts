@@ -17,11 +17,9 @@ const config: CapacitorConfig = {
       hidden: false,
     },
     SplashScreen: {
-      // The launch splash is the only startup loader. The website hides it
-      // once the first screen is ready; this is only a fallback timeout.
-      launchShowDuration: 10000,
-      launchAutoHide: true,
-      launchFadeOutDuration: 200,
+      // Android's system splash is blank white and closes at once. The only
+      // startup loader is MainActivity's logo + spinner (AppLoader plugin).
+      launchShowDuration: 0,
       backgroundColor: '#ffffff',
       showSpinner: false,
       androidScaleType: 'CENTER_INSIDE',

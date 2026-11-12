@@ -1,8 +1,9 @@
-import { Capacitor } from '@capacitor/core'
-import { SplashScreen } from '@capacitor/splash-screen'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 
-// The Android launch splash is the app's only startup loader. It stays up
-// until the first real screen is ready (capacitor.config.ts has a timeout fallback).
+// Native startup loader (logo + spinner) shown by MainActivity in the Android app.
+const AppLoader = registerPlugin<{ hide(): Promise<void> }>('AppLoader')
+
+// Call once the first real screen is ready so the native loader fades out.
 export function hideNativeSplash() {
-  if (Capacitor.isNativePlatform()) void SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {})
+  if (Capacitor.isNativePlatform()) void AppLoader.hide().catch(() => {})
 }
