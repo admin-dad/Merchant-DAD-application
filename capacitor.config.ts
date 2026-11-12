@@ -17,8 +17,11 @@ const config: CapacitorConfig = {
       hidden: false,
     },
     SplashScreen: {
-      // Use the system launch splash, then the single website session loader.
-      launchShowDuration: 0,
+      // The launch splash is the only startup loader. The website hides it
+      // once the first screen is ready; this is only a fallback timeout.
+      launchShowDuration: 10000,
+      launchAutoHide: true,
+      launchFadeOutDuration: 200,
       backgroundColor: '#ffffff',
       showSpinner: false,
       androidScaleType: 'CENTER_INSIDE',

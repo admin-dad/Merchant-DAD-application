@@ -9,6 +9,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { hideNativeSplash } from '@/lib/native-splash'
 import Link from 'next/link'
 import MerchantScratchCard from '@/components/MerchantScratchCard'
 
@@ -111,6 +112,8 @@ export default function DashboardPage() {
     { day: 'Thu', scans: 0 }, { day: 'Fri', scans: 0 }, { day: 'Sat', scans: 0 }, { day: 'Sun', scans: 0 }
   ])
   const [activities, setActivities] = useState<{id: string, text: string, time: string}[]>([])
+
+  useEffect(() => { if (!loading) hideNativeSplash() }, [loading])
 
   useEffect(() => {
     const fetchDashboardData = async () => {

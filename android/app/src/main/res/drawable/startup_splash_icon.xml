@@ -8,7 +8,7 @@
             <size android:width="288dp" android:height="288dp" />
         </shape>
     </item>
-    <item android:width="160dp" android:height="91dp" android:gravity="center">
+    <item android:width="136dp" android:height="77dp" android:gravity="center">
         <bitmap android:src="@drawable/startup_logo" android:gravity="fill" android:filter="true" />
     </item>
 </layer-list>
