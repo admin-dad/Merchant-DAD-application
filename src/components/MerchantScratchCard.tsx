@@ -706,6 +706,7 @@ export default function MerchantScratchCard({ merchantId }: { merchantId: string
                           <img
                             src={campaign.gift.image_url}
                             alt={campaign.gift.name}
+                            title="960 × 960"
                             className="mt-4 h-20 w-20 rounded-xl object-cover shadow-sm"
                           />
                         )}

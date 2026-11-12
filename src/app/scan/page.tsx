@@ -813,9 +813,15 @@ function ScanContent() {
                         transition={{ delay: 0.15 }}
                         src={prizeGift.image_url}
                         alt={prizeGift.name}
+                        title="960 × 960"
                         className="mt-4 block h-auto max-h-[44dvh] w-auto max-w-full rounded-2xl object-contain shadow-lg ring-1 ring-black/5 sm:max-h-[420px]"
                       />
                     )}
+
+                    <div className="mt-4 rounded-xl border border-[#7BC142]/30 bg-[#7BC142]/10 px-6 py-3">
+                      <span className="block text-lg font-bold text-[#3E7A1C]">{prizeWon || prizeGift?.name || 'Reward'}</span>
+                      {prizeGift?.description && <p className="mt-1 text-sm text-slate-600">{prizeGift.description}</p>}
+                    </div>
 
                     {/* Download the reward as a shareable image */}
                     <button
