@@ -53,6 +53,7 @@ export default function AdminOrdersPage() {
   const supabase = createAdminClient()
   
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [merchants, setMerchants] = useState<Merchant[]>([])
@@ -78,24 +79,17 @@ export default function AdminOrdersPage() {
       setLoading(true)
       
       try {
-        const [ordRes, merchRes, prodRes] = await Promise.all([
-          supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
-          supabase.from('merchants').select('id, business_name').order('business_name', { ascending: true }),
-          supabase.from('products').select('id, name').order('name', { ascending: true })
-        ])
-
-        if (ordRes.error) throw ordRes.error
-
-        setOrders(ordRes.data as Order[])
-
-        const merchData = merchRes.data as Merchant[]
-        setMerchants(merchData || [])
-        
+        setError(null)
+        const response = await fetch('/api/admin/orders', { cache: 'no-store' })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Failed to load orders.')
+        setOrders(data.orders as Order[])
+        const merchData = (data.merchants ?? []) as Merchant[]
+        setMerchants(merchData)
         const map: Record<string, string> = {}
-        merchData.forEach(m => map[m.id] = m.business_name)
+        merchData.forEach(merchant => { map[merchant.id] = merchant.business_name })
         setMerchantMap(map)
-
-        if (prodRes.data) setAllProducts(prodRes.data)
+        setAllProducts(data.products ?? [])
 
       } catch (err: any) {
         setError(err.message || 'Failed to load orders.')
@@ -105,7 +99,7 @@ export default function AdminOrdersPage() {
     }
 
     fetchData()
-  }, [supabase])
+  }, [supabase, refreshKey])
 
   // ── Handle Status Update ─────────────────────────────────────────────
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
@@ -196,11 +190,13 @@ export default function AdminOrdersPage() {
             <ShoppingCart size={30} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Orders Management</h1>
-            <p className="mt-1 text-sm text-slate-500">Track and manage reward store redemptions and order statuses.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Ordered Products</h1>
+            <p className="mt-1 text-sm text-slate-500">View ordered products, merchant details, points, shipping addresses and order status.</p>
           </div>
         </div>
       </div>
+
+      <div className="mb-4 flex justify-end"><button onClick={() => setRefreshKey(value => value + 1)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700">Refresh orders</button></div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-6">

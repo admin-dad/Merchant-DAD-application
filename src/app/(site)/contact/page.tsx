@@ -1,5 +1,6 @@
 'use client'
 
+import { useContactSettings } from '@/lib/use-contact-settings';
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -31,8 +32,8 @@ import {
 } from "@/components/site/ui";
 
 const CHANNELS = [
-  { icon: Mail, label: "Email support", value: "support@domain.com", tone: "bg-[#1857D6]/10 text-[#1857D6]" },
-  { icon: Phone, label: "Helpline / WhatsApp", value: "+91 (Support line available)", tone: "bg-[#3E7A1C]/10 text-[#3E7A1C]" },
+  { icon: Mail, label: "Email support", value: "", tone: "bg-[#1857D6]/10 text-[#1857D6]" },
+  { icon: Phone, label: "Helpline / WhatsApp", value: "", tone: "bg-[#3E7A1C]/10 text-[#3E7A1C]" },
   { icon: MapPin, label: "Location", value: "India", tone: "bg-[#0B2E7A]/10 text-[#0B2E7A]" },
 ];
 
@@ -82,6 +83,9 @@ function SupportCard() {
 }
 
 export default function ContactPage() {
+  const contact = useContactSettings();
+  const channels = CHANNELS.map(channel => channel.label === 'Email support' ? { ...channel, value: contact.support_email || 'Contact details unavailable' } : channel.label === 'Helpline / WhatsApp' ? { ...channel, value: contact.support_phone || 'Contact details unavailable' } : channel);
+
   const [submitted, setSubmitted] = useState(false);
   const [topic, setTopic] = useState(TOPICS[0].label);
 
@@ -115,7 +119,7 @@ export default function ContactPage() {
       <Section>
         {/* Channel cards */}
         <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {CHANNELS.map(({ icon: Icon, label, value, tone }, i) => (
+          {channels.map(({ icon: Icon, label, value, tone }, i) => (
             <StaggerItem key={label} className={i === 2 ? "col-span-2 sm:col-span-1" : ""}>
               <div className="flex h-full flex-col items-start gap-3 rounded-2xl border border-[#0B2E7A]/10 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:gap-4 sm:rounded-3xl sm:p-5 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0B2E7A]/5">
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 sm:rounded-2xl ${tone}`}>

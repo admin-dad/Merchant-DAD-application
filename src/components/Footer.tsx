@@ -1,6 +1,7 @@
 'use client'
 
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { useContactSettings } from '@/lib/use-contact-settings'
 import Link from 'next/link'
 import Image from 'next/image'
 import SocialLinks from '@/components/SocialLinks'
@@ -44,6 +45,7 @@ const TRUST = [
 ]
 
 export default function Footer() {
+  const contact = useContactSettings()
   return (
     <footer className="relative overflow-hidden bg-[#070B16] text-slate-400">
       <div className="h-[3px] w-full bg-gradient-to-r from-[#1857D6] via-[#4F8CFF] to-[#7BC142]" />
@@ -93,6 +95,10 @@ export default function Footer() {
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
               Empowering local merchants and connecting customers with seamless shopping, rewards, and exclusive digital experiences.
             </p>
+            <div className="mt-4 space-y-2 text-sm text-slate-400">
+              {contact.support_email && <a href={`mailto:${contact.support_email}`} className="block break-words hover:text-white">{contact.support_email}</a>}
+              {contact.support_phone && <a href={`tel:${contact.support_phone.replace(/[^+0-9]/g, '')}`} className="block hover:text-white">{contact.support_phone}</a>}
+            </div>
             <div className="mt-5">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Follow us</p>
               <SocialLinks dark />

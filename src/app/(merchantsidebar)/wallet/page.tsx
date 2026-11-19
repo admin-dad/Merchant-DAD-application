@@ -1,5 +1,6 @@
 'use client'
 
+import { openManualCheckout } from '@/lib/manual-checkout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
@@ -195,139 +196,7 @@ export default function DigitalWalletPage() {
   }
 
   // ── Handle Razorpay Checkout ────────────────────────────────────────
-  const handleBuyPoints = async (pointsToBuy: number) => {
-    if (!merchant || !merchant.id) {
-      setError('Your merchant profile is still loading. Please wait a moment and try again.')
-      return
-    }
-    if (!pointsToBuy || pointsToBuy <= 0) {
-      setError('Enter a valid number of points greater than 0.')
-      return
-    }
-
-    setPurchasing(true)
-    setError(null)
-    setSuccessMsg(null)
-
-    const isScriptLoaded = await loadRazorpayScript()
-    if (!isScriptLoaded || typeof window.Razorpay === 'undefined') {
-      setError('Razorpay SDK failed to load. Please check your connection and try again.')
-      setPurchasing(false)
-      return
-    }
-
-    const amountInINR = pointsToBuy * valuePerPoint
-    const merchantId = merchant.id
-
-    try {
-      const res = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          merchant_id: merchantId,
-          payment_mode: 'custom',
-          custom_amount: amountInINR,
-        }),
-      })
-
-      let orderData: any = {}
-      try {
-        orderData = await res.json()
-      } catch {
-        throw new Error('Server returned an unexpected response. Please try again.')
-      }
-
-      if (!res.ok) {
-        throw new Error(orderData?.error || `Failed to initialize payment (status ${res.status})`)
-      }
-
-      if (!orderData.order_id) {
-        throw new Error('Payment order could not be created. Please try again.')
-      }
-
-      const options = {
-        key: orderData.key_id || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'Merchant Points Purchase',
-        description: `Purchase ${pointsToBuy} Reward Points`,
-        order_id: orderData.order_id,
-        handler: async function (response: any) {
-          try {
-            const verifyRes = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                merchant_id: merchantId,
-                amount: amountInINR,
-                payment_mode: 'points_purchase',
-              }),
-            })
-
-            const verifyData = await verifyRes.json()
-
-            if (verifyRes.ok && verifyData.success) {
-              const { error: txInsertError } = await supabase
-                .from('merchant_transactions')
-                .insert([
-                  {
-                    merchant_id: merchantId,
-                    wallet_type: 'points',
-                    transaction_type: 'credit',
-                    amount: pointsToBuy,
-                    description: `Purchased ${pointsToBuy} Points via Razorpay (${response.razorpay_payment_id})`,
-                    category: 'purchase',
-                  },
-                ])
-
-              if (txInsertError) {
-                console.error('Failed to insert merchant transaction log:', txInsertError)
-                setError(
-                  `Payment succeeded but recording it failed. Contact support with payment ID: ${response.razorpay_payment_id}`
-                )
-                setPurchasing(false)
-                return
-              }
-
-              setSuccessMsg(`Successfully added ${pointsToBuy} Points to your wallet!`)
-              setShowBuyModal(false)
-              await fetchWalletData()
-            } else {
-              setError(verifyData.error || 'Payment verification failed.')
-            }
-          } catch (err: any) {
-            setError(err.message || 'Payment verification process encountered an error.')
-          } finally {
-            setPurchasing(false)
-          }
-        },
-        prefill: {
-          name: merchant.business_name,
-        },
-        theme: {
-          color: '#1857D6',
-        },
-        modal: {
-          ondismiss: function () {
-            setPurchasing(false)
-          },
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.on('payment.failed', function (resp: any) {
-        setError(resp?.error?.description || 'Payment failed. Please try again.')
-        setPurchasing(false)
-      })
-      rzp.open()
-    } catch (err: any) {
-      setError(err.message || 'Payment processing failed')
-      setPurchasing(false)
-    }
-  }
+  const handleBuyPoints = async (pointsToBuy: number) => { if (!merchant || pointsToBuy <= 0) return; openManualCheckout({ purpose: 'Points purchase', amount: pointsToBuy * valuePerPoint, metadata: { points: pointsToBuy } }); }
 
   // ── Formatters ──────────────────────────────────────────────────────
   const formatDate = (isoDate: string) => {

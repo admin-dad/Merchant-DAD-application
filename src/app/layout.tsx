@@ -1,3 +1,4 @@
+import ManualCheckout from '@/components/ManualCheckout'
 import DownloadToast from '@/components/DownloadToast'
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
@@ -41,6 +42,7 @@ export default function RootLayout({
       >
         <OfflineBanner />
         <DownloadToast />
+        <ManualCheckout />
         {children}
       </body>
     </html>

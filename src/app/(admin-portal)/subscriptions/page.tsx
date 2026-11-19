@@ -19,6 +19,7 @@ import {
   CalendarClock as CalendarClockIcon,
   X as XIcon,
   Trash2 as Trash2Icon,
+  Pencil,
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -84,13 +85,14 @@ function slugify(input: string) {
 // Add Plan modal
 // ─────────────────────────────────────────────────────────────────────────
 interface AddPlanModalProps {
+  plan?: PlanRow | null
   open: boolean
   onClose: () => void
   onCreated: () => void
   nextSortOrder: number
 }
 
-function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalProps) {
+function AddPlanModal({ open, onClose, onCreated, nextSortOrder, plan }: AddPlanModalProps) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
@@ -114,6 +116,15 @@ function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalP
     setSubmitting(false)
     setFormError(null)
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    if (!plan) { resetForm(); return }
+    setName(plan.name); setSlug(plan.slug); setSlugTouched(true)
+    setDescription(plan.description || ''); setPrice(String(plan.price))
+    setBillingInterval(plan.billing_interval); setFeatures(plan.features.length ? plan.features : [''])
+    setIsActive(plan.is_active); setFormError(null)
+  }, [open, plan, resetForm])
 
   const handleClose = useCallback(() => {
     if (submitting) return
@@ -151,9 +162,10 @@ function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalP
     setSubmitting(true)
     try {
       const res = await fetch('/api/admin/subscriptions', {
-        method: 'POST',
+        method: plan ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: plan?.id,
           name: trimmedName,
           slug: trimmedSlug,
           description: description.trim() || null,
@@ -161,7 +173,7 @@ function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalP
           billing_interval: billingInterval,
           features: cleanFeatures,
           is_active: isActive,
-          sort_order: nextSortOrder,
+          sort_order: plan?.sort_order ?? nextSortOrder,
         }),
       })
       const json = await res.json()
@@ -205,8 +217,8 @@ function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalP
                   <LayersIcon size={18} />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Add Plan</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">New plans appear in the Plans table right away.</p>
+                  <h2 className="text-base font-bold text-slate-900">{plan ? 'Edit Plan' : 'Add Plan'}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Manage plan details, pricing, features and availability.</p>
                 </div>
               </div>
               <button
@@ -373,7 +385,7 @@ function AddPlanModal({ open, onClose, onCreated, nextSortOrder }: AddPlanModalP
                 className="flex items-center gap-2 rounded-xl bg-[#1857D6] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-700 cursor-pointer disabled:opacity-60"
               >
                 {submitting && <LoaderIcon size={14} className="animate-spin" />}
-                {submitting ? 'Creating...' : 'Create Plan'}
+                {submitting ? 'Saving…' : plan ? 'Save Changes' : 'Create Plan'}
               </button>
             </div>
           </motion.div>
@@ -508,6 +520,7 @@ export default function AdminSubscriptionsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [editingPlan, setEditingPlan] = useState<PlanRow | null>(null)
   const [plans, setPlans] = useState<PlanRow[]>([])
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([])
   const [merchantSearch, setMerchantSearch] = useState('')
@@ -803,6 +816,7 @@ export default function AdminSubscriptionsPage() {
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right">
+                          <button onClick={() => setEditingPlan(plan)} title="Edit plan" aria-label={`Edit ${plan.name}`} className="mr-2 inline-flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50"><Pencil size={15} /></button>
                           <button
                             onClick={() => setPlanPendingDelete(plan)}
                             title="Delete plan"
@@ -906,6 +920,8 @@ export default function AdminSubscriptionsPage() {
         onCreated={fetchData}
         nextSortOrder={nextSortOrder}
       />
+
+      <AddPlanModal open={editingPlan !== null} plan={editingPlan} onClose={() => setEditingPlan(null)} onCreated={fetchData} nextSortOrder={nextSortOrder} />
 
       <DeletePlanModal
         plan={planPendingDelete}

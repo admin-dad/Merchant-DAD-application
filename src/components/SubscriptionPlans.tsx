@@ -1,5 +1,6 @@
 'use client'
 
+import { openManualCheckout } from '@/lib/manual-checkout'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Loader2, Zap, AlertCircle } from 'lucide-react'
@@ -60,84 +61,7 @@ export default function SubscriptionPlans({
       })
   }, [])
 
-  const handleUpgrade = async (plan: Plan) => {
-    setError(null)
-    setPayingPlanId(plan.id)
-
-    try {
-      const scriptLoaded = await loadRazorpayScript()
-      if (!scriptLoaded) {
-        setError('Could not load Razorpay checkout. Check your connection and try again.')
-        setPayingPlanId(null)
-        return
-      }
-
-      const orderRes = await fetch('/api/admin/subrazorpay/create-subscription-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchant_id: merchantId, plan_id: plan.id }),
-      })
-      const order = await orderRes.json()
-
-      if (!orderRes.ok) {
-        setError(order.error || 'Could not start payment. Please try again.')
-        setPayingPlanId(null)
-        return
-      }
-
-      const rzp = new window.Razorpay({
-        key: order.key_id,
-        amount: order.amount,
-        currency: order.currency,
-        name: order.brand_name || 'Merchant Partner',
-        description: order.description,
-        order_id: order.order_id,
-        handler: async (response: any) => {
-          try {
-            const verifyRes = await fetch('/api/admin/subrazorpay/verify-subscription-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                merchant_id: merchantId,
-                plan_id: plan.id,
-                amount: order.total_amount,
-                base_amount: order.base_amount,
-                gst_amount: order.gst_amount,
-              }),
-            })
-            const verifyData = await verifyRes.json()
-            if (!verifyRes.ok) {
-              setError(
-                verifyData.error || 'Payment succeeded but activation failed. Contact support.'
-              )
-              return
-            }
-            router.push('/profile')
-            router.refresh()
-          } finally {
-            setPayingPlanId(null)
-          }
-        },
-        modal: {
-          ondismiss: () => setPayingPlanId(null),
-        },
-        theme: { color: '#1857D6' },
-      })
-
-      rzp.on('payment.failed', (resp: any) => {
-        setError(resp.error?.description || 'Payment failed. Please try again.')
-        setPayingPlanId(null)
-      })
-
-      rzp.open()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-      setPayingPlanId(null)
-    }
-  }
+  const handleUpgrade = async (plan: Plan) => { openManualCheckout({ purpose: 'Subscription plan: ' + plan.name, amount: Number(plan.price), metadata: { plan_id: plan.id, merchant_id: merchantId } }); }
 
   if (loading) {
     return (

@@ -57,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/coupons', label: 'Coupons Management', icon: Tag },
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/product-audiences', label: 'Product Audiences', icon: FolderTree },
-  { href: '/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/orders', label: 'Ordered Products', icon: ShoppingCart },
   { href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
   { href: '/campaigns', label: 'Campaigns & Scratch Cards', icon: Ticket },
   { href: '/merchant-scratch-cards', label: 'Merchant Scratch Cards', icon: Sparkles },
@@ -74,6 +74,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin-winnervideos', label: 'Winner Videos', icon: Film },
   { href: '/admin-reports', label: 'Reports & Analytics', icon: BarChart3 },
   { href: '/legal-policies', label: 'Legal Policies', icon: FileText },
+  { href: '/manual-payment-details', label: 'Manual Payment Details', icon: CreditCard },
+  { href: '/manual-payments', label: 'Manual Payment Proofs', icon: Receipt },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { openManualCheckout } from '@/lib/manual-checkout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -150,40 +151,7 @@ export default function BillingPage() {
   const outstandingAmount = Math.max(0, totalBillAmount - approvedPaymentsTotal)
 
   // ── Handle Manual Payment Submission ─────────────────────────────────
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!merchant || !utr.trim() || outstandingAmount <= 0) return
-
-    setSubmitting(true)
-
-    const { error: insertError } = await supabase
-      .from('merchant_payments')
-      .insert([
-        {
-          merchant_id: merchant.id,
-          amount: outstandingAmount,
-          payment_method: 'manual',
-          utr_number: utr.trim(),
-          status: 'pending'
-        }
-      ])
-
-    setSubmitting(false)
-
-    if (insertError) {
-      setError('Failed to submit payment. Please try again.')
-      return
-    }
-
-    setSubmitSuccess(true)
-    setUtr('')
-    
-    // Refresh payment list
-    setTimeout(() => {
-      setSubmitSuccess(false)
-      window.location.reload()
-    }, 2500)
-  }
+  const handleManualSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!merchant || outstandingAmount <= 0) return; openManualCheckout({ purpose: 'Scan billing', amount: outstandingAmount }); }
 
   // ── Format Date Helper ──────────────────────────────────────────────
   const formatDate = (isoDate: string) => {
@@ -418,7 +386,7 @@ export default function BillingPage() {
                   required
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:bg-white focus:outline-none focus:ring-2 focus:border-[#1857D6] focus:ring-[#1857D6]/10"
                 />
-                <p className="mt-1.5 text-xs text-slate-400">Pay to UPI ID: <span className="font-bold text-slate-600">business@upi</span> and enter the UTR here.</p>
+                <p className="mt-1.5 text-xs text-slate-400">Use the payment details above and enter the UTR here.</p>
               </div>
 
               <button

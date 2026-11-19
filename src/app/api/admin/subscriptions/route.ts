@@ -81,9 +81,8 @@ async function requireAuthedAdminClient() {
     return { error: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }) }
   }
 
-  // TODO: check user is an admin (e.g. look up an `admins` table or a
-  // role claim) before continuing — this route currently trusts anyone
-  // who is logged in.
+  const { data: adminUser } = await serverClient.from('admin').select('id').eq('id', user.id).maybeSingle()
+  if (!adminUser) return { error: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) }
 
   const supabaseAdmin = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -191,13 +190,15 @@ interface CreatePlanBody {
   sort_order?: number
 }
 
-export async function POST(request: Request) {
+export async function POST(request: Request) { return savePlan(request, false) }
+export async function PATCH(request: Request) { return savePlan(request, true) }
+async function savePlan(request: Request, editing: boolean) {
   try {
     const auth = await requireAuthedAdminClient()
     if (auth.error) return auth.error
     const { supabaseAdmin } = auth
 
-    const body = (await request.json()) as CreatePlanBody
+    const body = (await request.json()) as CreatePlanBody & { id?: string }
 
     const name = body.name?.trim()
     const slug = body.slug?.trim()
@@ -217,9 +218,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Price must be 0 or more.' }, { status: 400 })
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('subscription_plans')
-      .insert({
+    if (editing && (!body.id || typeof body.id !== 'string')) return NextResponse.json({ error: 'Plan ID is required.' }, { status: 400 })
+    const values = {
         name,
         slug,
         description: body.description?.trim() || null,
@@ -228,7 +228,11 @@ export async function POST(request: Request) {
         features: Array.isArray(body.features) ? body.features : [],
         is_active: body.is_active ?? true,
         sort_order: body.sort_order ?? 0,
-      })
+    }
+    const query = editing
+      ? supabaseAdmin.from('subscription_plans').update(values).eq('id', body.id!)
+      : supabaseAdmin.from('subscription_plans').insert(values)
+    const { data, error } = await query
       .select('id, name, slug, description, price, billing_interval, features, is_active, sort_order')
       .single()
 
@@ -240,7 +244,7 @@ export async function POST(request: Request) {
       throw error
     }
 
-    return NextResponse.json({ plan: { ...data, merchantCount: 0 } }, { status: 201 })
+    return NextResponse.json({ plan: { ...data, merchantCount: 0 } }, { status: editing ? 200 : 201 })
   } catch (err: unknown) {
     console.error('Admin create plan error:', err)
     const message = err instanceof Error ? err.message : 'Failed to create plan.'

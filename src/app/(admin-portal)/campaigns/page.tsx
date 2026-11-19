@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createAdminClient } from '@/lib/supabase/client'
 import {
   Ticket,
+  RefreshCw,
   Plus,
   Loader2,
   AlertCircle,
@@ -84,6 +85,8 @@ export default function AdminCampaignsPage() {
   const supabase = createAdminClient()
 
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [gifts, setGifts] = useState<GiftItem[]>([])
@@ -128,7 +131,8 @@ export default function AdminCampaignsPage() {
   // ── Fetch Campaigns, Gifts & Stats ─────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      if (refreshKey === 0) setLoading(true)
+      setError(null)
 
       const { data: giftData } = await supabase
         .from('gifts')
@@ -223,8 +227,8 @@ export default function AdminCampaignsPage() {
       setLoading(false)
     }
 
-    fetchData()
-  }, [supabase])
+    void fetchData().catch(() => setError('Could not refresh campaign data. Please try again.')).finally(() => { setLoading(false); setRefreshing(false) })
+  }, [supabase, refreshKey])
 
   // ── Helper: friendly error for the "one active campaign per type" rule ──
   const describeCampaignError = (err: { code?: string; message?: string } | null, type: CampaignType) => {
@@ -458,6 +462,11 @@ export default function AdminCampaignsPage() {
               </p>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" disabled={refreshing} onClick={() => { setRefreshing(true); setRefreshKey(value => value + 1) }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50">
+              <RefreshCw size={17} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Refreshing…' : 'Refresh scan counts'}
+            </button>
           <button
             onClick={() => { setFormError(null); setIsModalOpen(true) }}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#7BC142] to-[#3E7A1C] px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(62,122,28,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(62,122,28,0.55)] cursor-pointer"
@@ -465,6 +474,7 @@ export default function AdminCampaignsPage() {
             <Plus size={18} />
             Create Campaign
           </button>
+          </div>
         </div>
       </div>
 
