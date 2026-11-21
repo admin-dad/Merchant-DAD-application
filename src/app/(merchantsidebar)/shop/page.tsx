@@ -94,6 +94,17 @@ export default function MerchantShopPage() {
   const router = useRouter()
   const supabase = createClient()
   const searchParams = useSearchParams()
+  const [minimumRedeemPoints, setMinimumRedeemPoints] = useState(0)
+  const loadRedemptionMinimum = async () => {
+    const response = await fetch('/api/payment-details', { cache: 'no-store' })
+    if (!response.ok) throw new Error('Could not verify redemption rules. Please try again.')
+    const settings = await response.json()
+    const minimum = Number(settings.wallet_min_redeem_points ?? 0)
+    if (!Number.isFinite(minimum) || minimum < 0) throw new Error('Invalid redemption configuration. Contact support.')
+    setMinimumRedeemPoints(minimum)
+    return minimum
+  }
+  useEffect(() => { void loadRedemptionMinimum().catch(console.error) }, [])
   const [loading, setLoading] = useState(true)
   const [merchant, setMerchant] = useState<MerchantData | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -359,6 +370,10 @@ export default function MerchantShopPage() {
       return
     }
 
+    try {
+      const minimum = await loadRedemptionMinimum()
+      if (wallet.points < minimum) { alert(`You need at least ${minimum} available points to redeem products.`); return }
+    } catch (error) { alert(error instanceof Error ? error.message : 'Could not verify redemption rules.'); return }
     if (wallet.points < finalTotalPoints) {
       alert("You do not have enough points to complete this redemption.")
       return
@@ -393,16 +408,19 @@ export default function MerchantShopPage() {
         price: Number(item.price),
         quantity: item.quantity
       }))
-      await supabase.from('order_items').insert(orderItems)
+      const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+      if (itemsError) throw itemsError
 
       // 3. Deduct Points Transaction
-      await supabase.from('merchant_transactions').insert([{
+      const { error: debitError } = await supabase.from('merchant_transactions').insert([{
         merchant_id: merchant.id,
         wallet_type: 'points',
         transaction_type: 'debit',
         amount: finalTotalPoints,
         description: `Rewards Redemption Order #${orderData.id.substring(0, 8)}${appliedCoupon ? ` (Coupon: ${appliedCoupon.code})` : ''}`
       }])
+
+      if (debitError) throw debitError
 
       // 4. Bump coupon redemption count, if one was used
       if (appliedCoupon) {
@@ -411,6 +429,9 @@ export default function MerchantShopPage() {
           .update({ redemption_count: appliedCoupon.redemption_count + 1 })
           .eq('id', appliedCoupon.id)
       }
+
+      // Email failure must not undo or duplicate the saved order.
+      void fetch('/api/orders/confirmation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: orderData.id }), keepalive: true }).catch(() => {})
 
       // 5. Update UI State
       setWallet(prev => ({ ...prev, points: prev.points - finalTotalPoints }))
@@ -1037,6 +1058,7 @@ export default function MerchantShopPage() {
                     </div>
                   </div>
 
+                  {wallet.points < minimumRedeemPoints && <p className="mb-3 text-sm text-amber-700">You need at least {minimumRedeemPoints} available points to redeem products.</p>}
                   {wallet.points < finalTotalPoints && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-600 font-medium">
                       ⚠️ You do not have enough points to complete this order.
@@ -1045,7 +1067,7 @@ export default function MerchantShopPage() {
 
                   <button 
                     onClick={handleCheckout} 
-                    disabled={placingOrder || wallet.points < finalTotalPoints} 
+                    disabled={placingOrder || wallet.points < finalTotalPoints || wallet.points < minimumRedeemPoints}
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-7 py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-500/20 hover:translate-y-[-1px] hover:shadow-lg disabled:opacity-50 cursor-pointer transition-all mt-4"
                   >
                     {placingOrder ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />} Complete Redemption

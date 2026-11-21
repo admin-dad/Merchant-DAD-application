@@ -23,6 +23,7 @@ import { createAdminClient } from '@/lib/supabase/client'
 // ─────────────────────────────────────────────────────────────────────────
 
 interface SettingsForm {
+  wallet_min_redeem_points: string
 
   platform_name: string
   support_email: string
@@ -30,6 +31,7 @@ interface SettingsForm {
 }
 
 const DEFAULTS: SettingsForm = {
+  wallet_min_redeem_points: '0',
 
   platform_name: '',
   support_email: '',
@@ -99,6 +101,7 @@ export default function AdminSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!Number.isSafeInteger(Number(form.wallet_min_redeem_points)) || Number(form.wallet_min_redeem_points) < 0 || !form.wallet_min_redeem_points.trim()) { setError('Minimum points must be a non-negative whole number.'); return }
     setSaving(true)
     setError(null)
     setSaved(false)
@@ -203,6 +206,10 @@ export default function AdminSettingsPage() {
           </FieldRow>
         </SettingsSection>
 
+        <SettingsSection icon={<Building2 size={17} />} title="E-commerce Redemption" description="Set the minimum wallet points balance required before a merchant can place a points-based shop order.">
+          <FieldRow label="Minimum Points to Redeem" icon={<Building2 size={15} />}><input type="number" min="0" step="1" required value={form.wallet_min_redeem_points} onChange={event => update('wallet_min_redeem_points', event.target.value)} className={inputClass} /></FieldRow>
+          <p className="text-xs text-slate-500">For example, 100 means a merchant needs at least 100 available points before checkout. The wallet must also cover the order price. Set 0 to disable this minimum.</p>
+        </SettingsSection>
         <AdminPointsSettings />
 
         {/* ── Save bar ────────────────────────────────────────────── */}
