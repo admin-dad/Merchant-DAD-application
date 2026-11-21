@@ -1,5 +1,6 @@
 'use client'
 
+import { createClient } from '@/lib/supabase/client';
 import { useContactSettings } from '@/lib/use-contact-settings';
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -89,9 +90,24 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [topic, setTopic] = useState(TOPICS[0].label);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (sending) return;
+    const form = new FormData(e.currentTarget);
+    setSending(true); setSubmitError('');
+    try {
+      const { error } = await createClient().from('contact_enquiries').insert({
+        full_name: String(form.get('full_name') || '').trim(),
+        phone: String(form.get('phone') || '').trim(),
+        email: String(form.get('email') || '').trim(),
+        topic, message: String(form.get('message') || '').trim(),
+      });
+      if (error) throw error;
+      setSubmitted(true);
+    } catch { setSubmitError('Could not send your enquiry. Please try again or use the contact details above.'); }
+    finally { setSending(false); }
   };
 
   return (
@@ -223,22 +239,23 @@ export default function ContactPage() {
                     <div className="grid gap-5 sm:grid-cols-2">
                       <label className="block">
                         <span className={labelCls}>Full name *</span>
-                        <input required type="text" placeholder="Your name" className={inputCls} />
+                        <input required name="full_name" maxLength={120} type="text" placeholder="Your name" className={inputCls} />
                       </label>
                       <label className="block">
                         <span className={labelCls}>Mobile number *</span>
-                        <input required type="tel" inputMode="tel" placeholder="10-digit mobile number" className={inputCls} />
+                        <input required name="phone" minLength={7} maxLength={30} type="tel" inputMode="tel" placeholder="10-digit mobile number" className={inputCls} />
                       </label>
                     </div>
 
                     <label className="block">
                       <span className={labelCls}>Email address *</span>
-                      <input required type="email" placeholder="name@business.com" className={inputCls} />
+                      <input required name="email" maxLength={254} type="email" placeholder="name@business.com" className={inputCls} />
                     </label>
 
                     <label className="block">
                       <span className={labelCls}>Message *</span>
                       <textarea
+                        name="message" maxLength={5000}
                         required
                         rows={4}
                         placeholder="Tell us about your business category or inquiry details…"
@@ -246,12 +263,14 @@ export default function ContactPage() {
                       />
                     </label>
 
+                    {submitError && <p role="alert" className="text-sm text-red-600">{submitError}</p>}
                     <button
+                      disabled={sending}
                       type="submit"
                       className="group relative inline-flex w-full cursor-pointer items-center justify-center gap-2.5 overflow-hidden rounded-2xl bg-[#3E7A1C] px-8 py-4 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(62,122,28,0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(62,122,28,0.45)]"
                     >
                       <span className="absolute inset-0 -translate-x-full skew-x-12 bg-white/20 transition-transform duration-700 group-hover:translate-x-full" />
-                      <span className="relative">Submit inquiry</span>
+                      <span className="relative">{sending ? 'Sending…' : 'Submit inquiry'}</span>
                       <Send size={16} className="relative transition-transform group-hover:translate-x-1" />
                     </button>
                   </motion.form>

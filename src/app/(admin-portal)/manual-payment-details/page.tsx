@@ -22,6 +22,8 @@ import { createAdminClient } from '@/lib/supabase/client'
 // ─────────────────────────────────────────────────────────────────────────
 
 interface SettingsForm {
+  buy_points_enabled: string
+  subscription_payments_enabled: string
   payment_qr_url: string
   payment_upi_id: string
   payment_bank_name: string
@@ -32,6 +34,8 @@ interface SettingsForm {
 }
 
 const DEFAULTS: SettingsForm = {
+  buy_points_enabled: 'true',
+  subscription_payments_enabled: 'true',
   payment_qr_url: '',
   payment_upi_id: '',
   payment_bank_name: '',
@@ -96,6 +100,22 @@ export default function AdminManualPaymentSettingsPage() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  const [savingSwitch, setSavingSwitch] = useState<string | null>(null)
+  const togglePayment = async (key: 'subscription_payments_enabled' | 'buy_points_enabled') => {
+    if (savingSwitch || saving) return
+    const next = form[key] === 'false' ? 'true' : 'false'
+    setSavingSwitch(key); setError(null); setSaved(false)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Please log in again.')
+      const { data, error } = await supabase.from('settings').upsert({ key, value: next, updated_by: user.id }, { onConflict: 'key' }).select('key,value').single()
+      if (error || !data) throw new Error(error?.message || 'Could not save payment availability.')
+      setForm(previous => ({ ...previous, [key]: String(data.value) }))
+      setSaved(true)
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not save payment availability.') }
+    finally { setSavingSwitch(null) }
+  }
 
   const update = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -176,7 +196,10 @@ export default function AdminManualPaymentSettingsPage() {
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
-<SettingsSection icon={<Building2 size={17} />} title="Manual Payment Details" description="Manage QR, UPI and bank details shown in the merchant manual-payment popup."><FieldRow label="Payment QR image URL (HTTPS)" icon={<Building2 size={15} />}><input type="text" value={form.payment_qr_url} onChange={event => update('payment_qr_url', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="UPI ID" icon={<Building2 size={15} />}><input type="text" value={form.payment_upi_id} onChange={event => update('payment_upi_id', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Bank name" icon={<Building2 size={15} />}><input type="text" value={form.payment_bank_name} onChange={event => update('payment_bank_name', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Account holder name" icon={<Building2 size={15} />}><input type="text" value={form.payment_account_name} onChange={event => update('payment_account_name', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Account number" icon={<Building2 size={15} />}><input type="text" value={form.payment_account_number} onChange={event => update('payment_account_number', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="IFSC" icon={<Building2 size={15} />}><input type="text" value={form.payment_ifsc} onChange={event => update('payment_ifsc', event.target.value)} className={inputClass} /></FieldRow><label className="block text-sm text-slate-700">Upload payment QR (PNG/JPG/WebP, up to 5 MB)<FileUploadButton label="Upload QR Image" accept="image/png,image/jpeg,image/webp" disabled={saving} onChange={async event=>{const file=event.target.files?.[0];if(!file)return;if(file.size>5*1024*1024){alert('Choose an image under 5 MB.');return}const path=`payment-qr/${crypto.randomUUID()}.${file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg'}`;const {error}=await supabase.storage.from('product-images').upload(path,file);if(error){alert(error.message);return}update('payment_qr_url',supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl)}} /></label>{form.payment_qr_url&&<img src={form.payment_qr_url} alt="Payment QR preview" className="h-48 w-48 object-contain"/>}<p className="text-xs text-slate-500">Recommended: 1000 × 1000 px. Save settings after uploading. Manual transfers require admin verification.</p></SettingsSection>
+        <SettingsSection icon={<Building2 size={17} />} title="Payment Availability" description="Turn subscription payments and points purchases on or off. Switches save immediately.">
+          {([{ key: 'subscription_payments_enabled', label: 'Subscription Payments' }, { key: 'buy_points_enabled', label: 'Buy Points' }] as const).map(({key,label}) => <div key={key} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">{label}</span><button type="button" role="switch" aria-checked={form[key] !== 'false'} disabled={savingSwitch !== null || saving} onClick={() => void togglePayment(key)} className={`rounded-full px-5 py-2 text-sm font-bold text-white ${form[key] === 'false' ? 'bg-slate-500' : 'bg-green-600'}`}>{savingSwitch === key ? 'Saving…' : form[key] === 'false' ? 'OFF' : 'ON'}</button></div>)}
+        </SettingsSection>
+<SettingsSection icon={<Building2 size={17} />} title="Manual Payment Details" description="Manage QR, UPI and bank details shown in the merchant manual-payment popup."><FieldRow label="Payment QR image URL (HTTPS)" icon={<Building2 size={15} />}><input type="text" value={form.payment_qr_url} onChange={event => update('payment_qr_url', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="UPI ID" icon={<Building2 size={15} />}><input type="text" value={form.payment_upi_id} onChange={event => update('payment_upi_id', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Bank name" icon={<Building2 size={15} />}><input type="text" value={form.payment_bank_name} onChange={event => update('payment_bank_name', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Account holder name" icon={<Building2 size={15} />}><input type="text" value={form.payment_account_name} onChange={event => update('payment_account_name', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="Account number" icon={<Building2 size={15} />}><input type="text" value={form.payment_account_number} onChange={event => update('payment_account_number', event.target.value)} className={inputClass} /></FieldRow><FieldRow label="IFSC" icon={<Building2 size={15} />}><input type="text" value={form.payment_ifsc} onChange={event => update('payment_ifsc', event.target.value)} className={inputClass} /></FieldRow><label className="block text-sm text-slate-700">Upload payment QR (PNG/JPG/WebP, up to 5 MB)<FileUploadButton label="Upload QR Image" accept="image/png,image/jpeg,image/webp" disabled={saving || savingSwitch !== null} onChange={async event=>{const file=event.target.files?.[0];if(!file)return;if(file.size>5*1024*1024){alert('Choose an image under 5 MB.');return}const path=`payment-qr/${crypto.randomUUID()}.${file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg'}`;const {error}=await supabase.storage.from('product-images').upload(path,file);if(error){alert(error.message);return}update('payment_qr_url',supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl)}} /></label>{form.payment_qr_url&&<img src={form.payment_qr_url} alt="Payment QR preview" className="h-48 w-48 object-contain"/>}<p className="text-xs text-slate-500">Recommended: 1000 × 1000 px. Save settings after uploading. Manual transfers require admin verification.</p></SettingsSection>
         {/* ── Save bar ────────────────────────────────────────────── */}
         <div className="sticky bottom-4 flex items-center justify-end gap-3 rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur px-5 py-4 shadow-lg">
           {saved && (
@@ -191,7 +214,7 @@ export default function AdminManualPaymentSettingsPage() {
           )}
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || savingSwitch !== null}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all disabled:opacity-50 disabled:hover:translate-y-0 cursor-pointer"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}

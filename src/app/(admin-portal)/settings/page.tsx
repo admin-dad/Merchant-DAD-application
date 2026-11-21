@@ -1,6 +1,7 @@
 // app/admin/settings/page.tsx
 'use client'
 
+import AdminChangePassword from '@/components/AdminChangePassword'
 import AdminPointsSettings from '@/components/AdminPointsSettings'
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
@@ -226,6 +227,7 @@ export default function AdminSettingsPage() {
           </button>
         </div>
       </form>
+      <AdminChangePassword />
     </div>
   )
 }

@@ -76,6 +76,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/legal-policies', label: 'Legal Policies', icon: FileText },
   { href: '/manual-payment-details', label: 'Manual Payment Details', icon: CreditCard },
   { href: '/manual-payments', label: 'Manual Payment Proofs', icon: Receipt },
+  { href: '/contact-enquiries', label: 'Contact Enquiries', icon: FileText },
   { href: '/settings', label: 'System Settings', icon: Settings },
 ]
 

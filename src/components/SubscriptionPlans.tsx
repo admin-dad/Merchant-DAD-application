@@ -1,5 +1,6 @@
 'use client'
 
+import { usePaymentSwitches } from '@/lib/use-payment-switches'
 import { openManualCheckout } from '@/lib/manual-checkout'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -41,6 +42,7 @@ export default function SubscriptionPlans({
   merchantId: string
   currentPlanId?: string | null
 }) {
+  const paymentSwitches = usePaymentSwitches()
   const router = useRouter()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,7 +63,7 @@ export default function SubscriptionPlans({
       })
   }, [])
 
-  const handleUpgrade = async (plan: Plan) => { openManualCheckout({ purpose: 'Subscription plan: ' + plan.name, amount: Number(plan.price), metadata: { plan_id: plan.id, merchant_id: merchantId } }); }
+  const handleUpgrade = async (plan: Plan) => { if (!paymentSwitches.subscriptions) return; openManualCheckout({ purpose: 'Subscription plan: ' + plan.name, amount: Number(plan.price), metadata: { plan_id: plan.id, merchant_id: merchantId } }); }
 
   if (loading) {
     return (
@@ -123,7 +125,7 @@ export default function SubscriptionPlans({
             {!isFree && !isCurrent && (
               <button
                 onClick={() => handleUpgrade(plan)}
-                disabled={payingPlanId === plan.id}
+                disabled={payingPlanId === plan.id || !paymentSwitches.subscriptions}
                 className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
               >
                 {payingPlanId === plan.id ? (
@@ -132,7 +134,7 @@ export default function SubscriptionPlans({
                     Processing…
                   </>
                 ) : (
-                  `Upgrade to ${plan.name}`
+                  paymentSwitches.subscriptions ? `Upgrade to ${plan.name}` : 'Subscription Payments OFF'
                 )}
               </button>
             )}

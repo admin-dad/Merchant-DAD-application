@@ -1,0 +1,3 @@
+'use client'
+import { useEffect,useState } from 'react'
+export function usePaymentSwitches(){const [state,setState]=useState({points:false,subscriptions:false});useEffect(()=>{let active=true;const load=async()=>{try{const response=await fetch('/api/payment-details',{cache:'no-store'});if(!response.ok)return;const data=await response.json();if(active)setState({points:data.buy_points_enabled!=='false',subscriptions:data.subscription_payments_enabled!=='false'})}catch{}};void load();window.addEventListener('focus',load);return()=>{active=false;window.removeEventListener('focus',load)}},[]);return state}

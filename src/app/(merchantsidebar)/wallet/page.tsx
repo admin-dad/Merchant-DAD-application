@@ -1,5 +1,6 @@
 'use client'
 
+import { usePaymentSwitches } from '@/lib/use-payment-switches'
 import { openManualCheckout } from '@/lib/manual-checkout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -54,6 +55,7 @@ declare global {
 }
 
 export default function DigitalWalletPage() {
+  const paymentSwitches = usePaymentSwitches()
   const router = useRouter()
   const supabase = createClient()
 
@@ -196,7 +198,7 @@ export default function DigitalWalletPage() {
   }
 
   // ── Handle Razorpay Checkout ────────────────────────────────────────
-  const handleBuyPoints = async (pointsToBuy: number) => { if (!merchant || pointsToBuy <= 0) return; openManualCheckout({ purpose: 'Points purchase', amount: pointsToBuy * valuePerPoint, metadata: { points: pointsToBuy } }); }
+  const handleBuyPoints = async (pointsToBuy: number) => { if (!paymentSwitches.points || !merchant || pointsToBuy <= 0) return; openManualCheckout({ purpose: 'Points purchase', amount: pointsToBuy * valuePerPoint, metadata: { points: pointsToBuy } }); }
 
   // ── Formatters ──────────────────────────────────────────────────────
   const formatDate = (isoDate: string) => {
@@ -260,8 +262,7 @@ export default function DigitalWalletPage() {
               <span>Points History</span>
             </button>
             <button
-              onClick={() => setShowBuyModal(true)}
-              disabled={!merchant}
+              disabled={!paymentSwitches.points} onClick={() => setShowBuyModal(true)}
               className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-500/20 transition-all hover:translate-y-[-1px] hover:shadow-lg sm:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={16} />
@@ -301,7 +302,7 @@ export default function DigitalWalletPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowBuyModal(true)}
+            disabled={!paymentSwitches.points} onClick={() => setShowBuyModal(true)}
             className="flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#1857D6] hover:bg-blue-100 transition-colors cursor-pointer"
           >
             <Plus size={12} /> Buy
@@ -340,6 +341,7 @@ export default function DigitalWalletPage() {
 
 
 
+      {!paymentSwitches.points && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Buy Points is currently OFF. Please check again later.</p>}
       {/* Buy Points Packages */}
       <div className="grid grid-cols-1 gap-8">
         <motion.div
@@ -369,7 +371,7 @@ export default function DigitalWalletPage() {
                 </div>
                 <button
                   onClick={() => handleBuyPoints(pts)}
-                  disabled={purchasing}
+                  disabled={purchasing || !paymentSwitches.points}
                   className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:shadow-md cursor-pointer disabled:opacity-50"
                 >
                   {purchasing ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
@@ -423,7 +425,7 @@ export default function DigitalWalletPage() {
                   </button>
                   <button
                     onClick={() => handleBuyPoints(selectedPoints)}
-                    disabled={purchasing || selectedPoints <= 0}
+                    disabled={purchasing || selectedPoints <= 0 || !paymentSwitches.points}
                     className="w-1/2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#1857D6] to-[#0B2E7A] py-2.5 text-xs font-semibold text-white shadow-md cursor-pointer disabled:opacity-50"
                   >
                     {purchasing ? <Loader2 size={14} className="animate-spin" /> : 'Pay via Razorpay'}
