@@ -390,7 +390,7 @@ export default function MerchantShopPage() {
           merchant_id: merchant.id,
           total_amount: finalTotalPoints,
           points_used: finalTotalPoints,
-          status: 'completed',
+          status: 'pending',
           shipping_address: formattedAddress,
           coupon_code: appliedCoupon?.code ?? null,
           discount_amount: discountAmount
@@ -832,7 +832,7 @@ export default function MerchantShopPage() {
                     <div key={o.id} className="p-5 rounded-2xl border border-slate-100 bg-slate-50/50">
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-xs font-mono text-slate-500">Order #{o.id.substring(0, 8)}</p>
-                        <span className={`text-xs font-semibold capitalize px-2.5 py-1 rounded-full ${o.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>{o.status}</span>
+                        <span className={`text-xs font-semibold capitalize px-2.5 py-1 rounded-full ${o.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' : o.status === 'cancelled' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>{o.status}</span>
                       </div>
                       <div className="space-y-1.5 mb-4">
                         {o.order_items.map((item, i) => (
