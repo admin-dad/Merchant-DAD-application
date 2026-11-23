@@ -1,6 +1,5 @@
 'use client'
 
-import { openManualCheckout } from '@/lib/manual-checkout'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -151,7 +150,7 @@ export default function BillingPage() {
   const outstandingAmount = Math.max(0, totalBillAmount - approvedPaymentsTotal)
 
   // ── Handle Manual Payment Submission ─────────────────────────────────
-  const handleManualSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!merchant || outstandingAmount <= 0) return; openManualCheckout({ purpose: 'Scan billing', amount: outstandingAmount }); }
+  const handleManualSubmit = async (e: React.FormEvent) => { e.preventDefault(); router.push('/payments') }
 
   // ── Format Date Helper ──────────────────────────────────────────────
   const formatDate = (isoDate: string) => {

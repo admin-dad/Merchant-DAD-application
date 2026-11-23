@@ -1,5 +1,6 @@
 'use client'
 
+import MerchantPaymentHistory from '@/components/MerchantPaymentHistory'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -212,6 +213,8 @@ export default function WalletHistoryPage() {
           </div>
         </div>
       </div>
+
+      <MerchantPaymentHistory type="points" />
 
       {/* Grouped Transaction List */}
       {groupedTransactions.length === 0 ? (

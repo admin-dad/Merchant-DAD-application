@@ -1,5 +1,6 @@
 'use client'
 
+import MerchantPaymentHistory from '@/components/MerchantPaymentHistory'
 import { openManualCheckout } from '@/lib/manual-checkout'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
@@ -494,7 +495,7 @@ export default function MerchantScanPaymentPage() {
     })
   }, [scans, searchTerm, fulfillmentFilter])
 
-  const handlePayment = async (billingMonth?: string) => { if (!merchant || !hasOutstandingPayment) return; openManualCheckout({ purpose: 'Scan billing', amount: outstandingTotalWithGst, metadata: { billing_month: billingMonth } }); }
+  const handlePayment = async (billingMonth?: string) => { if (!merchant || !hasOutstandingPayment) return; openManualCheckout({ purpose: 'Scan billing', amount: outstandingTotalWithGst, metadata: { billing_month: billingMonth, scan_ids: payableScans.map(scan => scan.id) } }); }
 
   // Pays only the months the merchant has selected (defaults to all unpaid).
   const handleMonthlyPayment = async () => { if (!merchant || !selectedMonths.length) return; openManualCheckout({ purpose: 'Monthly QR payment', amount: selectedTotal, metadata: { billing_months: selectedMonths.map(month => month.key) } }); }
@@ -596,6 +597,8 @@ export default function MerchantScanPaymentPage() {
           </div>
         </div>
       </div>
+
+      <MerchantPaymentHistory type="billing" />
 
       {/* Messages */}
       {error && (
