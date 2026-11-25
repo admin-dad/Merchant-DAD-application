@@ -1,5 +1,6 @@
 'use client'
 
+import { useBackgroundScrollLock } from '@/lib/use-background-scroll-lock'
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -99,6 +100,7 @@ export default function AdminSidebar({
   const pathname = usePathname()
   const supabase = createAdminClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  useBackgroundScrollLock(mobileOpen)
   const [productsOpen, setProductsOpen] = useState(true) // Open by default to show sub-links
 
   const isActive = (href: string) =>
@@ -221,7 +223,7 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       {/* Logo & Header Title */}
-      <Link href="/admin-dashboard" onClick={onNavigate} className="flex items-center gap-3 px-6 pt-6 pb-5">
+      <Link href="/admin-dashboard" onClick={onNavigate} className="flex items-center gap-3 shrink-0 px-6 pt-6 pb-5">
         <div className="relative h-9 w-28 overflow-hidden flex items-center justify-start shrink-0">
           <Image
             src="/homelg.png"
@@ -241,7 +243,7 @@ function SidebarContent({
       <div className="h-px w-full bg-white/10" />
 
       {/* Nav items */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
+      <nav className="flex-1 min-h-0 overscroll-contain overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           const Icon = item.icon

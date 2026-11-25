@@ -135,6 +135,10 @@ export default function MerchantShopPage() {
   
   // Checkout State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [addressMode, setAddressMode] = useState<'previous' | 'other'>('previous')
+  const previousAddress = orders.find(order => order.shipping_address?.trim())?.shipping_address ?? ''
+  const usePreviousAddress = addressMode === 'previous' && !!previousAddress
+  useEffect(() => { if (isCheckoutOpen) setAddressMode('previous') }, [isCheckoutOpen])
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
@@ -365,7 +369,7 @@ export default function MerchantShopPage() {
   const handleCheckout = async () => {
     if (!merchant || checkoutItems.length === 0) return
     
-    if (!addressForm.fullName || !addressForm.phone || !addressForm.street || !addressForm.city || !addressForm.state || !addressForm.pincode) {
+    if (!usePreviousAddress && (!addressForm.fullName || !addressForm.phone || !addressForm.street || !addressForm.city || !addressForm.state || !addressForm.pincode)) {
       alert("Please fill in all shipping address fields.")
       return
     }
@@ -381,7 +385,7 @@ export default function MerchantShopPage() {
 
     setPlacingOrder(true)
 
-    const formattedAddress = `${addressForm.fullName}, Phone: ${addressForm.phone}, ${addressForm.street}, ${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`
+    const formattedAddress = usePreviousAddress ? previousAddress : `${addressForm.fullName}, Phone: ${addressForm.phone}, ${addressForm.street}, ${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`
 
     try {
       // 1. Create Order (Only sending existing schema columns to prevent 403 errors)
@@ -930,6 +934,8 @@ export default function MerchantShopPage() {
                 )}
                 
                 <div className="space-y-4">
+                  {previousAddress && <fieldset className="space-y-3"><legend className="mb-3 text-sm font-bold text-slate-800">Delivery address</legend><label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${usePreviousAddress ? 'border-blue-300 bg-blue-50/50' : 'border-slate-200'}`}><input type="radio" name="delivery-address" checked={usePreviousAddress} onChange={() => setAddressMode('previous')} className="mt-1"/><span className="min-w-0"><strong className="block text-sm text-slate-900">Use previous address</strong><span className="mt-1 block break-words text-xs leading-relaxed text-slate-500">{previousAddress}</span></span></label><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-700"><input type="radio" name="delivery-address" checked={!usePreviousAddress} onChange={() => setAddressMode('other')}/>Deliver to another address</label></fieldset>}
+                  {!usePreviousAddress && <div className="space-y-4">
                   {/* Structured Professional Address Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -997,6 +1003,8 @@ export default function MerchantShopPage() {
                       />
                     </div>
                   </div>
+
+                  </div>}
 
                   {/* Coupon Input (also editable from checkout) — hidden behind SHOW_COUPONS */}
                   {SHOW_COUPONS && (
